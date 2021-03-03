@@ -41,9 +41,6 @@ NTSTATUS KDRV::DeInitialize(PDRIVER_OBJECT driverObject)
 
 NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG written)
 {
-  UNREFERENCED_PARAMETER(request);
-  UNREFERENCED_PARAMETER(outputBuffer);
-  UNREFERENCED_PARAMETER(written);
   // Find associated process
   PEPROCESS process = NULL;
   Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
@@ -52,13 +49,41 @@ NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG wri
     LOG_ERROR("PsLookupProcessByProcessId\n");
     return Status;
   }
+
+  // 0x400000 physical
+  // 0x virtual
+
+  // Secure pages
+  PMDL mdl = IoAllocateMdl(request->Base, (ULONG)request->Size, FALSE, FALSE, NULL);
+  if (!mdl)
+  {
+    LOG_ERROR("IoAllocateMdl\n");
+    Status = STATUS_INVALID_ADDRESS;
+    return Status;
+  }
+  LOG_INFO("StartVa %p\n", mdl->StartVa);
+  LOG_INFO("MappedSystemVa %p\n", mdl->MappedSystemVa);
+  LOG_INFO("ByteOffset %X\n", mdl->ByteOffset);
+  // Lock secured pages
+  //MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
+  PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
+  if (!mappedBase)
+  {
+    //MmUnlockPages(mdl);
+    IoFreeMdl(mdl);
+    LOG_ERROR("MmMapLockedPagesSpecifyCache\n");
+    return Status;
+  }
+  LOG_INFO("Physical base addr %p\n", request->Base);
+  LOG_INFO("Virtual base addr %p\n", mappedBase);
+  LOG_INFO("Output base addr %p\n", outputBuffer);
   // Attach to context
   KAPC_STATE apc;
   KeStackAttachProcess(process, &apc);
   __try
   {
     // Copy virtual memory
-    RtlCopyMemory(outputBuffer, request->Base, request->Size);
+    RtlCopyMemory(outputBuffer, mappedBase, request->Size);
     *written = (ULONG)request->Size;
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
@@ -68,6 +93,10 @@ NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG wri
   }
   // Detach from context
   KeUnstackDetachProcess(&apc);
+  // Cleanup
+  MmUnmapLockedPages(mappedBase, mdl);
+  //MmUnlockPages(mdl);
+  IoFreeMdl(mdl);
   return Status;
 }
 NTSTATUS KDRV::OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG written)
