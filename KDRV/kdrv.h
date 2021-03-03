@@ -2,6 +2,7 @@
 #define _KDRV_H
 
 #include "global.h"
+#include "ioctrl.h"
 
 struct KDRV
 {
@@ -13,9 +14,8 @@ struct KDRV
   NTSTATUS Initialize(PDRIVER_OBJECT driverObject);
   NTSTATUS DeInitialize(PDRIVER_OBJECT driverObject);
 
-  NTSTATUS OnTarget();
-  NTSTATUS OnRead();
-  NTSTATUS OnWrite();
+  NTSTATUS OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG written);
+  NTSTATUS OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG written);
 };
 
 #endif

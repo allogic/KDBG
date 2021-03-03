@@ -39,17 +39,44 @@ NTSTATUS KDRV::DeInitialize(PDRIVER_OBJECT driverObject)
   return Status;
 }
 
-NTSTATUS KDRV::OnTarget()
+NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG written)
 {
-  return STATUS_SUCCESS;
+  UNREFERENCED_PARAMETER(request);
+  UNREFERENCED_PARAMETER(outputBuffer);
+  UNREFERENCED_PARAMETER(written);
+  // Find associated process
+  PEPROCESS process = NULL;
+  Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+  if (!NT_SUCCESS(Status))
+  {
+    LOG_ERROR("PsLookupProcessByProcessId\n");
+    return Status;
+  }
+  // Attach to context
+  KAPC_STATE apc;
+  KeStackAttachProcess(process, &apc);
+  __try
+  {
+    // Copy virtual memory
+    RtlCopyMemory(outputBuffer, request->Base, request->Size);
+    *written = (ULONG)request->Size;
+  }
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
+    LOG_ERROR("Failed reading memory\n");
+    Status = STATUS_ACCESS_DENIED;
+  }
+  // Detach from context
+  KeUnstackDetachProcess(&apc);
+  return Status;
 }
-NTSTATUS KDRV::OnRead()
+NTSTATUS KDRV::OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG written)
 {
-  return STATUS_SUCCESS;
-}
-NTSTATUS KDRV::OnWrite()
-{
-  return STATUS_SUCCESS;
+  UNREFERENCED_PARAMETER(request);
+  UNREFERENCED_PARAMETER(outputBuffer);
+  UNREFERENCED_PARAMETER(written);
+
+  return Status;
 }
 
 VOID DriverUnload(PDRIVER_OBJECT driverObject)
@@ -80,37 +107,55 @@ NTSTATUS OnIrpCreate(PDEVICE_OBJECT deviceObject, PIRP irp)
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;
 }
-NTSTATUS OnIrpClose(PDEVICE_OBJECT deviceObject, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(deviceObject);
-  LOG_INFO("Received close request\n");
-  irp->IoStatus.Status = STATUS_SUCCESS;
-  irp->IoStatus.Information = 0;
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  return irp->IoStatus.Status;
-}
-NTSTATUS OnIrpRead(PDEVICE_OBJECT deviceObject, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(deviceObject);
-  LOG_INFO("Received read request\n");
-  irp->IoStatus.Status = STATUS_SUCCESS;
-  irp->IoStatus.Information = 0;
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  return irp->IoStatus.Status;
-}
-NTSTATUS OnIrpWrite(PDEVICE_OBJECT deviceObject, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(deviceObject);
-  LOG_INFO("Received write request\n");
-  irp->IoStatus.Status = STATUS_SUCCESS;
-  irp->IoStatus.Information = 0;
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  return irp->IoStatus.Status;
-}
 NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
 {
   UNREFERENCED_PARAMETER(deviceObject);
   LOG_INFO("Received ioctrl request\n");
+  irp->IoStatus.Status = STATUS_SUCCESS;
+  irp->IoStatus.Information = 0;
+  PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
+  switch (stack->Parameters.DeviceIoControl.IoControlCode)
+  {
+    case KDRV_CTRL_READ_REQUEST:
+    {
+      // Write request
+      PKDRV_READ_REQUEST readRequest = (PKDRV_READ_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      PBYTE outputBuffer = NULL;
+      if (irp->MdlAddress)
+        outputBuffer = (PBYTE)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority);
+      if (readRequest && outputBuffer)
+      {
+        ULONG written = 0;
+        irp->IoStatus.Status = sKdrv.OnRead(readRequest, outputBuffer, &written);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+          irp->IoStatus.Information = sizeof(BYTE) * written;
+      }
+      break;
+    }
+    case KDRV_CTRL_WRITE_REQUEST:
+    {
+      // Read request
+      PKDRV_WRITE_REQUEST writeRequest = (PKDRV_WRITE_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      PBYTE outputBuffer = NULL;
+      if (irp->MdlAddress)
+        outputBuffer = (PBYTE)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority);
+      if (writeRequest && outputBuffer)
+      {
+        ULONG written = 0;
+        irp->IoStatus.Status = sKdrv.OnWrite(writeRequest, outputBuffer, &written);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+          irp->IoStatus.Information = sizeof(BYTE) * written;
+      }
+      break;
+    }
+  }
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
+NTSTATUS OnIrpClose(PDEVICE_OBJECT deviceObject, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(deviceObject);
+  LOG_INFO("Received close request\n");
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
   IoCompleteRequest(irp, IO_NO_INCREMENT);
@@ -141,10 +186,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 
   // Reg kdrv irp callbacks
   driverObject->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
-  driverObject->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-  driverObject->MajorFunction[IRP_MJ_READ] = OnIrpRead;
-  driverObject->MajorFunction[IRP_MJ_WRITE] = OnIrpWrite;
   driverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpIoCtrl;
+  driverObject->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
 
   return status;
 }

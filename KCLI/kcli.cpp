@@ -20,59 +20,54 @@ int main(int argc, char* argv[])
 
   // Optain device handle
   device = CreateFileA("\\\\.\\KDRV", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-
   if (device == INVALID_HANDLE_VALUE)
   {
     printf("KDRV is not running\n");
     return 0;
   }
 
-  // Send target request
-  if (strcmp(argv[1], "/Target") == 0)
+  // Send read request
+  if (strcmp(argv[1], "/Read") == 0)
   {
-    KDRV_TARGET_REQUEST request;
+    KDRV_READ_REQUEST request;
     request.Pid = strtoul(argv[2], NULL, 10);
     request.Base = (PVOID)strtoull(argv[3], NULL, 16);
     request.Size = strtoull(argv[4], NULL, 10);
 
-    if (DeviceIoControl(device, KDRV_CTRL_TARGET_REQUEST, &request, sizeof(request), &request, sizeof(request), &written, NULL))
-    {
-      printf("Target set to pid %lu base %p size %llu\n", request.Pid, request.Base, request.Size);
-    }
-  }
+    PBYTE bytes = (PBYTE)malloc(sizeof(BYTE) * request.Size);
+    memset(bytes, 0, request.Size);
 
-  // Send read request
-  if (strcmp(argv[1], "/Read") == 0)
-  {
-    SIZE_T size = strtoull(argv[2], NULL, 10);
-    PBYTE request = (PBYTE)malloc(sizeof(BYTE) * size);
-
-    memset(request, 0, size);
-
-    if (DeviceIoControl(device, KDRV_CTRL_READ_REQUEST, &request, sizeof(request), &request, sizeof(request), &written, NULL))
+    if (DeviceIoControl(device, KDRV_CTRL_READ_REQUEST, &request, sizeof(request), bytes, sizeof(bytes), &written, NULL))
     {
       printf("Read interrupt issued successfully\n");
-      for (SIZE_T i = 0; i < size; i++)
-        printf("%02X ", request[i]);
+      for (SIZE_T i = 0; i < written; i++)
+        printf("%02X ", bytes[i]);
       printf("\n");
     }
+
+    free(bytes);
   }
 
   // Send write request
   if (strcmp(argv[1], "/Write") == 0)
   {
-    SIZE_T size = strtoull(argv[2], NULL, 10);
-    PBYTE request = (PBYTE)malloc(sizeof(BYTE) * size);
+    KDRV_WRITE_REQUEST request;
+    request.Pid = strtoul(argv[2], NULL, 10);
+    request.Base = (PVOID)strtoull(argv[3], NULL, 16);
+    request.Size = strtoull(argv[4], NULL, 10);
 
-    memset(request, 0, size);
+    PBYTE bytes = (PBYTE)malloc(sizeof(BYTE) * request.Size);
+    memset(bytes, 0, request.Size);
 
-    if (DeviceIoControl(device, KDRV_CTRL_WRITE_REQUEST, &request, sizeof(request), &request, sizeof(request), &written, NULL))
+    if (DeviceIoControl(device, KDRV_CTRL_WRITE_REQUEST, &request, sizeof(request), bytes, sizeof(bytes), &written, NULL))
     {
       printf("Write interrupt issued successfully\n");
-      for (SIZE_T i = 0; i < size; i++)
-        printf("%0X ", request[i]);
+      for (SIZE_T i = 0; i < written; i++)
+        printf("%0X ", bytes[i]);
       printf("\n");
     }
+
+    free(bytes);
   }
 
   CloseHandle(device);
