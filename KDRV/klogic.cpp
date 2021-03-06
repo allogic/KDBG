@@ -113,7 +113,6 @@ NTSTATUS TryWriteKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
     MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
     LOG_INFO("Pages locked\n");
     LOG_INFO("Base %p\n", base);
-    LOG_INFO("Mdl %p\n", mdl->MappedSystemVa);
 
     PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmNonCached, NULL, FALSE, NormalPagePriority);
     LOG_INFO("Mapping successfull %p\n", mappedBase);
