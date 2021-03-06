@@ -69,6 +69,14 @@ int main(int argc, char* argv[])
 
     free(bytes);
   }
+  // Debug request
+  if (strcmp(argv[1], "/Debug") == 0)
+  {
+    if (DeviceIoControl(device, KDRV_CTRL_DEBUG_REQUEST, NULL, 0, NULL, 0, &written, NULL))
+    {
+      printf("Debug interrupt issued successfully\n");
+    }
+  }
 
   CloseHandle(device);
 

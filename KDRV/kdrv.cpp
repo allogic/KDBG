@@ -1,4 +1,7 @@
 #include "kdrv.h"
+#include "klogic.h"
+#include "pe.h"
+#include "undoc.h"
 
 KDRV sKdrv;
 
@@ -41,6 +44,8 @@ NTSTATUS KDRV::DeInitialize(PDRIVER_OBJECT driverObject)
 
 NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG written)
 {
+  UNREFERENCED_PARAMETER(outputBuffer);
+  UNREFERENCED_PARAMETER(written);
   // Find associated process
   PEPROCESS process = NULL;
   Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
@@ -49,42 +54,55 @@ NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG wri
     LOG_ERROR("PsLookupProcessByProcessId\n");
     return Status;
   }
-
-  // 0x400000 physical
-  // 0x virtual
-
+  // Optain process virtual base address
+  //PVOID virtualBase = PsGetProcessSectionBaseAddress(process);
+  //DumpProcessInfo(virtualBase);
+  // Add virtual offset to virtual base address
+  //virtualBase = (PVOID)((UINT_PTR)virtualBase + (UINT_PTR)request->Offset);
+  //// Map physical to virtual address
+  //PHYSICAL_ADDRESS physicalBase;
+  //physicalBase.QuadPart = (LONGLONG)virtualBase;
+  //PVOID virtualBase = MmMapIoSpace(physicalBase, request->Size, MmNonCached);
+  //if (!virtualBase)
+  //{
+  //  LOG_ERROR("MmMapIoSpace\n");
+  //  return Status;
+  //}
   // Secure pages
-  PMDL mdl = IoAllocateMdl(request->Base, (ULONG)request->Size, FALSE, FALSE, NULL);
-  if (!mdl)
-  {
-    LOG_ERROR("IoAllocateMdl\n");
-    Status = STATUS_INVALID_ADDRESS;
-    return Status;
-  }
-  LOG_INFO("StartVa %p\n", mdl->StartVa);
-  LOG_INFO("MappedSystemVa %p\n", mdl->MappedSystemVa);
-  LOG_INFO("ByteOffset %X\n", mdl->ByteOffset);
+  //PMDL mdl = IoAllocateMdl(request->Base, (ULONG)request->Size, FALSE, FALSE, NULL);
+  //if (!mdl)
+  //{
+  //  LOG_ERROR("IoAllocateMdl\n");
+  //  Status = STATUS_INVALID_ADDRESS;
+  //  return Status;
+  //}
+  //LOG_INFO("StartVa %p\n", mdl->StartVa);
+  //LOG_INFO("MappedSystemVa %p\n", mdl->MappedSystemVa);
+  //LOG_INFO("ByteOffset %X\n", mdl->ByteOffset);
   // Lock secured pages
   //MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
-  PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
-  if (!mappedBase)
-  {
-    //MmUnlockPages(mdl);
-    IoFreeMdl(mdl);
-    LOG_ERROR("MmMapLockedPagesSpecifyCache\n");
-    return Status;
-  }
-  LOG_INFO("Physical base addr %p\n", request->Base);
-  LOG_INFO("Virtual base addr %p\n", mappedBase);
-  LOG_INFO("Output base addr %p\n", outputBuffer);
+  //PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
+  //if (!mappedBase)
+  //{
+  //  //MmUnlockPages(mdl);
+  //  IoFreeMdl(mdl);
+  //  LOG_ERROR("MmMapLockedPagesSpecifyCache\n");
+  //  return Status;
+  //}
+  //LOG_INFO("Physical base addr %p\n", request->Base);
+  //LOG_INFO("Virtual base addr %p\n", mappedBase);
+  //LOG_INFO("Output base addr %p\n", outputBuffer);
   // Attach to context
   KAPC_STATE apc;
   KeStackAttachProcess(process, &apc);
   __try
   {
+    //LOG_INFO("outputBuffer: %p\n", outputBuffer);
+    //LOG_INFO("inputBuffer: %p\n", virtualBase);
+
     // Copy virtual memory
-    RtlCopyMemory(outputBuffer, mappedBase, request->Size);
-    *written = (ULONG)request->Size;
+    //RtlCopyMemory(outputBuffer, virtualBase, request->Size);
+    //*written = (ULONG)request->Size;
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
   {
@@ -93,10 +111,12 @@ NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG wri
   }
   // Detach from context
   KeUnstackDetachProcess(&apc);
+  ObDereferenceObject(process);
   // Cleanup
-  MmUnmapLockedPages(mappedBase, mdl);
+  //MmUnmapIoSpace(virtualBase, request->Size);
+  //MmUnmapLockedPages(mappedBase, mdl);
   //MmUnlockPages(mdl);
-  IoFreeMdl(mdl);
+  //IoFreeMdl(mdl);
   return Status;
 }
 NTSTATUS KDRV::OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG written)
@@ -106,17 +126,6 @@ NTSTATUS KDRV::OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG w
   UNREFERENCED_PARAMETER(written);
 
   return Status;
-}
-
-VOID DriverUnload(PDRIVER_OBJECT driverObject)
-{
-  NTSTATUS status = sKdrv.DeInitialize(driverObject);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("KDRV failed while deinitializing\n");
-    return;
-  }
-  LOG_INFO("KDRV deinitialized\n");
 }
 
 NTSTATUS OnIrpDflt(PDEVICE_OBJECT deviceObject, PIRP irp)
@@ -177,6 +186,67 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       }
       break;
     }
+    case KDRV_CTRL_DEBUG_REQUEST:
+    {
+      // Debug request
+      __try
+      {
+        // TODO: MmMapIoSpace();
+        // TODO: MmMapLockedPagesSpecifyCache();
+
+        DumpKernelImages();
+
+        PVOID dxgkrnlBase = NULL;
+        ULONG dxgkrnlSize = 0;
+        irp->IoStatus.Status = GetKernelImageBase("dxgkrnl.sys", &dxgkrnlBase, &dxgkrnlSize);
+        if (dxgkrnlBase)
+        {
+          LOG_INFO("dxgkrnl.sys at %p with size %u\n", dxgkrnlBase, dxgkrnlSize);
+
+          PVOID ntQCSSBase = RtlFindExportedRoutineByName(dxgkrnlBase, "NtQueryCompositionSurfaceStatistics");
+          //ULONG ntQCSSOffset = GetExportOffset(dxgkrnlBase, dxgkrnlSize, "NtQueryCompositionSurfaceStatistics");
+          LOG_INFO("NtQueryCompositionSurfaceStatistics at %p\n", ntQCSSBase);
+        }
+
+        PVOID ntoskrnlBase = NULL;
+        ULONG ntosKrnlSize = 0;
+        irp->IoStatus.Status = GetKernelImageBase("ntoskrnl.exe", &ntoskrnlBase, &ntosKrnlSize);
+        if (ntoskrnlBase)
+        {
+          LOG_INFO("ntoskrnl.exe at %p with size %u\n", ntoskrnlBase, ntosKrnlSize);
+
+          PVOID ntOPBase = RtlFindExportedRoutineByName(ntoskrnlBase, "NtOpenProcess");
+          //ULONG ntOPOffset = GetExportOffset(ntoskrnlBase, ntosKrnlSize, "NtOpenProcess");
+          LOG_INFO("NtOpenProcess at %p\n", ntOPBase);
+
+          LOG_INFO("Original bytes\n");
+          PUCHAR readBufferA = (PUCHAR)RtlAllocateMemory(TRUE, 8);
+          irp->IoStatus.Status = TryReadKernelMemory(ntOPBase, readBufferA, 8);
+          for (SIZE_T i = 0; i < 8; i++)
+            LOG_INFO("Byte %02X\n", readBufferA[i]);
+          RtlFreeMemory(readBufferA);
+
+          LOG_INFO("Writing bytes\n");
+          PUCHAR patchBuffer = (PUCHAR)RtlAllocateMemory(TRUE, 8);
+          RtlFillMemory(patchBuffer, 8, 0x90);
+          irp->IoStatus.Status = TryWriteKernelMemory(ntOPBase, patchBuffer, 8);
+          RtlFreeMemory(patchBuffer);
+
+          LOG_INFO("Altered bytes\n");
+          PUCHAR readBufferB = (PUCHAR)RtlAllocateMemory(TRUE, 8);
+          irp->IoStatus.Status = TryReadKernelMemory(ntOPBase, readBufferB, 8);
+          for (SIZE_T i = 0; i < 8; i++)
+            LOG_INFO("Byte %02X\n", readBufferB[i]);
+          RtlFreeMemory(readBufferB);
+        }
+      }
+      __except (EXCEPTION_EXECUTE_HANDLER)
+      {
+        LOG_ERROR("Something went wrong\n");
+      }
+      
+      break;
+    }
   }
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;
@@ -191,6 +261,16 @@ NTSTATUS OnIrpClose(PDEVICE_OBJECT deviceObject, PIRP irp)
   return irp->IoStatus.Status;
 }
 
+VOID DriverUnload(PDRIVER_OBJECT driverObject)
+{
+  NTSTATUS status = sKdrv.DeInitialize(driverObject);
+  if (!NT_SUCCESS(status))
+  {
+    LOG_ERROR("KDRV failed while deinitializing\n");
+    return;
+  }
+  LOG_INFO("KDRV deinitialized\n");
+}
 NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);

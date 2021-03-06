@@ -6,17 +6,20 @@ extern "C"
 {
 #endif
 
+#include <stddef.h>
+
 #include <ntdef.h>
 #include <ntifs.h>
 #include <ntddk.h>
 #include <ntimage.h>
 
-#include <stddef.h>
 #include <windef.h>
 
 #ifdef __cplusplus
 }
 #endif
+
+typedef PVOID * PPVOID;
 
 #define _STR(VAL) #VAL
 #define STR(VAL) _STR(VAL)
@@ -26,5 +29,11 @@ extern "C"
 
 #define LOG_ENTER_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[>] " STR(CLASS) "::" STR(FUNCTION) "\n")
 #define LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " STR(CLASS) "::" STR(FUNCTION) "\n")
+
+ULONG RtlNextRandom(ULONG min, ULONG max);
+ULONG GetPoolTag();
+
+PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size);
+VOID RtlFreeMemory(PVOID pointer);
 
 #endif
