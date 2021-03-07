@@ -35,7 +35,7 @@ VOID DisassembleBytes(PBYTE bytes, SIZE_T size)
     // Print assembly instructions
     for (SIZE_T i = 0; i < numInstructions; ++i)
     {
-      printf("0x%llX:\t%s\t%s\n", instructions[i].address, instructions[i].mnemonic, instructions[i].op_str);
+      printf("0x%08X %s\t%s\n", (ULONG)instructions[i].address, instructions[i].mnemonic, instructions[i].op_str);
     }
   }
   // Cleanup
@@ -118,7 +118,7 @@ INT main(INT argc, PPCHAR argv)
         if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
           printf("\n0x%08X ", i);
       }
-      printf("\n");
+      printf("\n\n");
 
       DisassembleBytes(request.Buffer, request.Size);
     }
@@ -183,7 +183,7 @@ INT main(INT argc, PPCHAR argv)
         if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
           printf("\n0x%08X ", i);
       }
-      printf("\n");
+      printf("\n\n");
 
       DisassembleBytes(request.Buffer, request.Size);
     }
