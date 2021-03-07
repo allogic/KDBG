@@ -19,6 +19,7 @@ extern "C"
 }
 #endif
 
+typedef PCHAR * PPCHAR;
 typedef PVOID * PPVOID;
 
 #define _STR(VAL) #VAL

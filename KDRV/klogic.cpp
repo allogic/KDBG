@@ -61,6 +61,7 @@ NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase, PULONG imageSize)
 NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
 {
   NTSTATUS status = STATUS_SUCCESS;
+  // Mdl for base addr
   PMDL mdl = IoAllocateMdl(base, bufferSize, FALSE, FALSE, NULL);
   if (!mdl)
   {
@@ -69,39 +70,30 @@ NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
   }
   __try
   {
+    // Lock memory pages
     MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
-    LOG_INFO("Pages locked\n");
-    LOG_INFO("Base %p\n", base);
-    LOG_INFO("Mdl %p\n", mdl->MappedSystemVa);
-
     PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmNonCached, NULL, FALSE, NormalPagePriority);
-    LOG_INFO("Mapping successfull %p\n", mappedBase);
-    
     MmProtectMdlSystemAddress(mdl, PAGE_READWRITE);
-    LOG_INFO("Mdl proteced\n");
-
+    // Read memory
     if (mappedBase)
-    {
       RtlCopyMemory(buffer, mappedBase, bufferSize);
-      LOG_INFO("Copy from %p to %p\n", mappedBase, buffer);
-    }
-
+    // Unlock pages
     MmUnmapLockedPages(mappedBase, mdl);
     MmUnlockPages(mdl);
-
-    LOG_INFO("Pages unlocked\n");
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
   {
     LOG_ERROR("Something went wrong\n");
     status = STATUS_FAIL_CHECK;
   }
+  // CLeanup
   IoFreeMdl(mdl);
   return status;
 }
 NTSTATUS TryWriteKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
 {
   NTSTATUS status = STATUS_SUCCESS;
+  // Mdl for base addr
   PMDL mdl = IoAllocateMdl(base, bufferSize, FALSE, FALSE, NULL);
   if (!mdl)
   {
@@ -110,32 +102,23 @@ NTSTATUS TryWriteKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
   }
   __try
   {
+    // Lock memory pages
     MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
-    LOG_INFO("Pages locked\n");
-    LOG_INFO("Base %p\n", base);
-
     PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmNonCached, NULL, FALSE, NormalPagePriority);
-    LOG_INFO("Mapping successfull %p\n", mappedBase);
-
     MmProtectMdlSystemAddress(mdl, PAGE_READWRITE);
-    LOG_INFO("Mdl proteced\n");
-
+    // Write memory
     if (mappedBase)
-    {
       RtlCopyMemory(mappedBase, buffer, bufferSize);
-      LOG_INFO("Copy from %p to %p\n", buffer, mappedBase);
-    }
-
+    // Unlock pages
     MmUnmapLockedPages(mappedBase, mdl);
     MmUnlockPages(mdl);
-
-    LOG_INFO("Pages unlocked\n");
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
   {
     LOG_ERROR("Something went wrong\n");
     status = STATUS_FAIL_CHECK;
   }
+  // Cleanup
   IoFreeMdl(mdl);
   return status;
 }

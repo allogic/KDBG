@@ -13,9 +13,6 @@ struct KDRV
 
   NTSTATUS Initialize(PDRIVER_OBJECT driverObject);
   NTSTATUS DeInitialize(PDRIVER_OBJECT driverObject);
-
-  NTSTATUS OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG written);
-  NTSTATUS OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG written);
 };
 
 #endif

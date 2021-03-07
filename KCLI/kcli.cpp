@@ -1,21 +1,16 @@
 #include "kcli.h"
 
-// bcdedit /set testsigning on
-// bcdedit /set nointegritychecks on
-// bcdedit /debug on
-
-// sc.exe create KCLI binPath="*.sys" type=kernel
-
-// copy kdnet.exe VerifiedNICList.xml
-// kdnet.exe <HOST-IP> <PORT>
-// windbg -k net:port=50954,key=383hvuxoesn3o.3p2a8necf4mb8.399q3owp0kuel.3p4c2qi1n7v5w
-
-// kdu.exe -dsu 0/6
-// TitanHideCLI.exe ?
-
-int main(int argc, char* argv[])
+SIZE_T ArgvLength(PCHAR argv)
 {
-  DWORD written;
+  SIZE_T length = 0;
+  while (*(argv++))
+    ++length;
+  return ++length;
+}
+
+INT main(INT argc, PPCHAR argv)
+{
+  ULONG written;
   HANDLE device = NULL;
 
   // Optain device handle
@@ -26,49 +21,83 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  // Send read request
-  if (strcmp(argv[1], "/Read") == 0)
+  // Send kernel read request
+  if (strcmp(argv[1], "/ReadKernel") == 0)
   {
-    KDRV_READ_REQUEST request;
-    request.Pid = strtoul(argv[2], NULL, 10);
-    request.Base = (PVOID)strtoull(argv[3], NULL, 16);
-    request.Size = strtoull(argv[4], NULL, 10);
+    ULONG imageNameSize = (ULONG)ArgvLength(argv[2]);
+    ULONG exportNameSize = (ULONG)ArgvLength(argv[3]);
 
+    KDRV_READ_KERNEL_REQUEST request;
+    request.ImageName = (PCHAR)malloc(imageNameSize);
+    request.ExportName = (PCHAR)malloc(exportNameSize);
+    request.Size = strtoul(argv[4], NULL, 10);
+
+    memset(request.ImageName, 0, imageNameSize);
+    memset(request.ExportName, 0, exportNameSize);
+    memcpy(request.ImageName, argv[2], imageNameSize);
+    memcpy(request.ExportName, argv[3], exportNameSize);
+
+    ULONG byteBlockSize = strtoul(argv[5], NULL, 10);
     PBYTE bytes = (PBYTE)malloc(sizeof(BYTE) * request.Size);
     memset(bytes, 0, request.Size);
 
-    if (DeviceIoControl(device, KDRV_CTRL_READ_REQUEST, &request, sizeof(request), bytes, sizeof(bytes), &written, NULL))
+    if (DeviceIoControl(device, KDRV_CTRL_READ_KERNEL_REQUEST, &request, sizeof(request), bytes, sizeof(bytes), &written, NULL))
     {
-      printf("Read interrupt issued successfully\n");
-      for (SIZE_T i = 0; i < written; i++)
+      printf("Read kernel interrupt issued successfully\n");
+      printf("0x%08X ", 0);
+      for (ULONG i = 0; i < written; i++)
+      {
         printf("%02X ", bytes[i]);
+        if (i != 0 && (i + 1) < written && (i + 1) % byteBlockSize == 0)
+          printf("\n0x%08X ", i);
+      }
       printf("\n");
     }
 
+    free(request.ImageName);
+    free(request.ExportName);
     free(bytes);
   }
 
-  // Send write request
-  if (strcmp(argv[1], "/Write") == 0)
+  // Send kernel write request
+  if (strcmp(argv[1], "/WriteKernel") == 0)
   {
-    KDRV_WRITE_REQUEST request;
-    request.Pid = strtoul(argv[2], NULL, 10);
-    request.Base = (PVOID)strtoull(argv[3], NULL, 16);
-    request.Size = strtoull(argv[4], NULL, 10);
+    ULONG imageNameSize = (ULONG)ArgvLength(argv[2]);
+    ULONG exportNameSize = (ULONG)ArgvLength(argv[3]);
 
-    PBYTE bytes = (PBYTE)malloc(sizeof(BYTE) * request.Size);
-    memset(bytes, 0, request.Size);
+    KDRV_WRITE_KERNEL_REQUEST request;
+    request.ImageName = (PCHAR)malloc(imageNameSize);
+    request.ExportName = (PCHAR)malloc(exportNameSize);
+    request.Size = strtoul(argv[4], NULL, 10);
+    request.Bytes = (PBYTE)malloc(request.Size);
 
-    if (DeviceIoControl(device, KDRV_CTRL_WRITE_REQUEST, &request, sizeof(request), bytes, sizeof(bytes), &written, NULL))
+    memset(request.ImageName, 0, imageNameSize);
+    memset(request.ExportName, 0, exportNameSize);
+    memcpy(request.ImageName, argv[2], imageNameSize);
+    memcpy(request.ExportName, argv[3], exportNameSize);
+    memset(request.Bytes, 0x90, request.Size);
+
+    if (DeviceIoControl(device, KDRV_CTRL_WRITE_KERNEL_REQUEST, &request, sizeof(request), NULL, 0, &written, NULL))
     {
-      printf("Write interrupt issued successfully\n");
-      for (SIZE_T i = 0; i < written; i++)
-        printf("%0X ", bytes[i]);
-      printf("\n");
+      printf("Write kernel interrupt issued successfully\n");
     }
 
-    free(bytes);
+    free(request.ImageName);
+    free(request.ExportName);
   }
+
+  // Send user read request
+  if (strcmp(argv[1], "/ReadUser") == 0)
+  {
+    // TODO implement me..
+  }
+
+  // Send user write request
+  if (strcmp(argv[1], "/WriteUser") == 0)
+  {
+    // TODO implement me..
+  }
+
   // Debug request
   if (strcmp(argv[1], "/Debug") == 0)
   {

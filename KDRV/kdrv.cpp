@@ -1,5 +1,6 @@
 #include "kdrv.h"
 #include "klogic.h"
+#include "ulogic.h"
 #include "pe.h"
 #include "undoc.h"
 
@@ -42,92 +43,6 @@ NTSTATUS KDRV::DeInitialize(PDRIVER_OBJECT driverObject)
   return Status;
 }
 
-NTSTATUS KDRV::OnRead(PKDRV_READ_REQUEST request, PBYTE outputBuffer, PULONG written)
-{
-  UNREFERENCED_PARAMETER(outputBuffer);
-  UNREFERENCED_PARAMETER(written);
-  // Find associated process
-  PEPROCESS process = NULL;
-  Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-  if (!NT_SUCCESS(Status))
-  {
-    LOG_ERROR("PsLookupProcessByProcessId\n");
-    return Status;
-  }
-  // Optain process virtual base address
-  //PVOID virtualBase = PsGetProcessSectionBaseAddress(process);
-  //DumpProcessInfo(virtualBase);
-  // Add virtual offset to virtual base address
-  //virtualBase = (PVOID)((UINT_PTR)virtualBase + (UINT_PTR)request->Offset);
-  //// Map physical to virtual address
-  //PHYSICAL_ADDRESS physicalBase;
-  //physicalBase.QuadPart = (LONGLONG)virtualBase;
-  //PVOID virtualBase = MmMapIoSpace(physicalBase, request->Size, MmNonCached);
-  //if (!virtualBase)
-  //{
-  //  LOG_ERROR("MmMapIoSpace\n");
-  //  return Status;
-  //}
-  // Secure pages
-  //PMDL mdl = IoAllocateMdl(request->Base, (ULONG)request->Size, FALSE, FALSE, NULL);
-  //if (!mdl)
-  //{
-  //  LOG_ERROR("IoAllocateMdl\n");
-  //  Status = STATUS_INVALID_ADDRESS;
-  //  return Status;
-  //}
-  //LOG_INFO("StartVa %p\n", mdl->StartVa);
-  //LOG_INFO("MappedSystemVa %p\n", mdl->MappedSystemVa);
-  //LOG_INFO("ByteOffset %X\n", mdl->ByteOffset);
-  // Lock secured pages
-  //MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
-  //PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
-  //if (!mappedBase)
-  //{
-  //  //MmUnlockPages(mdl);
-  //  IoFreeMdl(mdl);
-  //  LOG_ERROR("MmMapLockedPagesSpecifyCache\n");
-  //  return Status;
-  //}
-  //LOG_INFO("Physical base addr %p\n", request->Base);
-  //LOG_INFO("Virtual base addr %p\n", mappedBase);
-  //LOG_INFO("Output base addr %p\n", outputBuffer);
-  // Attach to context
-  KAPC_STATE apc;
-  KeStackAttachProcess(process, &apc);
-  __try
-  {
-    //LOG_INFO("outputBuffer: %p\n", outputBuffer);
-    //LOG_INFO("inputBuffer: %p\n", virtualBase);
-
-    // Copy virtual memory
-    //RtlCopyMemory(outputBuffer, virtualBase, request->Size);
-    //*written = (ULONG)request->Size;
-  }
-  __except (EXCEPTION_EXECUTE_HANDLER)
-  {
-    LOG_ERROR("Failed reading memory\n");
-    Status = STATUS_ACCESS_DENIED;
-  }
-  // Detach from context
-  KeUnstackDetachProcess(&apc);
-  ObDereferenceObject(process);
-  // Cleanup
-  //MmUnmapIoSpace(virtualBase, request->Size);
-  //MmUnmapLockedPages(mappedBase, mdl);
-  //MmUnlockPages(mdl);
-  //IoFreeMdl(mdl);
-  return Status;
-}
-NTSTATUS KDRV::OnWrite(PKDRV_WRITE_REQUEST request, PBYTE outputBuffer, PULONG written)
-{
-  UNREFERENCED_PARAMETER(request);
-  UNREFERENCED_PARAMETER(outputBuffer);
-  UNREFERENCED_PARAMETER(written);
-
-  return Status;
-}
-
 NTSTATUS OnIrpDflt(PDEVICE_OBJECT deviceObject, PIRP irp)
 {
   UNREFERENCED_PARAMETER(deviceObject);
@@ -154,35 +69,87 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
-    case KDRV_CTRL_READ_REQUEST:
+    case KDRV_CTRL_READ_KERNEL_REQUEST:
     {
-      // Write request
-      PKDRV_READ_REQUEST readRequest = (PKDRV_READ_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      // Kernel read request
+      PKDRV_READ_KERNEL_REQUEST request = (PKDRV_READ_KERNEL_REQUEST)irp->AssociatedIrp.SystemBuffer;
       PBYTE outputBuffer = NULL;
       if (irp->MdlAddress)
         outputBuffer = (PBYTE)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority);
-      if (readRequest && outputBuffer)
+      if (request && outputBuffer)
       {
-        ULONG written = 0;
-        irp->IoStatus.Status = sKdrv.OnRead(readRequest, outputBuffer, &written);
+        // Find image base
+        PVOID imageBase = NULL;
+        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase, NULL);
         if (NT_SUCCESS(irp->IoStatus.Status))
-          irp->IoStatus.Information = sizeof(BYTE) * written;
+        {
+          LOG_INFO("Found image %s", request->ImageName);
+          // Find export base
+          PVOID exportBase = RtlFindExportedRoutineByName(imageBase, request->ExportName);
+          if (exportBase)
+          {
+            LOG_INFO("Found export %s", request->ExportName);
+            // Read kernel memeory
+            irp->IoStatus.Status = TryReadKernelMemory(exportBase, outputBuffer, request->Size);
+            if (NT_SUCCESS(irp->IoStatus.Status))
+              irp->IoStatus.Information = request->Size;
+          }
+          else
+          {
+            irp->IoStatus.Status = STATUS_INVALID_ADDRESS;
+          }
+        }
       }
       break;
     }
-    case KDRV_CTRL_WRITE_REQUEST:
+    case KDRV_CTRL_WRITE_KERNEL_REQUEST:
     {
-      // Read request
-      PKDRV_WRITE_REQUEST writeRequest = (PKDRV_WRITE_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      // Kernel write request
+      PKDRV_WRITE_KERNEL_REQUEST request = (PKDRV_WRITE_KERNEL_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+        // Find image base
+        PVOID imageBase = NULL;
+        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase, NULL);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+        {
+          // Find export base
+          PVOID exportBase = RtlFindExportedRoutineByName(imageBase, request->ExportName);
+          if (exportBase)
+          {
+            // Write kernel memeory
+            irp->IoStatus.Status = TryWriteKernelMemory(exportBase, request->Bytes, request->Size);
+            if (NT_SUCCESS(irp->IoStatus.Status))
+              irp->IoStatus.Information = request->Size;
+          }
+          else
+          {
+            irp->IoStatus.Status = STATUS_INVALID_ADDRESS;
+          }
+        }
+      }
+      break;
+    }
+    case KDRV_CTRL_READ_USER_REQUEST:
+    {
+      // User read request
+      PKDRV_READ_USER_REQUEST request = (PKDRV_READ_USER_REQUEST)irp->AssociatedIrp.SystemBuffer;
       PBYTE outputBuffer = NULL;
       if (irp->MdlAddress)
         outputBuffer = (PBYTE)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority);
-      if (writeRequest && outputBuffer)
+      if (request && outputBuffer)
       {
-        ULONG written = 0;
-        irp->IoStatus.Status = sKdrv.OnWrite(writeRequest, outputBuffer, &written);
-        if (NT_SUCCESS(irp->IoStatus.Status))
-          irp->IoStatus.Information = sizeof(BYTE) * written;
+        // TODO implement me..
+      }
+      break;
+    }
+    case KDRV_CTRL_WRITE_USER_REQUEST:
+    {
+      // User write request
+      PKDRV_WRITE_USER_REQUEST request = (PKDRV_WRITE_USER_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+        // TODO implement me..
       }
       break;
     }
@@ -191,9 +158,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       // Debug request
       __try
       {
-        // TODO: MmMapIoSpace();
-        // TODO: MmMapLockedPagesSpecifyCache();
-
         DumpKernelImages();
 
         PVOID dxgkrnlBase = NULL;

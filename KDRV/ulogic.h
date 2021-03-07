@@ -3,6 +3,9 @@
 
 #include "global.h"
 
-NTSTATUS DumpProcessModules(ULONG numModules);
+NTSTATUS DumpUserImages(ULONG pid, ULONG numModules);
+
+NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSize);
+NTSTATUS TryWriteUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSize);
 
 #endif
