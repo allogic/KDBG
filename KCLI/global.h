@@ -16,6 +16,9 @@ extern "C"
 }
 #endif
 
+#include <capstone/capstone.h>
+#include <capstone/platform.h>
+
 typedef PCHAR* PPCHAR;
 typedef PVOID* PPVOID;
 

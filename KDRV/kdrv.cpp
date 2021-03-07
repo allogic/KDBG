@@ -90,7 +90,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
           {
             LOG_INFO("Found export %s", request->ExportName);
             // Read kernel memeory
-            irp->IoStatus.Status = TryReadKernelMemory(exportBase, outputBuffer, request->Size);
+            irp->IoStatus.Status = TryReadKernelMemory((PVOID)((ULONG_PTR)exportBase + request->Offset), outputBuffer, request->Size);
             if (NT_SUCCESS(irp->IoStatus.Status))
               irp->IoStatus.Information = request->Size;
           }
@@ -118,7 +118,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
           if (exportBase)
           {
             // Write kernel memeory
-            irp->IoStatus.Status = TryWriteKernelMemory(exportBase, request->Bytes, request->Size);
+            irp->IoStatus.Status = TryWriteKernelMemory((PVOID)((ULONG_PTR)exportBase + request->Offset), request->Bytes, request->Size);
             if (NT_SUCCESS(irp->IoStatus.Status))
               irp->IoStatus.Information = request->Size;
           }
@@ -190,18 +190,18 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
             LOG_INFO("Byte %02X\n", readBufferA[i]);
           RtlFreeMemory(readBufferA);
 
-          LOG_INFO("Writing bytes\n");
-          PUCHAR patchBuffer = (PUCHAR)RtlAllocateMemory(TRUE, 8);
-          RtlFillMemory(patchBuffer, 8, 0x90);
-          irp->IoStatus.Status = TryWriteKernelMemory(ntOPBase, patchBuffer, 8);
-          RtlFreeMemory(patchBuffer);
+          //LOG_INFO("Writing bytes\n");
+          //PUCHAR patchBuffer = (PUCHAR)RtlAllocateMemory(TRUE, 8);
+          //RtlFillMemory(patchBuffer, 8, 0x90);
+          //irp->IoStatus.Status = TryWriteKernelMemory(ntOPBase, patchBuffer, 8);
+          //RtlFreeMemory(patchBuffer);
 
-          LOG_INFO("Altered bytes\n");
-          PUCHAR readBufferB = (PUCHAR)RtlAllocateMemory(TRUE, 8);
-          irp->IoStatus.Status = TryReadKernelMemory(ntOPBase, readBufferB, 8);
-          for (SIZE_T i = 0; i < 8; i++)
-            LOG_INFO("Byte %02X\n", readBufferB[i]);
-          RtlFreeMemory(readBufferB);
+          //LOG_INFO("Altered bytes\n");
+          //PUCHAR readBufferB = (PUCHAR)RtlAllocateMemory(TRUE, 8);
+          //irp->IoStatus.Status = TryReadKernelMemory(ntOPBase, readBufferB, 8);
+          //for (SIZE_T i = 0; i < 8; i++)
+          //  LOG_INFO("Byte %02X\n", readBufferB[i]);
+          //RtlFreeMemory(readBufferB);
         }
       }
       __except (EXCEPTION_EXECUTE_HANDLER)
