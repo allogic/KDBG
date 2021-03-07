@@ -3,7 +3,7 @@ The kernel debugger consists of to parts, KDRV which is the kernel driver handli
 It originated due to lack of insufficient useability with CheatEngine's DBVM driver while debugging games running under certain AntiCheat software.
 
 ## Build
-Open the VisualStudio solution and build for `Debug or Release` bitness `x64`.
+Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
 
 ## Install
 You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.
