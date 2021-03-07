@@ -3,17 +3,40 @@
 
 #include "global.h"
 
+template<typename Function>
+Function GetSystemAddress(PCWCHAR procName)
+{
+  static Function functionPointer = NULL;
+  if (!functionPointer)
+  {
+    UNICODE_STRING functionName;
+    RtlInitUnicodeString(&functionName, procName);
+    functionPointer = (Function)MmGetSystemRoutineAddress(&functionName);
+    if (!functionPointer)
+    {
+      LOG_ERROR("MmGetSystemRoutineAddress\n");
+      return NULL;
+    }
+  }
+  return functionPointer;
+}
+
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+
 PVOID PsGetProcessSectionBaseAddress(
   PEPROCESS Process);
 
 typedef PVOID(*PSGETPROCESSSECTIONBASEADDRESS)(
-  PEPROCESS);
+  PEPROCESS Process);
 
 /////////////////////////////////////////////////
 /////////////////////////////////////////////////
 /////////////////////////////////////////////////
 
-typedef enum _SYSTEM_INFORMATION_CLASS {
+typedef enum _SYSTEM_INFORMATION_CLASS
+{
   SystemBasicInformation = 0,
   SystemPerformanceInformation = 2,
   SystemTimeOfDayInformation = 3,

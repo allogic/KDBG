@@ -1,18 +1,33 @@
 #include "ulogic.h"
+#include "undoc.h"
 
-NTSTATUS DumpUserImages(ULONG pid, ULONG numModules)
+NTSTATUS DumpUserImages(ULONG pid, PVOID images)
 {
   UNREFERENCED_PARAMETER(pid);
-  UNREFERENCED_PARAMETER(numModules);
+  UNREFERENCED_PARAMETER(images);
   NTSTATUS status = STATUS_SUCCESS;
   return status;
 }
-NTSTATUS GetUserImageBase(PCHAR imageName, PPVOID imageBase, PULONG imageSize)
+NTSTATUS GetUserImageBase(ULONG pid, PPVOID imageBase)
 {
-  UNREFERENCED_PARAMETER(imageName);
-  UNREFERENCED_PARAMETER(imageBase);
-  UNREFERENCED_PARAMETER(imageSize);
   NTSTATUS status = STATUS_SUCCESS;
+  // Find process
+  PEPROCESS process = NULL;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (!NT_SUCCESS(status))
+  {
+    LOG_ERROR("PsLookupProcessByProcessId\n");
+    return status;
+  }
+  // Find base address
+  *imageBase = PsGetProcessSectionBaseAddress(process);
+  if (*imageBase)
+  {
+    ObDereferenceObject(process);
+    LOG_ERROR("PsGetProcessSectionBaseAddress\n");
+    return STATUS_INVALID_ADDRESS;
+  }
+  ObDereferenceObject(process);
   return status;
 }
 

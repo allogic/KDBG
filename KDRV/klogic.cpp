@@ -1,32 +1,20 @@
 #include "klogic.h"
 #include "undoc.h"
 
-NTSTATUS DumpKernelImages()
+NTSTATUS DumpKernelImages(PRTL_PROCESS_MODULES images, ULONG size)
 {
   NTSTATUS status = STATUS_SUCCESS;
-  // Optain memory for image module infos
-  PRTL_PROCESS_MODULES moduleInfo = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024);
-  if (!moduleInfo)
-  {
-    LOG_ERROR("RtlAllocateMemory\n");
-    return STATUS_INVALID_ADDRESS;
-  }
   // Query image module infos - SystemModuleInformation(11)
-  status = ZwQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, moduleInfo, 1024 * 1024, NULL);
+  status = ZwQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, images, size, NULL);
   if (!NT_SUCCESS(status))
   {
-    RtlFreeMemory(moduleInfo);
+    RtlFreeMemory(images);
     LOG_ERROR("ZwQuerySystemInformation\n");
     return status;
   }
-  // Print image
-  for (SIZE_T i = 0; i < moduleInfo->NumberOfModules; ++i)
-    LOG_INFO("%p %s\n", moduleInfo->Modules[i].ImageBase, moduleInfo->Modules[i].FullPathName);
-  // Cleanup
-  RtlFreeMemory(moduleInfo);
   return status;
 }
-NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase, PULONG imageSize)
+NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase)
 {
   NTSTATUS status = STATUS_SUCCESS;
   // Optain memory for image module infos
@@ -49,8 +37,6 @@ NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase, PULONG imageSize)
     if (strcmp(imageName, (PCHAR)(moduleInfo->Modules[i].FullPathName + moduleInfo->Modules[i].OffsetToFileName)) == 0)
     {
       *imageBase = moduleInfo->Modules[i].ImageBase;
-      if (imageSize)
-        *imageSize = moduleInfo->Modules[i].ImageSize;
       break;
     }
   // Cleanup

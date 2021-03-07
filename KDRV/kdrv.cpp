@@ -69,28 +69,47 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
+    case KDRV_CTRL_DUMP_KERNEL_IMAGE_REQUEST:
+    {
+      // Kernel dump images request
+      PKDRV_DUMP_KERNEL_IMAGE_REQUEST request = (PKDRV_DUMP_KERNEL_IMAGE_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+        irp->IoStatus.Status = DumpKernelImages(request->Images, request->Size);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+          irp->IoStatus.Information = request->Size;
+      }
+      break;
+    }
+    case KDRV_CTRL_DUMP_USER_IMAGE_REQUEST:
+    {
+      // User dump images request
+      PKDRV_DUMP_USER_IMAGE_REQUEST request = (PKDRV_DUMP_USER_IMAGE_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+        irp->IoStatus.Status = DumpUserImages(request->Pid, request->Images);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+          irp->IoStatus.Information = request->Size;
+      }
+      break;
+    }
     case KDRV_CTRL_READ_KERNEL_REQUEST:
     {
       // Kernel read request
       PKDRV_READ_KERNEL_REQUEST request = (PKDRV_READ_KERNEL_REQUEST)irp->AssociatedIrp.SystemBuffer;
-      PBYTE outputBuffer = NULL;
-      if (irp->MdlAddress)
-        outputBuffer = (PBYTE)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority);
-      if (request && outputBuffer)
+      if (request)
       {
         // Find image base
         PVOID imageBase = NULL;
-        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase, NULL);
+        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase);
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
-          LOG_INFO("Found image %s", request->ImageName);
           // Find export base
           PVOID exportBase = RtlFindExportedRoutineByName(imageBase, request->ExportName);
           if (exportBase)
           {
-            LOG_INFO("Found export %s", request->ExportName);
             // Read kernel memeory
-            irp->IoStatus.Status = TryReadKernelMemory((PVOID)((ULONG_PTR)exportBase + request->Offset), outputBuffer, request->Size);
+            irp->IoStatus.Status = TryReadKernelMemory((PVOID)((ULONG_PTR)exportBase + request->Offset), request->Buffer, request->Size);
             if (NT_SUCCESS(irp->IoStatus.Status))
               irp->IoStatus.Information = request->Size;
           }
@@ -110,7 +129,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       {
         // Find image base
         PVOID imageBase = NULL;
-        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase, NULL);
+        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase);
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
           // Find export base
@@ -134,12 +153,15 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     {
       // User read request
       PKDRV_READ_USER_REQUEST request = (PKDRV_READ_USER_REQUEST)irp->AssociatedIrp.SystemBuffer;
-      PBYTE outputBuffer = NULL;
-      if (irp->MdlAddress)
-        outputBuffer = (PBYTE)MmGetSystemAddressForMdlSafe(irp->MdlAddress, NormalPagePriority);
-      if (request && outputBuffer)
+      if (request)
       {
-        // TODO implement me..
+        // Find image base
+        PVOID imageBase = NULL;
+        irp->IoStatus.Status = GetUserImageBase(request->Pid, &imageBase);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+        {
+          LOG_INFO("User image base found %p\n", imageBase);
+        }
       }
       break;
     }
@@ -158,51 +180,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       // Debug request
       __try
       {
-        DumpKernelImages();
-
-        PVOID dxgkrnlBase = NULL;
-        ULONG dxgkrnlSize = 0;
-        irp->IoStatus.Status = GetKernelImageBase("dxgkrnl.sys", &dxgkrnlBase, &dxgkrnlSize);
-        if (dxgkrnlBase)
-        {
-          LOG_INFO("dxgkrnl.sys at %p with size %u\n", dxgkrnlBase, dxgkrnlSize);
-
-          PVOID ntQCSSBase = RtlFindExportedRoutineByName(dxgkrnlBase, "NtQueryCompositionSurfaceStatistics");
-          //ULONG ntQCSSOffset = GetExportOffset(dxgkrnlBase, dxgkrnlSize, "NtQueryCompositionSurfaceStatistics");
-          LOG_INFO("NtQueryCompositionSurfaceStatistics at %p\n", ntQCSSBase);
-        }
-
-        PVOID ntoskrnlBase = NULL;
-        ULONG ntosKrnlSize = 0;
-        irp->IoStatus.Status = GetKernelImageBase("ntoskrnl.exe", &ntoskrnlBase, &ntosKrnlSize);
-        if (ntoskrnlBase)
-        {
-          LOG_INFO("ntoskrnl.exe at %p with size %u\n", ntoskrnlBase, ntosKrnlSize);
-
-          PVOID ntOPBase = RtlFindExportedRoutineByName(ntoskrnlBase, "NtOpenProcess");
-          //ULONG ntOPOffset = GetExportOffset(ntoskrnlBase, ntosKrnlSize, "NtOpenProcess");
-          LOG_INFO("NtOpenProcess at %p\n", ntOPBase);
-
-          LOG_INFO("Original bytes\n");
-          PUCHAR readBufferA = (PUCHAR)RtlAllocateMemory(TRUE, 8);
-          irp->IoStatus.Status = TryReadKernelMemory(ntOPBase, readBufferA, 8);
-          for (SIZE_T i = 0; i < 8; i++)
-            LOG_INFO("Byte %02X\n", readBufferA[i]);
-          RtlFreeMemory(readBufferA);
-
-          //LOG_INFO("Writing bytes\n");
-          //PUCHAR patchBuffer = (PUCHAR)RtlAllocateMemory(TRUE, 8);
-          //RtlFillMemory(patchBuffer, 8, 0x90);
-          //irp->IoStatus.Status = TryWriteKernelMemory(ntOPBase, patchBuffer, 8);
-          //RtlFreeMemory(patchBuffer);
-
-          //LOG_INFO("Altered bytes\n");
-          //PUCHAR readBufferB = (PUCHAR)RtlAllocateMemory(TRUE, 8);
-          //irp->IoStatus.Status = TryReadKernelMemory(ntOPBase, readBufferB, 8);
-          //for (SIZE_T i = 0; i < 8; i++)
-          //  LOG_INFO("Byte %02X\n", readBufferB[i]);
-          //RtlFreeMemory(readBufferB);
-        }
+        
       }
       __except (EXCEPTION_EXECUTE_HANDLER)
       {
