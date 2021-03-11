@@ -11,35 +11,44 @@ NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size)
     LOG_ERROR("ZwQuerySystemInformation\n");
     return status;
   }
+  __try
+  {
+    for (ULONG i = 0; i < images[0].NumberOfModules; ++i)
+      LOG_INFO("%p %s\n", images[0].Modules[i].ImageBase, images[0].Modules[i].FullPathName);
+  }
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
+
+  }
   return status;
 }
 NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase)
 {
   NTSTATUS status = STATUS_SUCCESS;
   // Optain memory for image module infos
-  PRTL_PROCESS_MODULES moduleInfo = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024);
-  if (!moduleInfo)
+  PRTL_PROCESS_MODULES images = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024);
+  if (!images)
   {
     LOG_ERROR("RtlAllocateMemory\n");
     return STATUS_INVALID_ADDRESS;
   }
   // Query image module infos - SystemModuleInformation(11)
-  status = ZwQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, moduleInfo, 1024 * 1024, NULL);
+  status = ZwQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, images, 1024 * 1024, NULL);
   if (!NT_SUCCESS(status))
   {
-    RtlFreeMemory(moduleInfo);
+    RtlFreeMemory(images);
     LOG_ERROR("ZwQuerySystemInformation\n");
     return status;
   }
   // Find image
-  for (SIZE_T i = 0; i < moduleInfo->NumberOfModules; ++i)
-    if (strcmp(imageName, (PCHAR)(moduleInfo->Modules[i].FullPathName + moduleInfo->Modules[i].OffsetToFileName)) == 0)
+  for (SIZE_T i = 0; i < images[0].NumberOfModules; ++i)
+    if (strcmp(imageName, (PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName)) == 0)
     {
-      imageBase = moduleInfo->Modules[i].ImageBase;
+      imageBase = images[0].Modules[i].ImageBase;
       break;
     }
   // Cleanup
-  RtlFreeMemory(moduleInfo);
+  RtlFreeMemory(images);
   return status;
 }
 
@@ -71,7 +80,7 @@ NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
     LOG_ERROR("Something went wrong\n");
     status = STATUS_FAIL_CHECK;
   }
-  // CLeanup
+  // Cleanup
   IoFreeMdl(mdl);
   return status;
 }

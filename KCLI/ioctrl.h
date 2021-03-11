@@ -46,6 +46,7 @@ typedef struct _KDRV_WRITE_KERNEL_REQUEST
 typedef struct _KDRV_READ_USER_REQUEST
 {
   ULONG Pid;
+  PWCHAR ModuleName;
   PBYTE Buffer;
   PVOID Offset;
   ULONG Size;
@@ -53,6 +54,7 @@ typedef struct _KDRV_READ_USER_REQUEST
 typedef struct _KDRV_WRITE_USER_REQUEST
 {
   ULONG Pid;
+  PWCHAR ModuleName;
   PBYTE Buffer;
   PVOID Offset;
   ULONG Size;

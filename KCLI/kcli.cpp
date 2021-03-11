@@ -1,19 +1,19 @@
 #include "kcli.h"
 
-ULONG ArgvLength(PCHAR argv)
+ULONG ArgvLength(PWCHAR argv)
 {
   ULONG length = 0;
   while (*(argv++))
     ++length;
   return ++length;
 }
-VOID ArgvToBytes(PBYTE bytes, PCHAR argv, ULONG argvSize)
+VOID ArgvToBytes(PBYTE bytes, PWCHAR argv, ULONG argvSize)
 {
-  CHAR byte[2];
+  WCHAR byte[2];
   for (ULONG i = 0, j = 0; i < (argvSize - 1); i += 2, j++)
   {
     memcpy(byte, argv + i, 2);
-    bytes[j] = (BYTE)strtoul(byte, NULL, 16);
+    bytes[j] = (BYTE)wcstoul(byte, NULL, 16);
   }
 }
 
@@ -43,7 +43,7 @@ VOID DisassembleBytes(PBYTE bytes, SIZE_T size)
   cs_close(&csHandle);
 }
 
-INT main(INT argc, PCHAR argv[])
+INT wmain(INT argc, PWCHAR argv[])
 {
   HANDLE device = NULL;
 
@@ -56,7 +56,7 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Send dump kernel images
-  if (strcmp(argv[1], "/DumpKernelImages") == 0)
+  if (wcscmp(argv[1], L"/DumpKernelImages") == 0)
   {
     KDRV_DUMP_KERNEL_IMAGE_REQUEST request;
     request.Size = 1024 * 1024;
@@ -72,7 +72,7 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Send dump user images
-  if (strcmp(argv[1], "/DumpUserImages") == 0)
+  if (wcscmp(argv[1], L"/DumpUserImages") == 0)
   {
     KDRV_DUMP_USER_IMAGE_REQUEST request;
     request.Size = 1024 * 1024;
@@ -89,26 +89,24 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Send kernel read request
-  if (strcmp(argv[1], "/ReadKernel") == 0)
+  if (wcscmp(argv[1], L"/ReadKernel") == 0)
   {
-    ULONG imageNameSize = (ULONG)ArgvLength(argv[2]);
-    ULONG exportNameSize = (ULONG)ArgvLength(argv[3]);
+    ULONG imageNameSizeBytes = sizeof(CHAR) * ArgvLength(argv[2]);
+    ULONG exportNameSizeBytes = sizeof(CHAR) * ArgvLength(argv[3]);
 
     KDRV_READ_KERNEL_REQUEST request;
-    request.ImageName = (PCHAR)malloc(imageNameSize);
-    request.ExportName = (PCHAR)malloc(exportNameSize);
-    request.Size = strtoul(argv[5], NULL, 10);
+    request.ImageName = (PCHAR)malloc(imageNameSizeBytes);
+    request.ExportName = (PCHAR)malloc(exportNameSizeBytes);
+    request.Size = wcstoul(argv[5], NULL, 10);
+    request.Offset = wcstoul(argv[4], NULL, 16);
     request.Buffer = (PBYTE)malloc(sizeof(BYTE) * request.Size);
-    request.Offset = strtoul(argv[4], NULL, 16);
 
-    memset(request.ImageName, 0, imageNameSize);
-    memset(request.ExportName, 0, exportNameSize);
+    SIZE_T bytes = 0;
+    wcstombs_s(&bytes, request.ImageName, imageNameSizeBytes, argv[2], 256);
+    wcstombs_s(&bytes, request.ExportName, exportNameSizeBytes, argv[3], 256);
     memset(request.Buffer, 0, request.Size);
 
-    memcpy(request.ImageName, argv[2], imageNameSize);
-    memcpy(request.ExportName, argv[3], exportNameSize);
-
-    ULONG byteBlockSize = strtoul(argv[6], NULL, 10);
+    ULONG byteBlockSize = wcstoul(argv[6], NULL, 10);
 
     if (DeviceIoControl(device, KDRV_CTRL_READ_KERNEL_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
@@ -130,7 +128,7 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Send kernel write request
-  if (strcmp(argv[1], "/WriteKernel") == 0)
+  if (wcscmp(argv[1], L"/WriteKernel") == 0)
   {
     ULONG imageNameSize = (ULONG)ArgvLength(argv[2]);
     ULONG exportNameSize = (ULONG)ArgvLength(argv[3]);
@@ -139,9 +137,9 @@ INT main(INT argc, PCHAR argv[])
     KDRV_WRITE_KERNEL_REQUEST request;
     request.ImageName = (PCHAR)malloc(imageNameSize);
     request.ExportName = (PCHAR)malloc(exportNameSize);
-    request.Size = strtoul(argv[5], NULL, 10);
+    request.Size = wcstoul(argv[5], NULL, 10);
+    request.Offset = wcstoul(argv[4], NULL, 16);
     request.Bytes = (PBYTE)malloc(request.Size);
-    request.Offset = strtoul(argv[4], NULL, 16);
 
     memset(request.Bytes, 0x90, request.Size);
     memset(request.ImageName, 0, imageNameSize);
@@ -163,17 +161,25 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Send user read request
-  if (strcmp(argv[1], "/ReadUser") == 0)
+  if (wcscmp(argv[1], L"/ReadUser") == 0)
   {
-    KDRV_READ_USER_REQUEST request;
-    request.Pid = strtoul(argv[2], NULL, 10);
-    request.Size = strtoul(argv[4], NULL, 10);
-    request.Buffer = (PBYTE)malloc(sizeof(BYTE) * request.Size);
-    request.Offset = (PVOID)strtoull(argv[3], NULL, 16);
+    ULONG moduleNameSizeBytes = sizeof(WCHAR) * ArgvLength(argv[3]);
 
+    KDRV_READ_USER_REQUEST request;
+    request.Pid = wcstoul(argv[2], NULL, 10);
+    request.ModuleName = (PWCHAR)malloc(moduleNameSizeBytes);
+    request.Offset = (PVOID)wcstoull(argv[4], NULL, 16);
+    request.Size = wcstoul(argv[5], NULL, 10);
+    request.Buffer = (PBYTE)malloc(sizeof(BYTE) * request.Size);
+
+    _wcsset_s(request.ModuleName, moduleNameSizeBytes, 0);
     memset(request.Buffer, 0, request.Size);
 
-    ULONG byteBlockSize = strtoul(argv[5], NULL, 10);
+    wcscpy_s(request.ModuleName, moduleNameSizeBytes, argv[3]);
+
+    ULONG byteBlockSize = wcstoul(argv[6], NULL, 10);
+
+    printf("%ws\n", request.ModuleName);
 
     if (DeviceIoControl(device, KDRV_CTRL_READ_USER_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
@@ -193,13 +199,13 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Send user write request
-  if (strcmp(argv[1], "/WriteUser") == 0)
+  if (wcscmp(argv[1], L"/WriteUser") == 0)
   {
     KDRV_WRITE_USER_REQUEST request;
-    request.Pid = strtoul(argv[2], NULL, 10);
-    request.Size = strtoul(argv[4], NULL, 10);
+    request.Pid = wcstoul(argv[2], NULL, 10);
+    request.Size = wcstoul(argv[4], NULL, 10);
+    request.Offset = (PVOID)wcstoull(argv[3], NULL, 16);
     request.Buffer = (PBYTE)malloc(sizeof(BYTE) * request.Size);
-    request.Offset = (PVOID)strtoull(argv[3], NULL, 16);
 
     memset(request.Buffer, 0, request.Size);
 
@@ -212,7 +218,7 @@ INT main(INT argc, PCHAR argv[])
   }
 
   // Debug request
-  if (strcmp(argv[1], "/Debug") == 0)
+  if (wcscmp(argv[1], L"/Debug") == 0)
   {
     if (DeviceIoControl(device, KDRV_CTRL_DEBUG_REQUEST, NULL, 0, NULL, 0, NULL, NULL))
     {

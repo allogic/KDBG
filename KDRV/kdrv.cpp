@@ -162,10 +162,16 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       {
         // Find image base
         PVOID imageBase = NULL;
-        irp->IoStatus.Status = GetUserImageBase(request->Pid, imageBase);
+        irp->IoStatus.Status = GetUserImageBase(request->Pid, request->ModuleName, imageBase);
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
-          LOG_INFO("User image base found %p\n", imageBase);
+          LOG_INFO("Operation copy starting from %p to %p\n", imageBase, request->Buffer);
+
+          // TODO implement module wcscmp for modules
+
+          irp->IoStatus.Status = TryReadUserMemory(request->Pid, imageBase, request->Buffer, request->Size);
+          if (NT_SUCCESS(irp->IoStatus.Status))
+            irp->IoStatus.Information = request->Size;
         }
       }
       break;
@@ -176,7 +182,19 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       PKDRV_WRITE_USER_REQUEST request = (PKDRV_WRITE_USER_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
-        // TODO implement me..
+        // Find image base
+        PVOID imageBase = NULL;
+        irp->IoStatus.Status = GetUserImageBase(request->Pid, request->ModuleName, imageBase);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+        {
+          LOG_INFO("User image base found %p\n", imageBase);
+
+          // TODO implement module wcscmp for modules
+
+          irp->IoStatus.Status = TryWriteUserMemory(request->Pid, imageBase, request->Buffer, request->Size);
+          if (NT_SUCCESS(irp->IoStatus.Status))
+            irp->IoStatus.Information = request->Size;
+        }
       }
       break;
     }

@@ -225,6 +225,7 @@
     <ClCompile Include="kdrv.cpp" />
     <ClCompile Include="klogic.cpp" />
     <ClCompile Include="pe.cpp" />
+    <ClCompile Include="proc.cpp" />
     <ClCompile Include="ulogic.cpp" />
     <ClCompile Include="undoc.cpp" />
     <ClCompile Include="util.cpp" />
@@ -235,6 +236,7 @@
     <ClInclude Include="kdrv.h" />
     <ClInclude Include="klogic.h" />
     <ClInclude Include="pe.h" />
+    <ClInclude Include="proc.h" />
     <ClInclude Include="ulogic.h" />
     <ClInclude Include="undoc.h" />
     <ClInclude Include="util.h" />
