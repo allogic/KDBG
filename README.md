@@ -1,5 +1,5 @@
 # KDBG
-The kernel debugger consists of to parts, KDRV which is the kernel driver handling ring3 request and KCLI; the command line interface for the driver.
+The windows kernel debugger consists of to parts, KDRV which is the kernel driver handling ring3 request and KCLI; the command line interface for the driver.
 It originated due to lack of insufficient useability with CheatEngine's DBVM driver while debugging games running under certain AntiCheat software.
 
 ## Build
