@@ -19,9 +19,6 @@ extern "C"
 #include <capstone/capstone.h>
 #include <capstone/platform.h>
 
-typedef PCHAR* PPCHAR;
-typedef PVOID* PPVOID;
-
 #define _STR(VAL) #VAL
 #define STR(VAL) _STR(VAL)
 

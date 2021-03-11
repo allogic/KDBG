@@ -4,8 +4,8 @@
 #include "global.h"
 #include "undoc.h"
 
-NTSTATUS DumpKernelImages(PRTL_PROCESS_MODULES images, ULONG size);
-NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase);
+NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size);
+NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase);
 
 NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize);
 NTSTATUS TryWriteKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize);

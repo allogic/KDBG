@@ -227,6 +227,7 @@
     <ClCompile Include="pe.cpp" />
     <ClCompile Include="ulogic.cpp" />
     <ClCompile Include="undoc.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h" />
@@ -236,6 +237,7 @@
     <ClInclude Include="pe.h" />
     <ClInclude Include="ulogic.h" />
     <ClInclude Include="undoc.h" />
+    <ClInclude Include="util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

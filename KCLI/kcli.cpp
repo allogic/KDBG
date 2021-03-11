@@ -43,7 +43,7 @@ VOID DisassembleBytes(PBYTE bytes, SIZE_T size)
   cs_close(&csHandle);
 }
 
-INT main(INT argc, PPCHAR argv)
+INT main(INT argc, PCHAR argv[])
 {
   HANDLE device = NULL;
 
@@ -64,7 +64,7 @@ INT main(INT argc, PPCHAR argv)
 
     if (DeviceIoControl(device, KDRV_CTRL_DUMP_KERNEL_IMAGE_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
-      for (SIZE_T i = 0; i < request.Images->NumberOfModules; ++i)
+      for (ULONG i = 0; i < request.Images->NumberOfModules; ++i)
         printf("%p %s\n", request.Images->Modules[i].ImageBase, request.Images->Modules[i].FullPathName);
     }
 
@@ -75,13 +75,14 @@ INT main(INT argc, PPCHAR argv)
   if (strcmp(argv[1], "/DumpUserImages") == 0)
   {
     KDRV_DUMP_USER_IMAGE_REQUEST request;
-    request.Pid = strtoul(argv[2], NULL, 10);
     request.Size = 1024 * 1024;
-    request.Images = malloc(request.Size);
+    request.Images = (PSYSTEM_PROCESS_INFORMATION)malloc(sizeof(SYSTEM_PROCESS_INFORMATION) * request.Size);
 
-    if (DeviceIoControl(device, KDRV_CTRL_DUMP_USER_IMAGE_REQUEST, NULL, 0, NULL, 0, NULL, NULL))
+    if (DeviceIoControl(device, KDRV_CTRL_DUMP_USER_IMAGE_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
-      
+      for (ULONG i = 0; i < request.Size; ++i)
+        if ((ULONG_PTR)request.Images[i].UniqueProcessId > 0 && (ULONG_PTR)request.Images[i].UniqueProcessId < ULONG_MAX)
+          printf("%llu %ws\n", (ULONG_PTR)request.Images[i].UniqueProcessId, request.Images[i].ImageName.Buffer);
     }
 
     free(request.Images);
@@ -172,7 +173,7 @@ INT main(INT argc, PPCHAR argv)
 
     memset(request.Buffer, 0, request.Size);
 
-    ULONG byteBlockSize = strtoul(argv[6], NULL, 10);
+    ULONG byteBlockSize = strtoul(argv[5], NULL, 10);
 
     if (DeviceIoControl(device, KDRV_CTRL_READ_USER_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {

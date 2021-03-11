@@ -39,3 +39,9 @@ PVOID RtlFindExportedRoutineByName(
     ImageBase,
     RoutineName);
 }
+
+PPEB PsGetProcessPeb(PEPROCESS Process)
+{
+  return GetSystemAddress<PSGETPROCESSPEB>(L"PsGetProcessPeb")(
+    Process);
+}

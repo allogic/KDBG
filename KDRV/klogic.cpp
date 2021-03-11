@@ -1,20 +1,19 @@
 #include "klogic.h"
 #include "undoc.h"
 
-NTSTATUS DumpKernelImages(PRTL_PROCESS_MODULES images, ULONG size)
+NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size)
 {
   NTSTATUS status = STATUS_SUCCESS;
-  // Query image module infos - SystemModuleInformation(11)
+  // Query kernel images
   status = ZwQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, images, size, NULL);
   if (!NT_SUCCESS(status))
   {
-    RtlFreeMemory(images);
     LOG_ERROR("ZwQuerySystemInformation\n");
     return status;
   }
   return status;
 }
-NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase)
+NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase)
 {
   NTSTATUS status = STATUS_SUCCESS;
   // Optain memory for image module infos
@@ -36,7 +35,7 @@ NTSTATUS GetKernelImageBase(PCHAR imageName, PPVOID imageBase)
   for (SIZE_T i = 0; i < moduleInfo->NumberOfModules; ++i)
     if (strcmp(imageName, (PCHAR)(moduleInfo->Modules[i].FullPathName + moduleInfo->Modules[i].OffsetToFileName)) == 0)
     {
-      *imageBase = moduleInfo->Modules[i].ImageBase;
+      imageBase = moduleInfo->Modules[i].ImageBase;
       break;
     }
   // Cleanup

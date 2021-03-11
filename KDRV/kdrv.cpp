@@ -4,43 +4,48 @@
 #include "pe.h"
 #include "undoc.h"
 
-KDRV sKdrv;
+// Global driver state
+UNICODE_STRING DeviceName;
+UNICODE_STRING DeviceSymName;
+PDEVICE_OBJECT DeviceObject = NULL;
 
-NTSTATUS KDRV::Initialize(PDRIVER_OBJECT driverObject)
+NTSTATUS Initialize(PDRIVER_OBJECT driverObject)
 {
+  NTSTATUS status = STATUS_SUCCESS;
   // Create I/O device
   RtlInitUnicodeString(&DeviceName, L"\\Device\\KDRV");
-  Status = IoCreateDevice(driverObject, 0, &DeviceName, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, &DeviceObject);
-  if (!NT_SUCCESS(Status))
+  status = IoCreateDevice(driverObject, 0, &DeviceName, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, &DeviceObject);
+  if (!NT_SUCCESS(status))
   {
     LOG_ERROR("IoCreateDevice\n");
-    return Status;
+    return status;
   }
   DeviceObject->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
   DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
   // Create symbolic link
   RtlInitUnicodeString(&DeviceSymName, L"\\DosDevices\\KDRV");
-  Status = IoCreateSymbolicLink(&DeviceSymName, &DeviceName);
-  if (!NT_SUCCESS(Status))
+  status = IoCreateSymbolicLink(&DeviceSymName, &DeviceName);
+  if (!NT_SUCCESS(status))
   {
     LOG_ERROR("IoCreateSymbolicLink\n");
-    return Status;
+    return status;
   }
-  return Status;
+  return status;
 }
-NTSTATUS KDRV::DeInitialize(PDRIVER_OBJECT driverObject)
+NTSTATUS DeInitialize(PDRIVER_OBJECT driverObject)
 {
   UNREFERENCED_PARAMETER(driverObject);
+  NTSTATUS status = STATUS_SUCCESS;
   // Destroy symbolic link
-  Status = IoDeleteSymbolicLink(&DeviceSymName);
-  if (!NT_SUCCESS(Status))
+  status = IoDeleteSymbolicLink(&DeviceSymName);
+  if (!NT_SUCCESS(status))
   {
     LOG_ERROR("IoDeleteSymbolicLink\n");
-    return Status;
+    return status;
   }
   // Destroy I/O device
   IoDeleteDevice(DeviceObject);
-  return Status;
+  return status;
 }
 
 NTSTATUS OnIrpDflt(PDEVICE_OBJECT deviceObject, PIRP irp)
@@ -75,7 +80,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       PKDRV_DUMP_KERNEL_IMAGE_REQUEST request = (PKDRV_DUMP_KERNEL_IMAGE_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
-        irp->IoStatus.Status = DumpKernelImages(request->Images, request->Size);
+        irp->IoStatus.Status = GetKernelImages(request->Images, request->Size);
         if (NT_SUCCESS(irp->IoStatus.Status))
           irp->IoStatus.Information = request->Size;
       }
@@ -87,7 +92,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       PKDRV_DUMP_USER_IMAGE_REQUEST request = (PKDRV_DUMP_USER_IMAGE_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
-        irp->IoStatus.Status = DumpUserImages(request->Pid, request->Images);
+        irp->IoStatus.Status = GetUserImages(request->Images, request->Size);
         if (NT_SUCCESS(irp->IoStatus.Status))
           irp->IoStatus.Information = request->Size;
       }
@@ -101,7 +106,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       {
         // Find image base
         PVOID imageBase = NULL;
-        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase);
+        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, imageBase);
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
           // Find export base
@@ -129,7 +134,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       {
         // Find image base
         PVOID imageBase = NULL;
-        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, &imageBase);
+        irp->IoStatus.Status = GetKernelImageBase(request->ImageName, imageBase);
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
           // Find export base
@@ -157,7 +162,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       {
         // Find image base
         PVOID imageBase = NULL;
-        irp->IoStatus.Status = GetUserImageBase(request->Pid, &imageBase);
+        irp->IoStatus.Status = GetUserImageBase(request->Pid, imageBase);
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
           LOG_INFO("User image base found %p\n", imageBase);
@@ -205,7 +210,7 @@ NTSTATUS OnIrpClose(PDEVICE_OBJECT deviceObject, PIRP irp)
 
 VOID DriverUnload(PDRIVER_OBJECT driverObject)
 {
-  NTSTATUS status = sKdrv.DeInitialize(driverObject);
+  NTSTATUS status = DeInitialize(driverObject);
   if (!NT_SUCCESS(status))
   {
     LOG_ERROR("KDRV failed while deinitializing\n");
@@ -220,7 +225,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
   NTSTATUS status = STATUS_SUCCESS;
 
   // Initialize kernel driver
-  status = sKdrv.Initialize(driverObject);
+  status = Initialize(driverObject);
   if (!NT_SUCCESS(status))
   {
     LOG_ERROR("KDRV failed while initializing\n");
@@ -232,7 +237,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
   driverObject->DriverUnload = DriverUnload;
 
   // Reg default irp callbacks
-  for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; i++)
+  for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
     driverObject->MajorFunction[i] = OnIrpDflt;
 
   // Reg kdrv irp callbacks
