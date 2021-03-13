@@ -168,7 +168,7 @@ INT wmain(INT argc, PWCHAR argv[])
     KDRV_READ_USER_REQUEST request;
     request.Pid = wcstoul(argv[2], NULL, 10);
     request.ModuleName = (PWCHAR)malloc(moduleNameSizeBytes);
-    request.Offset = (PVOID)wcstoull(argv[4], NULL, 16);
+    request.Offset = wcstoul(argv[4], NULL, 16);
     request.Size = wcstoul(argv[5], NULL, 10);
     request.Buffer = (PBYTE)malloc(sizeof(BYTE) * request.Size);
 
@@ -204,7 +204,7 @@ INT wmain(INT argc, PWCHAR argv[])
     KDRV_WRITE_USER_REQUEST request;
     request.Pid = wcstoul(argv[2], NULL, 10);
     request.Size = wcstoul(argv[4], NULL, 10);
-    request.Offset = (PVOID)wcstoull(argv[3], NULL, 16);
+    request.Offset = wcstoul(argv[3], NULL, 16);
     request.Buffer = (PBYTE)malloc(sizeof(BYTE) * request.Size);
 
     memset(request.Buffer, 0, request.Size);

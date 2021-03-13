@@ -104,13 +104,13 @@ NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSiz
     LOG_ERROR("IoAllocateMdl\n");
     return STATUS_ACCESS_VIOLATION;
   }
-  // Create temporary kernel buffer
-  PBYTE byteBuffer = (PBYTE)RtlAllocateMemory(TRUE, bufferSize);
-  if (!byteBuffer)
+  // Allocate temporary buffer
+  PBYTE asyncBuffer = (PBYTE)RtlAllocateMemory(TRUE, bufferSize);
+  if (!asyncBuffer)
   {
     IoFreeMdl(mdl);
     ObDereferenceObject(process);
-    LOG_ERROR("RtlAllocateMemory\n");
+    LOG_ERROR("IoAllocateMdl\n");
     return STATUS_INVALID_ADDRESS;
   }
   KAPC_STATE apc;
@@ -118,26 +118,15 @@ NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSiz
   {
     // Attach to process
     KeStackAttachProcess(process, &apc);
-    LOG_INFO("mdl created\n");
-    LOG_INFO("mdl start virtual base %p\n", mdl->StartVa);
-    LOG_INFO("mdl mapped system virtual base %p\n", mdl->MappedSystemVa);
-    // Lock memory pages
+    // Lock pages
     MmProbeAndLockPages(mdl, UserMode, IoReadAccess);
-    LOG_INFO("mdl locked pages\n");
-    PVOID mappedBase = MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
-    LOG_INFO("mappedBase %p\n", mappedBase);
+    // Address mapping
+    PBYTE mappedBase = (PBYTE)MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
+    // Set protection levels
     MmProtectMdlSystemAddress(mdl, PAGE_READWRITE);
-    LOG_INFO("mdl page protection read/write set\n");
-    // Read memory
+    // Copy memory into async buffer
     if (mappedBase)
-    {
-      LOG_INFO("Copy from %p to %p\n", mappedBase, buffer);
-      for (ULONG i = 0; i < bufferSize; i++)
-      {
-        LOG_INFO("%02X\n", *((PBYTE)mappedBase + i));
-        RtlCopyMemory(byteBuffer, (PBYTE)mappedBase, bufferSize);
-      }
-    }
+      RtlCopyMemory(asyncBuffer, mappedBase, bufferSize);
     // Unlock pages
     MmUnmapLockedPages(mappedBase, mdl);
     MmUnlockPages(mdl);
@@ -147,15 +136,11 @@ NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSiz
     LOG_ERROR("Something went wrong\n");
     status = STATUS_FAIL_CHECK;
   }
-  // Copy copied user bytes to mapped kernel user buffer
-  for (ULONG i = 0; i < bufferSize; i++)
-  {
-    LOG_INFO("%02X\n", *((PBYTE)byteBuffer + i));
-    RtlCopyMemory(buffer, byteBuffer, bufferSize);
-  }
-  // Cleanup
-  RtlFreeMemory(byteBuffer);
+  // Detach from process
   KeUnstackDetachProcess(&apc);
+  // Copy async buffer to request buffer
+  RtlCopyMemory(buffer, asyncBuffer, bufferSize);
+  // Cleanup
   IoFreeMdl(mdl);
   ObDereferenceObject(process);
   return status;
