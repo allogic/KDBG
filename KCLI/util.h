@@ -20,6 +20,6 @@ PBYTE ArgvToBytes(PWCHAR argv);
 PWCHAR ArgvToWcStr(PWCHAR argv);
 PCHAR ArgvToMbStr(PWCHAR argv);
 
-VOID DisassembleBytes(PBYTE bytes, SIZE_T size);
+VOID DisassembleBytes(PBYTE bytes, SIZE_T size, SIZE_T offset);
 
 #endif

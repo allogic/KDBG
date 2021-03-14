@@ -60,16 +60,16 @@ INT wmain(INT argc, PWCHAR argv[])
 
     if (DeviceIoControl(device, KDRV_CTRL_READ_KERNEL_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
-      printf("0x%08X ", 0);
+      printf("0x%08X ", request.Offset);
       for (SIZE_T i = 0; i < request.Size; i++)
       {
         printf("%02X ", request.Buffer[i]);
         if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
-          printf("\n0x%08X ", (ULONG)i);
+          printf("\n0x%08X ", request.Offset + i);
       }
       printf("\n\n");
 
-      DisassembleBytes(request.Buffer, request.Size);
+      DisassembleBytes(request.Buffer, request.Size, request.Offset);
     }
 
     FreeMemory(request.ImageName);
@@ -108,16 +108,16 @@ INT wmain(INT argc, PWCHAR argv[])
 
     if (DeviceIoControl(device, KDRV_CTRL_READ_USER_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
-      printf("0x%08X ", 0);
+      printf("0x%08X ", request.Offset);
       for (SIZE_T i = 0; i < request.Size; i++)
       {
         printf("%02X ", request.Buffer[i]);
         if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
-          printf("\n0x%08X ", (ULONG)i);
+          printf("\n0x%08X ", request.Offset + i);
       }
       printf("\n\n");
 
-      DisassembleBytes(request.Buffer, request.Size);
+      DisassembleBytes(request.Buffer, request.Size, request.Offset);
     }
 
     FreeMemory(request.Buffer);

@@ -63,7 +63,7 @@ PCHAR ArgvToMbStr(PWCHAR argv)
   return result;
 }
 
-VOID DisassembleBytes(PBYTE bytes, SIZE_T size)
+VOID DisassembleBytes(PBYTE bytes, SIZE_T size, SIZE_T offset)
 {
   csh csHandle;
   // Open capstone handle
@@ -75,7 +75,7 @@ VOID DisassembleBytes(PBYTE bytes, SIZE_T size)
   }
   // Optain instuctions
   cs_insn* instructions = NULL;
-  SIZE_T numInstructions = cs_disasm(csHandle, bytes, size, 0, 0, &instructions);
+  SIZE_T numInstructions = cs_disasm(csHandle, bytes, size, offset, 0, &instructions);
   if (numInstructions)
   {
     // Print assembly instructions
