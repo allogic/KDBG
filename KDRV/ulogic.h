@@ -7,7 +7,7 @@
 NTSTATUS GetUserImages(PSYSTEM_PROCESS_INFORMATION images, ULONG size);
 NTSTATUS GetUserImageBase(ULONG pid, PWCHAR moduleName, PVOID& imageBase);
 
-NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSize);
-NTSTATUS TryWriteUserMemory(ULONG pid, PVOID base, PUCHAR buffer, ULONG bufferSize);
+NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PBYTE buffer, ULONG bufferSize);
+NTSTATUS TryWriteUserMemory(ULONG pid, PVOID base, PBYTE buffer, ULONG bufferSize);
 
 #endif

@@ -38,8 +38,8 @@ typedef struct _KDRV_WRITE_KERNEL_REQUEST
 {
   PCHAR ImageName;
   PCHAR ExportName;
+  PBYTE Buffer;
   ULONG Offset;
-  PBYTE Bytes;
   ULONG Size;
 } KDRV_WRITE_KERNEL_REQUEST, * PKDRV_WRITE_KERNEL_REQUEST;
 

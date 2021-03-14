@@ -7,7 +7,7 @@
 NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size);
 NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase);
 
-NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize);
-NTSTATUS TryWriteKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize);
+NTSTATUS TryReadKernelMemory(PVOID base, PBYTE buffer, ULONG bufferSize);
+NTSTATUS TryWriteKernelMemory(PVOID base, PBYTE buffer, ULONG bufferSize);
 
 #endif

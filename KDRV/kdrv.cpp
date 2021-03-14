@@ -142,7 +142,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
           if (exportBase)
           {
             // Write kernel memeory
-            irp->IoStatus.Status = TryWriteKernelMemory((PVOID)((ULONG_PTR)exportBase + request->Offset), request->Bytes, request->Size);
+            irp->IoStatus.Status = TryWriteKernelMemory((PVOID)((ULONG_PTR)exportBase + request->Offset), request->Buffer, request->Size);
             if (NT_SUCCESS(irp->IoStatus.Status))
               irp->IoStatus.Information = request->Size;
           }

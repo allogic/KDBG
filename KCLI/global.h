@@ -11,6 +11,7 @@ extern "C"
 #include <string.h>
 #include <stdio.h>
 #include <windows.h>
+#include <tlhelp32.h>
 
 #ifdef __cplusplus
 }

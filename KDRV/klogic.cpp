@@ -52,7 +52,7 @@ NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase)
   return status;
 }
 
-NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
+NTSTATUS TryReadKernelMemory(PVOID base, PBYTE buffer, ULONG bufferSize)
 {
   NTSTATUS status = STATUS_SUCCESS;
   // Mdl for base addr
@@ -84,7 +84,7 @@ NTSTATUS TryReadKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
   IoFreeMdl(mdl);
   return status;
 }
-NTSTATUS TryWriteKernelMemory(PVOID base, PUCHAR buffer, ULONG bufferSize)
+NTSTATUS TryWriteKernelMemory(PVOID base, PBYTE buffer, ULONG bufferSize)
 {
   NTSTATUS status = STATUS_SUCCESS;
   // Mdl for base addr

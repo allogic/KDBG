@@ -3,15 +3,15 @@
 
 #include "global.h"
 
-template<typename Function>
-Function GetSystemAddress(PCWCHAR procName)
+template<typename FUNCTION>
+FUNCTION GetSystemAddress(PCWCHAR procName)
 {
-  static Function functionPointer = NULL;
+  static FUNCTION functionPointer = NULL;
   if (!functionPointer)
   {
     UNICODE_STRING functionName;
     RtlInitUnicodeString(&functionName, procName);
-    functionPointer = (Function)MmGetSystemRoutineAddress(&functionName);
+    functionPointer = (FUNCTION)MmGetSystemRoutineAddress(&functionName);
     if (!functionPointer)
     {
       LOG_ERROR("MmGetSystemRoutineAddress\n");
