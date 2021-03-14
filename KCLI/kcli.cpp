@@ -103,7 +103,7 @@ INT wmain(INT argc, PWCHAR argv[])
     request.Offset = wcstoul(argv[4], NULL, 16);
     request.Size = wcstoul(argv[5], NULL, 10);
     request.Buffer = AllocMemory<BYTE>(TRUE, request.Size);
-    printf("pid: %u\n", request.Pid);
+
     SIZE_T byteBlockSize = wcstoul(argv[6], NULL, 10);
 
     if (DeviceIoControl(device, KDRV_CTRL_READ_USER_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
