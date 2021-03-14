@@ -76,7 +76,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
   {
     case KDRV_CTRL_DUMP_KERNEL_IMAGE_REQUEST:
     {
-      // Kernel dump images request
       PKDRV_DUMP_KERNEL_IMAGE_REQUEST request = (PKDRV_DUMP_KERNEL_IMAGE_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
@@ -88,7 +87,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     }
     case KDRV_CTRL_DUMP_USER_IMAGE_REQUEST:
     {
-      // User dump images request
       PKDRV_DUMP_USER_IMAGE_REQUEST request = (PKDRV_DUMP_USER_IMAGE_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
@@ -98,9 +96,17 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       }
       break;
     }
+    case KDRV_CTRL_SCAN_MEMORY_REQEUST:
+    {
+      PKDRV_SCAN_MEMORY_REQUEST request = (PKDRV_SCAN_MEMORY_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+
+      }
+      break;
+    }
     case KDRV_CTRL_READ_KERNEL_REQUEST:
     {
-      // Kernel read request
       PKDRV_READ_KERNEL_REQUEST request = (PKDRV_READ_KERNEL_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
@@ -128,7 +134,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     }
     case KDRV_CTRL_WRITE_KERNEL_REQUEST:
     {
-      // Kernel write request
       PKDRV_WRITE_KERNEL_REQUEST request = (PKDRV_WRITE_KERNEL_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
@@ -156,7 +161,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     }
     case KDRV_CTRL_READ_USER_REQUEST:
     {
-      // User read request
       PKDRV_READ_USER_REQUEST request = (PKDRV_READ_USER_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
@@ -176,7 +180,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     }
     case KDRV_CTRL_WRITE_USER_REQUEST:
     {
-      // User write request
       PKDRV_WRITE_USER_REQUEST request = (PKDRV_WRITE_USER_REQUEST)irp->AssociatedIrp.SystemBuffer;
       if (request)
       {
@@ -196,7 +199,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     }
     case KDRV_CTRL_DEBUG_REQUEST:
     {
-      // Debug request
       __try
       {
         

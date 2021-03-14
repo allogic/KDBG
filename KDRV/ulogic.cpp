@@ -138,7 +138,7 @@ NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PBYTE buffer, ULONG bufferSize
   }
   // Detach from process
   KeUnstackDetachProcess(&apc);
-  // Copy async buffer to request buffer
+  // Copy kernel buffer to request buffer
   RtlCopyMemory(buffer, asyncBuffer, bufferSize);
   // Cleanup
   RtlFreeMemory(asyncBuffer);
@@ -174,7 +174,7 @@ NTSTATUS TryWriteUserMemory(ULONG pid, PVOID base, PBYTE buffer, ULONG bufferSiz
     LOG_ERROR("IoAllocateMdl\n");
     return STATUS_INVALID_ADDRESS;
   }
-  // Copy request buffer to async buffer
+  // Copy request buffer to kernel space
   RtlCopyMemory(asyncBuffer, buffer, bufferSize);
   KAPC_STATE apc;
   __try
@@ -193,6 +193,63 @@ NTSTATUS TryWriteUserMemory(ULONG pid, PVOID base, PBYTE buffer, ULONG bufferSiz
     // Unlock pages
     MmUnmapLockedPages(mappedBase, mdl);
     MmUnlockPages(mdl);
+  }
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
+    LOG_ERROR("Something went wrong\n");
+    status = STATUS_FAIL_CHECK;
+  }
+  // Detach from process
+  KeUnstackDetachProcess(&apc);
+  // Cleanup
+  RtlFreeMemory(asyncBuffer);
+  IoFreeMdl(mdl);
+  ObDereferenceObject(process);
+  return status;
+}
+
+NTSTATUS ScanUserMemory(ULONG pid, PVOID base, PBYTE pattern, ULONG patternSize, PVOID patternBase)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  // Find process
+  PEPROCESS process = NULL;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (!NT_SUCCESS(status))
+  {
+    LOG_ERROR("PsLookupProcessByProcessId\n");
+    return status;
+  }
+  // Allocate temporary buffer
+  PBYTE asyncBuffer = (PBYTE)RtlAllocateMemory(TRUE, patternSize);
+  if (!asyncBuffer)
+  {
+    ObDereferenceObject(process);
+    LOG_ERROR("IoAllocateMdl\n");
+    return STATUS_INVALID_ADDRESS;
+  }
+  // Copy pattern into kernel space
+  RtlCopyMemory(asyncBuffer, pattern, patternSize);
+  PMDL mdl = NULL;
+  KAPC_STATE apc;
+  __try
+  {
+    // Attach to process
+    KeStackAttachProcess(process, &apc);
+    // Scan memory
+    while (1)
+    {
+      // Mdl for base addr
+      mdl = IoAllocateMdl(base, patternSize, FALSE, FALSE, NULL);
+      // Lock pages
+      MmProbeAndLockPages(mdl, UserMode, IoReadAccess);
+      // Address mapping
+      PBYTE mappedBase = (PBYTE)MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, NormalPagePriority);
+      // Set protection levels
+      MmProtectMdlSystemAddress(mdl, PAGE_READWRITE);
+      // Unlock pages
+      MmUnmapLockedPages(mappedBase, mdl);
+      MmUnlockPages(mdl);
+    }
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
   {

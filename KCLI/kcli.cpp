@@ -3,10 +3,34 @@
 
 INT wmain(INT argc, PWCHAR argv[])
 {
-  HANDLE device = NULL;
+  // Display help
+  if (argc == 1)
+  {
+    printf("Kernel Debugger v1.0.0 started, (c) 2021 KDRV Project\n");
+    printf("Supported x64 Windows 10 and above\n\n");
+
+    printf("Usage:\n");
+    printf("kcli /DumpKernelImages                                        - Display list of running system images\n");
+    printf("kcli /DumpUserImages                                          - Display list of running user images\n");
+    printf("kcli /ScanMemory [IMAGE] [PATTERN]                            - Scan user image memory\n");
+    printf("kcli /ReadKernel [IMAGE] [EXPORT] [OFFSET] [SIZE] [BLOCKSIZE] - Read system image bytes\n");
+    printf("kcli /WriteKernel [IMAGE] [MODULE] [OFFSET] [SIZE] [BYTES]    - Override system image bytes\n");
+    printf("kcli /ReadUser [IMAGE] [MODULE] [OFFSET] [SIZE] [BLOCKSIZE]   - Read user image bytes\n");
+    printf("kcli /WriteUser [IMAGE] [MODULE] [OFFSET] [SIZE] [BYTES]      - Override user image bytes\n\n");
+
+    printf("Examples:\n");
+    printf("kcli /ReadKernel ntoskrnl.exe NtOpenProcess 0 42 32\n");
+    printf("kcli /WriteKernel ntoskrnl.exe NtOpenProcess 27 2 90C3\n");
+    printf("kcli /ReadUser explorer.exe explorer.exe 1000 42 32\n");
+    printf("kcli /WriteUser explorer.exe explorer.exe 101A 5 9090909090\n\n");
+
+    printf("Happy hacking - allogic\n\n");
+
+    return 0;
+  }
 
   // Optain device handle
-  device = CreateFileA("\\\\.\\KDRV", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  HANDLE device = CreateFileA("\\\\.\\KDRV", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
   if (device == INVALID_HANDLE_VALUE)
   {
     printf("KDRV is not running\n");
@@ -46,6 +70,21 @@ INT wmain(INT argc, PWCHAR argv[])
     FreeMemory(request.Images);
   }
 
+  // Send scan memory request
+  if (wcscmp(argv[1], L"/ScanMemory") == 0)
+  {
+    KDRV_SCAN_MEMORY_REQUEST request;
+    request.Pid = GetProcessId(argv[2]);
+    request.Pattern = ArgvToBytes(argv[3]);
+
+    if (DeviceIoControl(device, KDRV_CTRL_SCAN_MEMORY_REQEUST, &request, sizeof(request), NULL, 0, NULL, NULL))
+    {
+      printf("success\n");
+    }
+
+    FreeMemory(request.Pattern);
+  }
+
   // Send kernel read request
   if (wcscmp(argv[1], L"/ReadKernel") == 0)
   {
@@ -65,7 +104,7 @@ INT wmain(INT argc, PWCHAR argv[])
       {
         printf("%02X ", request.Buffer[i]);
         if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
-          printf("\n0x%08X ", request.Offset + i);
+          printf("\n0x%08X ", request.Offset + (ULONG)i);
       }
       printf("\n\n");
 
@@ -113,7 +152,7 @@ INT wmain(INT argc, PWCHAR argv[])
       {
         printf("%02X ", request.Buffer[i]);
         if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
-          printf("\n0x%08X ", request.Offset + i);
+          printf("\n0x%08X ", request.Offset + (ULONG)i);
       }
       printf("\n\n");
 
