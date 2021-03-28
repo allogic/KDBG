@@ -45,3 +45,25 @@ PPEB PsGetProcessPeb(PEPROCESS Process)
   return GetSystemAddress<PSGETPROCESSPEB>(L"PsGetProcessPeb")(
     Process);
 }
+
+NTSTATUS ZwOpenThread(
+  PHANDLE ThreadHandle,
+  ACCESS_MASK AccessMask,
+  POBJECT_ATTRIBUTES ObjectAttributes,
+  PCLIENT_ID ClientId)
+{
+  return GetSystemAddress<ZWOPENTHREAD>(L"ZwOpenThread")(
+    ThreadHandle,
+    AccessMask,
+    ObjectAttributes,
+    ClientId);
+}
+
+NTSTATUS ZwSuspendThread(
+  HANDLE ThreadHandle,
+  PULONG PreviousSuspendCount)
+{
+  return GetSystemAddress<ZWSUSPENDTHREAD>(L"ZwSuspendThread")(
+    ThreadHandle,
+    PreviousSuspendCount);
+}

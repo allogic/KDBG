@@ -19,62 +19,29 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="KDRV.inf">
+    <Inf Include="KDIM.inf">
       <Filter>Driver Files</Filter>
     </Inf>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="kdrv.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="undoc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="global.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pe.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="proc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="thread.cpp">
+    <ClCompile Include="kdim.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="global.h">
+    <ClInclude Include="ntwow64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="kdrv.h">
+    <ClInclude Include="heapstruct.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ioctrl.h">
+    <ClInclude Include="ntldr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="undoc.h">
+    <ClInclude Include="ntrtl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="pe.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="proc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="thread.h">
+    <ClInclude Include="ntpsapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

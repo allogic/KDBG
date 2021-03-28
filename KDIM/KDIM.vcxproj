@@ -35,16 +35,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="KDRV.inf" />
+    <Inf Include="KDIM.inf" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{D2E3E346-E902-416D-8ECD-1650AF35F161}</ProjectGuid>
+    <ProjectGuid>{8769BE26-ED2B-427B-9E94-8834E527FCAB}</ProjectGuid>
     <TemplateGuid>{497e31cb-056b-4f31-abb8-447fd55ee5a5}</TemplateGuid>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
     <Configuration>Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>
-    <RootNamespace>KDRV</RootNamespace>
+    <RootNamespace>KDIM</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -70,6 +70,7 @@
     <ConfigurationType>Driver</ConfigurationType>
     <DriverType>KMDF</DriverType>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
+    <Driver_SpectreMitigation>Spectre</Driver_SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
@@ -78,6 +79,7 @@
     <ConfigurationType>Driver</ConfigurationType>
     <DriverType>KMDF</DriverType>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
+    <Driver_SpectreMitigation>Spectre</Driver_SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
@@ -127,11 +129,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(UM_IncludePath);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(UM_IncludePath);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -168,6 +168,8 @@
       <WppScanConfigurationData Condition="'%(ClCompile.ScanConfigurationData)' == ''">
       </WppScanConfigurationData>
       <WppKernelMode>true</WppKernelMode>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
@@ -180,6 +182,8 @@
       <WppScanConfigurationData Condition="'%(ClCompile.ScanConfigurationData)' == ''">
       </WppScanConfigurationData>
       <WppKernelMode>true</WppKernelMode>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
@@ -221,25 +225,14 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="global.cpp" />
-    <ClCompile Include="kdrv.cpp" />
-    <ClCompile Include="mem.cpp" />
-    <ClCompile Include="pe.cpp" />
-    <ClCompile Include="proc.cpp" />
-    <ClCompile Include="thread.cpp" />
-    <ClCompile Include="undoc.cpp" />
-    <ClCompile Include="util.cpp" />
+    <ClCompile Include="kdim.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="global.h" />
-    <ClInclude Include="ioctrl.h" />
-    <ClInclude Include="kdrv.h" />
-    <ClInclude Include="mem.h" />
-    <ClInclude Include="pe.h" />
-    <ClInclude Include="proc.h" />
-    <ClInclude Include="thread.h" />
-    <ClInclude Include="undoc.h" />
-    <ClInclude Include="util.h" />
+    <ClInclude Include="heapstruct.h" />
+    <ClInclude Include="ntldr.h" />
+    <ClInclude Include="ntpsapi.h" />
+    <ClInclude Include="ntrtl.h" />
+    <ClInclude Include="ntwow64.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

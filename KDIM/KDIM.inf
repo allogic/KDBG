@@ -1,0 +1,87 @@
+;
+; KDIM.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=Sample ; TODO: edit Class
+ClassGuid={78A1C341-4539-11d3-B88D-00C04FAD5171} ; TODO: edit ClassGuid
+Provider=%ManufacturerName%
+CatalogFile=KDIM.cat
+DriverVer= ; TODO: set DriverVer in stampinf property pages
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+KDIM_Device_CoInstaller_CopyFiles = 11
+
+; ================= Class section =====================
+
+[ClassInstall32]
+Addreg=SampleClassReg
+
+[SampleClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+KDIM.sys  = 1,,
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%KDIM.DeviceDesc%=KDIM_Device, Root\KDIM ; TODO: edit hw-id
+
+[KDIM_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+KDIM.sys
+
+;-------------- Service installation
+[KDIM_Device.NT.Services]
+AddService = KDIM,%SPSVCINST_ASSOCSERVICE%, KDIM_Service_Inst
+
+; -------------- KDIM driver install sections
+[KDIM_Service_Inst]
+DisplayName    = %KDIM.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\KDIM.sys
+
+;
+;--- KDIM_Device Coinstaller installation ------
+;
+
+[KDIM_Device.NT.CoInstallers]
+AddReg=KDIM_Device_CoInstaller_AddReg
+CopyFiles=KDIM_Device_CoInstaller_CopyFiles
+
+[KDIM_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[KDIM_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[KDIM_Device.NT.Wdf]
+KmdfService =  KDIM, KDIM_wdfsect
+[KDIM_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+ClassName="Samples" ; TODO: edit ClassName
+DiskName = "KDIM Installation Disk"
+KDIM.DeviceDesc = "KDIM Device"
+KDIM.SVCDESC = "KDIM Service"

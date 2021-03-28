@@ -191,4 +191,26 @@ PPEB PsGetProcessPeb(PEPROCESS Process);
 typedef PPEB(*PSGETPROCESSPEB)(
   PEPROCESS process);
 
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+
+NTSTATUS ZwOpenThread(
+  PHANDLE ThreadHandle,
+  ACCESS_MASK AccessMask,
+  POBJECT_ATTRIBUTES ObjectAttributes,
+  PCLIENT_ID ClientId);
+NTSTATUS ZwSuspendThread(
+  HANDLE ThreadHandle,
+  PULONG PreviousSuspendCount);
+
+typedef NTSTATUS(*ZWOPENTHREAD)(
+  PHANDLE ThreadHandle,
+  ACCESS_MASK AccessMask,
+  POBJECT_ATTRIBUTES ObjectAttributes,
+  PCLIENT_ID ClientId);
+typedef NTSTATUS(*ZWSUSPENDTHREAD)(
+  HANDLE ThreadHandle,
+  PULONG PreviousSuspendCount);
+
 #endif

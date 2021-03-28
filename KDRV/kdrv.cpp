@@ -1,8 +1,9 @@
 #include "kdrv.h"
-#include "klogic.h"
-#include "ulogic.h"
+#include "proc.h"
+#include "mem.h"
 #include "pe.h"
 #include "undoc.h"
+#include "thread.h"
 
 // Global driver state
 UNICODE_STRING DeviceName;
@@ -201,7 +202,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     {
       __try
       {
-        
+        irp->IoStatus.Status = SuspendThread(NULL);
       }
       __except (EXCEPTION_EXECUTE_HANDLER)
       {
