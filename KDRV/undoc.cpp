@@ -1,11 +1,21 @@
 #include "undoc.h"
 
-PVOID PsGetProcessSectionBaseAddress(
-  PEPROCESS Process)
+/////////////////////////////////////////////////
+/// NTOSKRNL
+/////////////////////////////////////////////////
+
+PVOID RtlFindExportedRoutineByName(
+  PVOID ImageBase,
+  PSTR RoutineName)
 {
-  return GetSystemAddress<PSGETPROCESSSECTIONBASEADDRESS>(L"PsGetProcessSectionBaseAddress")(
-    Process);
+  return GetSystemRoutine<RTLFINDEXPORTEDROUTINEBYNAME>(L"RtlFindExportedRoutineByName")(
+    ImageBase,
+    RoutineName);
 }
+
+/////////////////////////////////////////////////
+/// NTDLL
+/////////////////////////////////////////////////
 
 NTSTATUS ZwQuerySystemInformation(
   SYSTEM_INFORMATION_CLASS SystemInformationClass,
@@ -13,57 +23,58 @@ NTSTATUS ZwQuerySystemInformation(
   ULONG SystemInformationLength,
   PULONG ReturnLength)
 {
-  return GetSystemAddress<ZWQUERYSYSTEMINFORMATION>(L"ZwQuerySystemInformation")(
+  return GetSystemRoutine<ZWQUERYSYSTEMINFORMATION>(L"ZwQuerySystemInformation")(
     SystemInformationClass,
     SystemInformation,
     SystemInformationLength,
     ReturnLength);
 }
 
+/////////////////////////////////////////////////
+/// Kernel Images
+/////////////////////////////////////////////////
+
 NTSTATUS RtlQueryModuleInformation(
   ULONG* InformationLength,
   ULONG SizePerModule,
   PVOID InformationBuffer)
 {
-  return GetSystemAddress<RTLQUERYMODULEINFORMATION>(L"RtlQueryModuleInformation")(
+  return GetSystemRoutine<RTLQUERYMODULEINFORMATION>(L"RtlQueryModuleInformation")(
     InformationLength,
     SizePerModule,
     InformationBuffer);
 }
 
-PVOID RtlFindExportedRoutineByName(
-  PVOID ImageBase,
-  PSTR RoutineName)
-{
-  return GetSystemAddress<RTLFINDEXPORTEDROUTINEBYNAME>(L"RtlFindExportedRoutineByName")(
-    ImageBase,
-    RoutineName);
-}
+/////////////////////////////////////////////////
+/// User Images
+/////////////////////////////////////////////////
 
-PPEB PsGetProcessPeb(PEPROCESS Process)
+PPEB PsGetProcessPeb(
+  PEPROCESS Process)
 {
-  return GetSystemAddress<PSGETPROCESSPEB>(L"PsGetProcessPeb")(
+  return GetSystemRoutine<PSGETPROCESSPEB>(L"PsGetProcessPeb")(
+    Process);
+}
+PVOID PsGetProcessSectionBaseAddress(
+  PEPROCESS Process)
+{
+  return GetSystemRoutine<PSGETPROCESSSECTIONBASEADDRESS>(L"PsGetProcessSectionBaseAddress")(
     Process);
 }
 
-NTSTATUS ZwOpenThread(
-  PHANDLE ThreadHandle,
-  ACCESS_MASK AccessMask,
-  POBJECT_ATTRIBUTES ObjectAttributes,
-  PCLIENT_ID ClientId)
-{
-  return GetSystemAddress<ZWOPENTHREAD>(L"ZwOpenThread")(
-    ThreadHandle,
-    AccessMask,
-    ObjectAttributes,
-    ClientId);
-}
+/////////////////////////////////////////////////
+/// Thread
+/////////////////////////////////////////////////
 
-NTSTATUS ZwSuspendThread(
-  HANDLE ThreadHandle,
-  PULONG PreviousSuspendCount)
+NTSTATUS PsSuspendProcess(
+  PEPROCESS Process)
 {
-  return GetSystemAddress<ZWSUSPENDTHREAD>(L"ZwSuspendThread")(
-    ThreadHandle,
-    PreviousSuspendCount);
+  return GetSystemRoutine<PSSUSPENDPROCESS>(L"PsSuspendProcess")(
+    Process);
+}
+NTSTATUS PsResumeProcess(
+  PEPROCESS Process)
+{
+  return GetSystemRoutine<PSRESUMEPROCESS>(L"PsResumeProcess")(
+    Process);
 }

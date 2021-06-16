@@ -225,8 +225,6 @@
     <ClCompile Include="kdrv.cpp" />
     <ClCompile Include="mem.cpp" />
     <ClCompile Include="pe.cpp" />
-    <ClCompile Include="proc.cpp" />
-    <ClCompile Include="thread.cpp" />
     <ClCompile Include="undoc.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
@@ -236,8 +234,6 @@
     <ClInclude Include="kdrv.h" />
     <ClInclude Include="mem.h" />
     <ClInclude Include="pe.h" />
-    <ClInclude Include="proc.h" />
-    <ClInclude Include="thread.h" />
     <ClInclude Include="undoc.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>

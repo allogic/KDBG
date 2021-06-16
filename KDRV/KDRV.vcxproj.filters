@@ -39,13 +39,7 @@
     <ClCompile Include="util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="proc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="mem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -68,13 +62,7 @@
     <ClInclude Include="util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="proc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="mem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

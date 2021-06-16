@@ -2,10 +2,21 @@
 #define _PE_H
 
 #include "global.h"
+#include "undoc.h"
+#include "util.h"
 
-#define PE_ERROR_VALUE (ULONG)-1
+ULONG RvaToSection(PIMAGE_NT_HEADERS ntHeaders, ULONG rva);
+ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, ULONG rva, ULONG fileSize);
+
+NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size);
+NTSTATUS GetUserImages(PSYSTEM_PROCESS_INFORMATION images, ULONG size);
+
+NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase);
+NTSTATUS GetUserImageBase(ULONG pid, PWCHAR moduleName, PVOID& imageBase);
 
 PVOID GetPageBase(PVOID imageBase, PULONG imageSize, PVOID ptr);
 ULONG GetExportOffset(PVOID imageBase, ULONG imageSize, PCCHAR exportName);
+
+PLDR_DATA_TABLE_ENTRY GetMainModuleDataTableEntry(PPEB64 peb);
 
 #endif

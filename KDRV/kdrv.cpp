@@ -1,9 +1,7 @@
 #include "kdrv.h"
-#include "proc.h"
 #include "mem.h"
 #include "pe.h"
 #include "undoc.h"
-#include "thread.h"
 
 // Global driver state
 UNICODE_STRING DeviceName;
@@ -97,15 +95,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
       }
       break;
     }
-    case KDRV_CTRL_SCAN_MEMORY_REQEUST:
-    {
-      PKDRV_SCAN_MEMORY_REQUEST request = (PKDRV_SCAN_MEMORY_REQUEST)irp->AssociatedIrp.SystemBuffer;
-      if (request)
-      {
-
-      }
-      break;
-    }
     case KDRV_CTRL_READ_KERNEL_REQUEST:
     {
       PKDRV_READ_KERNEL_REQUEST request = (PKDRV_READ_KERNEL_REQUEST)irp->AssociatedIrp.SystemBuffer;
@@ -171,7 +160,6 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
           // TODO implement module wcscmp for modules
-
           irp->IoStatus.Status = TryReadUserMemory(request->Pid, (PVOID)((ULONG_PTR)imageBase + request->Offset), request->Buffer, request->Size);
           if (NT_SUCCESS(irp->IoStatus.Status))
             irp->IoStatus.Information = request->Size;
@@ -190,10 +178,59 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
         if (NT_SUCCESS(irp->IoStatus.Status))
         {
           // TODO implement module wcscmp for modules
-
           irp->IoStatus.Status = TryWriteUserMemory(request->Pid, (PVOID)((ULONG_PTR)imageBase + request->Offset), request->Buffer, request->Size);
           if (NT_SUCCESS(irp->IoStatus.Status))
             irp->IoStatus.Information = request->Size;
+        }
+      }
+      break;
+    }
+    case KDRV_CTRL_MEMORY_SCAN_KERNEL_REQEUST:
+    {
+      PKDRV_MEMORY_SCAN_KERNEL_REQEUST request = (PKDRV_MEMORY_SCAN_KERNEL_REQEUST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+
+      }
+      break;
+    }
+    case KDRV_CTRL_MEMORY_SCAN_USER_REQEUST:
+    {
+      PKDRV_MEMORY_SCAN_USER_REQEUST request = (PKDRV_MEMORY_SCAN_USER_REQEUST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+
+      }
+      break;
+    }
+    case KDRV_CTRL_THREAD_SUSPEND_REQUEST:
+    {
+      PKDRV_THREAD_SUSPEND_REQUEST request = (PKDRV_THREAD_SUSPEND_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+        // Find process
+        PEPROCESS process = NULL;
+        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+        {
+          irp->IoStatus.Status = PsSuspendProcess(process);
+          ObDereferenceObject(process);
+        }
+      }
+      break;
+    }
+    case KDRV_CTRL_THREAD_RESUME_REQUEST:
+    {
+      PKDRV_THREAD_RESUME_REQUEST request = (PKDRV_THREAD_RESUME_REQUEST)irp->AssociatedIrp.SystemBuffer;
+      if (request)
+      {
+        // Find process
+        PEPROCESS process = NULL;
+        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+        if (NT_SUCCESS(irp->IoStatus.Status))
+        {
+          irp->IoStatus.Status = PsResumeProcess(process);
+          ObDereferenceObject(process);
         }
       }
       break;
@@ -202,13 +239,12 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
     {
       __try
       {
-        irp->IoStatus.Status = SuspendThread(NULL);
+        
       }
       __except (EXCEPTION_EXECUTE_HANDLER)
       {
         LOG_ERROR("Something went wrong\n");
       }
-      
       break;
     }
   }
@@ -238,9 +274,7 @@ VOID DriverUnload(PDRIVER_OBJECT driverObject)
 NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
-
   NTSTATUS status = STATUS_SUCCESS;
-
   // Initialize kernel driver
   status = Initialize(driverObject);
   if (!NT_SUCCESS(status))
@@ -249,18 +283,14 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
     return status;
   }
   LOG_INFO("KDRV initialized\n");
-
   // Reg driver callbacks
   driverObject->DriverUnload = DriverUnload;
-
   // Reg default irp callbacks
   for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
     driverObject->MajorFunction[i] = OnIrpDflt;
-
   // Reg kdrv irp callbacks
   driverObject->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpIoCtrl;
   driverObject->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-
   return status;
 }

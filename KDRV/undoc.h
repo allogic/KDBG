@@ -4,7 +4,7 @@
 #include "global.h"
 
 template<typename FUNCTION>
-FUNCTION GetSystemAddress(PCWCHAR procName)
+FUNCTION GetSystemRoutine(PCWCHAR procName)
 {
   static FUNCTION functionPointer = NULL;
   if (!functionPointer)
@@ -22,17 +22,19 @@ FUNCTION GetSystemAddress(PCWCHAR procName)
 }
 
 /////////////////////////////////////////////////
-/////////////////////////////////////////////////
+/// NTOSKRNL
 /////////////////////////////////////////////////
 
-PVOID PsGetProcessSectionBaseAddress(
-  PEPROCESS Process);
+PVOID RtlFindExportedRoutineByName(
+  PVOID ImageBase,
+  PSTR RoutineName);
 
-typedef PVOID(*PSGETPROCESSSECTIONBASEADDRESS)(
-  PEPROCESS Process);
+typedef PVOID(*RTLFINDEXPORTEDROUTINEBYNAME)(
+  PVOID ImageBase,
+  PSTR RoutineName);
 
 /////////////////////////////////////////////////
-/////////////////////////////////////////////////
+/// NTDLL
 /////////////////////////////////////////////////
 
 typedef enum _SYSTEM_INFORMATION_CLASS
@@ -82,7 +84,7 @@ typedef NTSTATUS(*ZWQUERYSYSTEMINFORMATION)(
   PULONG ReturnLength);
 
 /////////////////////////////////////////////////
-/////////////////////////////////////////////////
+/// Kernel Images
 /////////////////////////////////////////////////
 
 typedef struct _RTL_MODULE_BASIC_INFO
@@ -108,20 +110,10 @@ typedef NTSTATUS(*RTLQUERYMODULEINFORMATION)(
   PVOID InformationBuffer);
 
 /////////////////////////////////////////////////
-/////////////////////////////////////////////////
+/// User Images
 /////////////////////////////////////////////////
 
-PVOID RtlFindExportedRoutineByName(
-  PVOID ImageBase,
-  PSTR RoutineName);
-
-typedef PVOID(*RTLFINDEXPORTEDROUTINEBYNAME)(
-  PVOID ImageBase,
-  PSTR RoutineName);
-
-/////////////////////////////////////////////////
-/////////////////////////////////////////////////
-/////////////////////////////////////////////////
+#define PE_ERROR_VALUE (ULONG)-1
 
 typedef struct _SYSTEM_PROCESS_INFORMATION
 {
@@ -187,30 +179,25 @@ typedef struct _LDR_DATA_TABLE_ENTRY
 } LDR_DATA_TABLE_ENTRY, * PLDR_DATA_TABLE_ENTRY;
 
 PPEB PsGetProcessPeb(PEPROCESS Process);
+PVOID PsGetProcessSectionBaseAddress(PEPROCESS Process);
 
+typedef PVOID(*PSGETPROCESSSECTIONBASEADDRESS)(
+  PEPROCESS Process);
 typedef PPEB(*PSGETPROCESSPEB)(
-  PEPROCESS process);
+  PEPROCESS Process);
 
 /////////////////////////////////////////////////
-/////////////////////////////////////////////////
+/// Threading
 /////////////////////////////////////////////////
 
-NTSTATUS ZwOpenThread(
-  PHANDLE ThreadHandle,
-  ACCESS_MASK AccessMask,
-  POBJECT_ATTRIBUTES ObjectAttributes,
-  PCLIENT_ID ClientId);
-NTSTATUS ZwSuspendThread(
-  HANDLE ThreadHandle,
-  PULONG PreviousSuspendCount);
+#define PROCESS_SUSPEND_RESUME 0x0800
 
-typedef NTSTATUS(*ZWOPENTHREAD)(
-  PHANDLE ThreadHandle,
-  ACCESS_MASK AccessMask,
-  POBJECT_ATTRIBUTES ObjectAttributes,
-  PCLIENT_ID ClientId);
-typedef NTSTATUS(*ZWSUSPENDTHREAD)(
-  HANDLE ThreadHandle,
-  PULONG PreviousSuspendCount);
+NTSTATUS PsSuspendProcess(PEPROCESS Process);
+NTSTATUS PsResumeProcess(PEPROCESS Process);
+
+typedef NTSTATUS(*PSSUSPENDPROCESS)(
+  PEPROCESS Process);
+typedef NTSTATUS(*PSRESUMEPROCESS)(
+  PEPROCESS Process);
 
 #endif
