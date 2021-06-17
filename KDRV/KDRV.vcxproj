@@ -221,21 +221,23 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="device.cpp" />
     <ClCompile Include="global.cpp" />
     <ClCompile Include="kdrv.cpp" />
     <ClCompile Include="mem.cpp" />
     <ClCompile Include="pe.cpp" />
+    <ClCompile Include="session.cpp" />
     <ClCompile Include="undoc.cpp" />
-    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="device.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
     <ClInclude Include="kdrv.h" />
     <ClInclude Include="mem.h" />
     <ClInclude Include="pe.h" />
+    <ClInclude Include="session.h" />
     <ClInclude Include="undoc.h" />
-    <ClInclude Include="util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

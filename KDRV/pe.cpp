@@ -279,6 +279,24 @@ ULONG GetExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   return exportOffset;
 }
 
+PVOID SanitizeUserPointer(PVOID pointer, SIZE_T size)
+{
+  MEMORY_BASIC_INFORMATION memInfo;
+  if (NT_SUCCESS(ZwQueryVirtualMemory(ZwCurrentProcess(), pointer, MemoryBasicInformation, &memInfo, sizeof(MEMORY_BASIC_INFORMATION), NULL)))
+  {
+    if (!(((uintptr_t)memInfo.BaseAddress + memInfo.RegionSize) < (((uintptr_t)pointer + size))))
+    {
+      if (memInfo.State & MEM_COMMIT || !(memInfo.Protect & (PAGE_GUARD | PAGE_NOACCESS)))
+      {
+        if (memInfo.Protect & PAGE_EXECUTE_READWRITE || memInfo.Protect & PAGE_EXECUTE_WRITECOPY || memInfo.Protect & PAGE_READWRITE || memInfo.Protect & PAGE_WRITECOPY)
+        {
+          return pointer;
+        }
+      }
+    }
+  }
+  return NULL;
+}
 PLDR_DATA_TABLE_ENTRY GetMainModuleDataTableEntry(PPEB64 peb)
 {
   if (SanitizeUserPointer(peb, sizeof(PEB64)))
@@ -293,7 +311,7 @@ PLDR_DATA_TABLE_ENTRY GetMainModuleDataTableEntry(PPEB64 peb)
 
           while (!peb->Ldr->Initialized && initLoadCount++ < 4)
           {
-            DriverSleep(250);
+            //DriverSleep(250);
           }
         }
 

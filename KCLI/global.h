@@ -6,16 +6,17 @@ extern "C"
 {
 #endif
 
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdio.h>
 #include <windows.h>
 #include <tlhelp32.h>
 
 #ifdef __cplusplus
 }
 #endif
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <string>
 
 #include <capstone/capstone.h>
 #include <capstone/platform.h>
@@ -28,5 +29,15 @@ extern "C"
 
 #define LOG_ENTER_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[>] " STR(CLASS) "::" STR(FUNCTION) "\n")
 #define LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " STR(CLASS) "::" STR(FUNCTION) "\n")
+
+template<typename TYPE>
+TYPE* AllocMemory(BOOL zeroMemory, SIZE_T size)
+{
+  TYPE* result = (TYPE*)malloc(sizeof(TYPE) * size);
+  if (result)
+    memset(result, 0, size);
+  return (TYPE*)result;
+}
+VOID FreeMemory(PVOID pointer);
 
 #endif

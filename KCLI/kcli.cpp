@@ -1,185 +1,126 @@
 #include "kcli.h"
 #include "util.h"
 
+HANDLE CmdDevice = INVALID_HANDLE_VALUE;
+HANDLE KernelDevice = INVALID_HANDLE_VALUE;
+HANDLE UserDevice = INVALID_HANDLE_VALUE;
+
+INT Initialize()
+{
+  // Optain communication devices
+  CmdDevice = CreateFileA("\\\\.\\KdrvCmd", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  KernelDevice = CreateFileA("\\\\.\\KdrvKernel", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  UserDevice = CreateFileA("\\\\.\\KdrvUser", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  if (CmdDevice == INVALID_HANDLE_VALUE || KernelDevice == INVALID_HANDLE_VALUE || UserDevice == INVALID_HANDLE_VALUE)
+  {
+    std::printf("KDRV is not running properly\n");
+    return 1;
+  }
+  return 0;
+}
+INT DeInitialize()
+{
+  // Close communication devices
+  if (!CloseHandle(CmdDevice))
+    return 1;
+  if (!CloseHandle(KernelDevice))
+    return 1;
+  if (!CloseHandle(UserDevice))
+    return 1;
+  return 0;
+}
+
+INT PollKernel(ULONG pollRate, ULONG bufferSize, ULONG blockSize, ULONG offset)
+{
+  INT status = 0;
+  PBYTE bytes = AllocMemory<BYTE>(TRUE, bufferSize);
+  while (1)
+  {
+    if (DeviceIoControl(KernelDevice, KDRV_CTRL_SESSION, &bytes, sizeof(bytes), NULL, 0, NULL, NULL))
+    {
+      for (ULONG i = 0; i < bufferSize; ++i)
+      {
+        std::printf("%02X ", bytes[i]);
+        if (i != 0 && (i + 1) < bufferSize && (i + 1) % blockSize == 0)
+          std::printf("\n0x%08X ", offset + (ULONG)i);
+      }
+      std::printf("\n\n");
+      DisassembleBytes(bytes, bufferSize, offset);
+      Sleep(250);
+    }
+    else
+    {
+      std::printf("Failed polling kernel bytes\n");
+      status = 1;
+      break;
+    }
+  }
+  FreeMemory(bytes);
+  return status;
+}
+INT PollUser(ULONG pollRate, ULONG bufferSize, ULONG blockSize, ULONG offset)
+{
+  INT status = 0;
+  PBYTE bytes = AllocMemory<BYTE>(TRUE, bufferSize);
+  while (1)
+  {
+    if (DeviceIoControl(UserDevice, KDRV_CTRL_SESSION, &bytes, sizeof(bytes), NULL, 0, NULL, NULL))
+    {
+      for (ULONG i = 0; i < bufferSize; ++i)
+      {
+        std::printf("%02X ", bytes[i]);
+        if (i != 0 && (i + 1) < bufferSize && (i + 1) % blockSize == 0)
+          std::printf("\n0x%08X ", offset + (ULONG)i);
+      }
+      std::printf("\n\n");
+      DisassembleBytes(bytes, bufferSize, offset);
+      Sleep(pollRate);
+    }
+    else
+    {
+      std::printf("Failed polling user bytes\n");
+      status = 1;
+      break;
+    }
+  }
+  FreeMemory(bytes);
+  return status;
+}
+
 INT wmain(INT argc, PWCHAR argv[])
 {
-  // Display help
-  if (argc == 1)
+  INT status = 0;
+  // Initialize
+  status = Initialize();
+  if (status)
   {
-    printf("Kernel Debugger v1.0.0 started, (c) 2021 KDRV Project\n");
-    printf("Supported x64 Windows 10 and above\n\n");
-    printf("Usage:\n");
-    printf("kcli /DumpKernelImages                                        - Display list of running system images\n");
-    printf("kcli /DumpUserImages                                          - Display list of running user images\n");
-    printf("kcli /ScanKernel [IMAGE] [PATTERN]                            - Scan kernel image memory\n");
-    printf("kcli /ScanUser [IMAGE] [PATTERN]                              - Scan user image memory\n");
-    printf("kcli /ReadKernel [IMAGE] [EXPORT] [OFFSET] [SIZE] [BLOCKSIZE] - Read kernel image bytes\n");
-    printf("kcli /WriteKernel [IMAGE] [MODULE] [OFFSET] [SIZE] [BYTES]    - Write kernel image bytes\n");
-    printf("kcli /ReadUser [IMAGE] [MODULE] [OFFSET] [SIZE] [BLOCKSIZE]   - Read user image bytes\n");
-    printf("kcli /WriteUser [IMAGE] [MODULE] [OFFSET] [SIZE] [BYTES]      - Write user image bytes\n");
-    printf("kcli /SuspendThread [PID]                                     - Suspend user process\n");
-    printf("kcli /ResumeThread [PID]                                      - Resume user process\n\n");
-    printf("Examples:\n");
-    printf("kcli /ReadKernel ntoskrnl.exe NtOpenProcess 0 42 32\n");
-    printf("kcli /WriteKernel ntoskrnl.exe NtOpenProcess 27 2 90C3\n");
-    printf("kcli /ReadUser explorer.exe explorer.exe 1000 42 32\n");
-    printf("kcli /WriteUser explorer.exe explorer.exe 101A 5 9090909090\n\n");
-    printf("Happy hacking - allogic\n\n");
-    return 0;
+    std::printf("Initialize\n");
+    return status;
   }
-  // Optain device handle
-  HANDLE device = CreateFileA("\\\\.\\KDRV", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-  if (device == INVALID_HANDLE_VALUE)
+  // Attach to kernel
+  if (std::wcscmp(argv[1], L"/AttachKernel") == 0)
   {
-    printf("KDRV is not running\n");
-    return 0;
-  }
-  // Send dump kernel images
-  if (wcscmp(argv[1], L"/DumpKernelImages") == 0)
-  {
-    KDRV_DUMP_KERNEL_IMAGE_REQUEST request;
-    request.Size = 1024 * 1024;
-    request.Images = AllocMemory<RTL_PROCESS_MODULES>(TRUE, request.Size);
-    if (DeviceIoControl(device, KDRV_CTRL_DUMP_KERNEL_IMAGE_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
+    KDRV_SESSION_REQEUST request;
+    if (DeviceIoControl(CmdDevice, KDRV_CTRL_SESSION, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
-      for (SIZE_T i = 0; i < request.Images->NumberOfModules; ++i)
-        printf("%p %s\n", request.Images->Modules[i].ImageBase, request.Images->Modules[i].FullPathName);
+      PollKernel(250, 64, 32, 0);
     }
-    FreeMemory(request.Images);
   }
-  // Send dump user images
-  if (wcscmp(argv[1], L"/DumpUserImages") == 0)
+  // Attach to user
+  if (std::wcscmp(argv[1], L"/AttachUser") == 0)
   {
-    KDRV_DUMP_USER_IMAGE_REQUEST request;
-    request.Size = 1024 * 1024;
-    request.Images = AllocMemory<SYSTEM_PROCESS_INFORMATION>(TRUE, request.Size);
-    if (DeviceIoControl(device, KDRV_CTRL_DUMP_USER_IMAGE_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
+    KDRV_SESSION_REQEUST request;
+    if (DeviceIoControl(CmdDevice, KDRV_CTRL_SESSION, &request, sizeof(request), NULL, 0, NULL, NULL))
     {
-      for (SIZE_T i = 0; i < request.Size; ++i)
-        if ((ULONG_PTR)request.Images[i].UniqueProcessId > 0 && (ULONG_PTR)request.Images[i].UniqueProcessId < ULONG_MAX)
-          printf("%llu %ws\n", (ULONG_PTR)request.Images[i].UniqueProcessId, request.Images[i].ImageName.Buffer);
+      PollUser(250, 64, 32, 0);
     }
-    FreeMemory(request.Images);
   }
-  // Send scan kernel memory request
-  if (wcscmp(argv[1], L"/ScanKernel") == 0)
+  // DeInitialize
+  status = DeInitialize();
+  if (status)
   {
-    KDRV_MEMORY_SCAN_KERNEL_REQEUST request;
-    request.Pid = GetProcessId(argv[2]);
-    request.Pattern = ArgvToBytes(argv[3]);
-    if (DeviceIoControl(device, KDRV_CTRL_MEMORY_SCAN_KERNEL_REQEUST, &request, sizeof(request), NULL, 0, NULL, NULL))
-    {
-      
-    }
-    FreeMemory(request.Pattern);
+    std::printf("DeInitialize\n");
+    return status;
   }
-  // Send scan user memory request
-  if (wcscmp(argv[1], L"/ScanUser") == 0)
-  {
-    KDRV_MEMORY_SCAN_USER_REQEUST request;
-    request.Pid = GetProcessId(argv[2]);
-    request.Pattern = ArgvToBytes(argv[3]);
-    if (DeviceIoControl(device, KDRV_CTRL_MEMORY_SCAN_USER_REQEUST, &request, sizeof(request), NULL, 0, NULL, NULL))
-    {
-      
-    }
-    FreeMemory(request.Pattern);
-  }
-  // Send kernel read request
-  if (wcscmp(argv[1], L"/ReadKernel") == 0)
-  {
-    KDRV_READ_KERNEL_REQUEST request;
-    request.ImageName = ArgvToMbStr(argv[2]);
-    request.ExportName = ArgvToMbStr(argv[3]);
-    request.Size = wcstoul(argv[5], NULL, 10);
-    request.Offset = wcstoul(argv[4], NULL, 16);
-    request.Buffer = AllocMemory<BYTE>(TRUE, request.Size);
-    SIZE_T byteBlockSize = wcstoul(argv[6], NULL, 10);
-    if (DeviceIoControl(device, KDRV_CTRL_READ_KERNEL_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
-    {
-      printf("0x%08X ", request.Offset);
-      for (SIZE_T i = 0; i < request.Size; i++)
-      {
-        printf("%02X ", request.Buffer[i]);
-        if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
-          printf("\n0x%08X ", request.Offset + (ULONG)i);
-      }
-      printf("\n\n");
-      DisassembleBytes(request.Buffer, request.Size, request.Offset);
-    }
-    FreeMemory(request.ImageName);
-    FreeMemory(request.ExportName);
-    FreeMemory(request.Buffer);
-  }
-  // Send kernel write request
-  if (wcscmp(argv[1], L"/WriteKernel") == 0)
-  {
-    KDRV_WRITE_KERNEL_REQUEST request;
-    request.ImageName = ArgvToMbStr(argv[2]);
-    request.ExportName = ArgvToMbStr(argv[3]);
-    request.Buffer = ArgvToBytes(argv[6]);
-    request.Offset = wcstoul(argv[4], NULL, 16);
-    request.Size = wcstoul(argv[5], NULL, 10);
-    DeviceIoControl(device, KDRV_CTRL_WRITE_KERNEL_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL);
-    FreeMemory(request.ImageName);
-    FreeMemory(request.ExportName);
-    FreeMemory(request.Buffer);
-  }
-  // Send user read request
-  if (wcscmp(argv[1], L"/ReadUser") == 0)
-  {
-    KDRV_READ_USER_REQUEST request;
-    request.Pid = GetProcessId(argv[2]);
-    request.ModuleName = ArgvToWcStr(argv[3]);
-    request.Offset = wcstoul(argv[4], NULL, 16);
-    request.Size = wcstoul(argv[5], NULL, 10);
-    request.Buffer = AllocMemory<BYTE>(TRUE, request.Size);
-    SIZE_T byteBlockSize = wcstoul(argv[6], NULL, 10);
-    if (DeviceIoControl(device, KDRV_CTRL_READ_USER_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL))
-    {
-      printf("0x%08X ", request.Offset);
-      for (SIZE_T i = 0; i < request.Size; i++)
-      {
-        printf("%02X ", request.Buffer[i]);
-        if (i != 0 && (i + 1) < request.Size && (i + 1) % byteBlockSize == 0)
-          printf("\n0x%08X ", request.Offset + (ULONG)i);
-      }
-      printf("\n\n");
-      DisassembleBytes(request.Buffer, request.Size, request.Offset);
-    }
-    FreeMemory(request.Buffer);
-  }
-  // Send user write request
-  if (wcscmp(argv[1], L"/WriteUser") == 0)
-  {
-    KDRV_WRITE_USER_REQUEST request;
-    request.Pid = GetProcessId(argv[2]);
-    request.ModuleName = ArgvToWcStr(argv[3]);
-    request.Buffer = ArgvToBytes(argv[6]);
-    request.Offset = wcstoul(argv[4], NULL, 16);
-    request.Size = wcstoul(argv[5], NULL, 10);
-    DeviceIoControl(device, KDRV_CTRL_WRITE_USER_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL);
-    FreeMemory(request.Buffer);
-  }
-  // Send suspend thread request
-  if (wcscmp(argv[1], L"/SuspendThread") == 0)
-  {
-    KDRV_THREAD_SUSPEND_REQUEST request;
-    request.Pid = GetProcessId(argv[2]);
-    DeviceIoControl(device, KDRV_CTRL_THREAD_SUSPEND_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL);
-  }
-  // Send resume thread request
-  if (wcscmp(argv[1], L"/ResumeThread") == 0)
-  {
-    KDRV_THREAD_RESUME_REQUEST request;
-    request.Pid = GetProcessId(argv[2]);
-    DeviceIoControl(device, KDRV_CTRL_THREAD_RESUME_REQUEST, &request, sizeof(request), NULL, 0, NULL, NULL);
-  }
-  // Debug request
-  if (wcscmp(argv[1], L"/Debug") == 0)
-  {
-    DeviceIoControl(device, KDRV_CTRL_DEBUG_REQUEST, NULL, 0, NULL, 0, NULL, NULL);
-  }
-  CloseHandle(device);
-  return 0;
+  return status;
 }

@@ -29,9 +29,11 @@ extern "C"
 #define LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " STR(CLASS) "::" STR(FUNCTION) "\n")
 
 ULONG RtlNextRandom(ULONG min, ULONG max);
-ULONG GetPoolTag();
+ULONG GetNextPoolTag();
 
 PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size);
 VOID RtlFreeMemory(PVOID pointer);
+
+NTSTATUS DriverSleep(LONGLONG ms);
 
 #endif

@@ -194,6 +194,10 @@ typedef PPEB(*PSGETPROCESSPEB)(
 
 NTSTATUS PsSuspendProcess(PEPROCESS Process);
 NTSTATUS PsResumeProcess(PEPROCESS Process);
+NTSTATUS PsGetContextThread(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
 
 typedef NTSTATUS(*PSSUSPENDPROCESS)(
   PEPROCESS Process);

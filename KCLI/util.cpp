@@ -23,11 +23,6 @@ ULONG GetProcessId(PWCHAR processName)
   return 0;
 }
 
-VOID FreeMemory(PVOID pointer)
-{
-  free(pointer);
-}
-
 SIZE_T ArgvLength(PWCHAR argv)
 {
   SIZE_T length = 0;
