@@ -20,7 +20,7 @@ ULONG GetProcessId(PWCHAR processName)
     }
   } while (Process32Next(snapshot, &pe));
   CloseHandle(snapshot);
-  return 0;
+  return -1;
 }
 
 SIZE_T ArgvLength(PWCHAR argv)

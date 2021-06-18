@@ -3,108 +3,14 @@
 #include "pe.h"
 #include "undoc.h"
 #include "device.h"
-#include "session.h"
+#include "proc.h"
 
 // Global device/symbol names
-#define KDRV_CMD_DEVICE_NAME L"\\Device\\KdrvCmd"
-#define KDRV_KERNEL_DEVICE_NAME L"\\Device\\KdrvKernel"
-#define KDRV_USER_DEVICE_NAME L"\\Device\\KdrvUser"
-
-#define KDRV_CMD_DEVICE_SYMBOL_NAME L"\\DosDevices\\KdrvCmd"
-#define KDRV_KERNEL_DEVICE_SYMBOL_NAME L"\\DosDevices\\KdrvKernel"
-#define KDRV_USER_DEVICE_SYMBOL_NAME L"\\DosDevices\\KdrvUser"
+#define KDRV_DEVICE_NAME L"\\Device\\KDRV"
+#define KDRV_DEVICE_SYMBOL_NAME L"\\DosDevices\\KDRV"
 
 // Global cmd device
-PDEVICE_OBJECT CmdDevice = NULL;
-
-// Global sessions
-PKDRV_KERNEL_SESSION KernelSession = NULL;
-PKDRV_USER_SESSION UserSession = NULL;
-
-VOID KernelSessionThread(PVOID context)
-{
-  UNREFERENCED_PARAMETER(context);
-  UINT i = 0;
-  while (i < 10)
-  {
-    LOG_INFO("Kernel session thread called %u\n", i);
-    DriverSleep(5000);
-    ++i;
-  }
-}
-VOID UserSessionThread(PVOID context)
-{
-  UNREFERENCED_PARAMETER(context);
-  UINT i = 0;
-  while (i < 10)
-  {
-    LOG_INFO("User session thread called %u\n", i);
-    DriverSleep(2500);
-    ++i;
-  }
-}
-
-NTSTATUS InitializeSessions(PDRIVER_OBJECT driver)
-{
-  NTSTATUS status = STATUS_SUCCESS;
-  // Create kernel/user session threads
-  KernelSession = (PKDRV_KERNEL_SESSION)RtlAllocateMemory(TRUE, sizeof(KDRV_KERNEL_SESSION));
-  status = PsCreateSystemThread(&KernelSession->Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, KernelSessionThread, NULL);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("Failed creating kernel session thread\n");
-    return status;
-  }
-  UserSession = (PKDRV_USER_SESSION)RtlAllocateMemory(TRUE, sizeof(KDRV_USER_SESSION));
-  status = PsCreateSystemThread(&UserSession->Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, UserSessionThread, NULL);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("Failed creating user session thread\n");
-    return status;
-  }
-  // Create kernel device
-  UNICODE_STRING deviceName;
-  UNICODE_STRING symbolicName;
-  RtlInitUnicodeString(&deviceName, KDRV_KERNEL_DEVICE_NAME);
-  RtlInitUnicodeString(&symbolicName, KDRV_KERNEL_DEVICE_SYMBOL_NAME);
-  status = CreateDevice(driver, KernelSession->Device, &deviceName, &symbolicName);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("CreateDevice\n");
-    return status;
-  }
-  // Create user device
-  RtlInitUnicodeString(&deviceName, KDRV_USER_DEVICE_NAME);
-  RtlInitUnicodeString(&symbolicName, KDRV_USER_DEVICE_SYMBOL_NAME);
-  status = CreateDevice(driver, UserSession->Device, &deviceName, &symbolicName);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("CreateDevice\n");
-    return status;
-  }
-  return status;
-}
-NTSTATUS DeInitializeSessions(PDRIVER_OBJECT driver)
-{
-  UNREFERENCED_PARAMETER(driver);
-  NTSTATUS status = STATUS_SUCCESS;
-  // Delete kernel/user session threads
-  RtlFreeMemory(KernelSession);
-  status = ZwClose(KernelSession->Thread);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("Failed closing kernel session\n");
-    return status;
-  }
-  RtlFreeMemory(UserSession);
-  status = ZwClose(UserSession->Thread);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("Failed closing user session\n");
-    return status;
-  }
-  return status;
-}
+PDEVICE_OBJECT Device = NULL;
 
 NTSTATUS Initialize(PDRIVER_OBJECT driver)
 {
@@ -112,19 +18,12 @@ NTSTATUS Initialize(PDRIVER_OBJECT driver)
   // Create cmd device
   UNICODE_STRING deviceName;
   UNICODE_STRING symbolicName;
-  RtlInitUnicodeString(&deviceName, KDRV_CMD_DEVICE_NAME);
-  RtlInitUnicodeString(&symbolicName, KDRV_CMD_DEVICE_SYMBOL_NAME);
-  status = CreateDevice(driver, CmdDevice, &deviceName, &symbolicName);
+  RtlInitUnicodeString(&deviceName, KDRV_DEVICE_NAME);
+  RtlInitUnicodeString(&symbolicName, KDRV_DEVICE_SYMBOL_NAME);
+  status = CreateDevice(driver, Device, &deviceName, &symbolicName);
   if (!NT_SUCCESS(status))
   {
     LOG_ERROR("CreateDevice\n");
-    return status;
-  }
-  // Create sessions
-  status = InitializeSessions(driver);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("InitializeSessions\n");
     return status;
   }
   return status;
@@ -133,17 +32,10 @@ NTSTATUS DeInitialize(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
-  // Delete sessions
-  status = DeInitializeSessions(driver);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("DeInitializeSessions\n");
-    return status;
-  }
   // Delete cmd device
   UNICODE_STRING symbolicName;
-  RtlInitUnicodeString(&symbolicName, KDRV_CMD_DEVICE_SYMBOL_NAME);
-  status = DeleteDevice(CmdDevice, &symbolicName);
+  RtlInitUnicodeString(&symbolicName, KDRV_DEVICE_SYMBOL_NAME);
+  status = DeleteDevice(Device, &symbolicName);
   if (!NT_SUCCESS(status))
   {
     LOG_ERROR("DeleteDevice\n");
@@ -176,20 +68,38 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT deviceObject, PIRP irp)
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
-  switch (stack->Parameters.DeviceIoControl.IoControlCode)
-  {    
-    case KDRV_CTRL_SESSION:
+  __try
+  {
+    switch (stack->Parameters.DeviceIoControl.IoControlCode)
     {
-      __try
+      case KDRV_CTRL_DUMP_IMAGES:
       {
-        //PKDRV_SESSION_REQEUST request = (PKDRV_SESSION_REQEUST)irp->AssociatedIrp.SystemBuffer;
+        PKDRV_REQ_DUMP_IMAGES request = (PKDRV_REQ_DUMP_IMAGES)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = GetUserImages(request->Images, request->Size);
+        break;
       }
-      __except (EXCEPTION_EXECUTE_HANDLER)
+      case KDRV_CTRL_DUMP_MODULES:
       {
-        LOG_ERROR("Something went wrong\n");
+        PKDRV_REQ_DUMP_MODULES request = (PKDRV_REQ_DUMP_MODULES)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = GetUserImageModules(request->Pid, request->Modules, request->Size);
+        break;
       }
-      break;
+      case KDRV_CTRL_DUMP_THREADS:
+      {
+        PKDRV_REQ_DUMP_THREADS request = (PKDRV_REQ_DUMP_THREADS)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = GetUserImageThreads(request->Pid, request->Threads, request->Size);
+        break;
+      }
+      case KDRV_CTRL_DUMP_REGISTERS:
+      {
+        //PKDRV_REQ_DUMP_REGISTERS request = (PKDRV_REQ_DUMP_REGISTERS)irp->AssociatedIrp.SystemBuffer;
+        break;
+      }
     }
+  }
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
+    LOG_ERROR("Something went wrong\n");
   }
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;

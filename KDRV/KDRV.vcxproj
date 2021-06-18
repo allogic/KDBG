@@ -226,7 +226,7 @@
     <ClCompile Include="kdrv.cpp" />
     <ClCompile Include="mem.cpp" />
     <ClCompile Include="pe.cpp" />
-    <ClCompile Include="session.cpp" />
+    <ClCompile Include="proc.cpp" />
     <ClCompile Include="undoc.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -236,7 +236,7 @@
     <ClInclude Include="kdrv.h" />
     <ClInclude Include="mem.h" />
     <ClInclude Include="pe.h" />
-    <ClInclude Include="session.h" />
+    <ClInclude Include="proc.h" />
     <ClInclude Include="undoc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

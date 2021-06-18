@@ -39,10 +39,10 @@
     <ClCompile Include="mem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="session.cpp">
+    <ClCompile Include="device.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="device.cpp">
+    <ClCompile Include="proc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -65,10 +65,10 @@
     <ClInclude Include="mem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="session.h">
+    <ClInclude Include="device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="device.h">
+    <ClInclude Include="proc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

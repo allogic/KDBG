@@ -25,49 +25,6 @@ ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, ULONG rva, ULONG fileSize)
   return PE_ERROR_VALUE;
 }
 
-NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size)
-{
-  NTSTATUS status = STATUS_SUCCESS;
-  // Query kernel images
-  status = ZwQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, images, size, NULL);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("ZwQuerySystemInformation\n");
-    return status;
-  }
-  __try
-  {
-    for (ULONG i = 0; i < images[0].NumberOfModules; ++i)
-      LOG_INFO("%p %s\n", images[0].Modules[i].ImageBase, images[0].Modules[i].FullPathName);
-  }
-  __except (EXCEPTION_EXECUTE_HANDLER)
-  {
-
-  }
-  return status;
-}
-NTSTATUS GetUserImages(PSYSTEM_PROCESS_INFORMATION images, ULONG size)
-{
-  NTSTATUS status = STATUS_SUCCESS;
-  // Query user images
-  status = ZwQuerySystemInformation(SystemProcessInformation, images, size, NULL);
-  if (!NT_SUCCESS(status))
-  {
-    LOG_ERROR("ZwQuerySystemInformation\n");
-    return status;
-  }
-  __try
-  {
-    for (ULONG i = 0; i < size; ++i)
-      LOG_INFO("%p %wZ\n", (PVOID)0, &images[i].ImageName);
-  }
-  __except (EXCEPTION_EXECUTE_HANDLER)
-  {
-
-  }
-  return status;
-}
-
 NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase)
 {
   NTSTATUS status = STATUS_SUCCESS;

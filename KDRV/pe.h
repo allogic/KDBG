@@ -7,9 +7,6 @@
 ULONG RvaToSection(PIMAGE_NT_HEADERS ntHeaders, ULONG rva);
 ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, ULONG rva, ULONG fileSize);
 
-NTSTATUS GetKernelImages(PRTL_PROCESS_MODULES images, ULONG size);
-NTSTATUS GetUserImages(PSYSTEM_PROCESS_INFORMATION images, ULONG size);
-
 NTSTATUS GetKernelImageBase(PCHAR imageName, PVOID& imageBase);
 NTSTATUS GetUserImageBase(ULONG pid, PWCHAR moduleName, PVOID& imageBase);
 

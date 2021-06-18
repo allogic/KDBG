@@ -30,14 +30,4 @@ extern "C"
 #define LOG_ENTER_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[>] " STR(CLASS) "::" STR(FUNCTION) "\n")
 #define LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " STR(CLASS) "::" STR(FUNCTION) "\n")
 
-template<typename TYPE>
-TYPE* AllocMemory(BOOL zeroMemory, SIZE_T size)
-{
-  TYPE* result = (TYPE*)malloc(sizeof(TYPE) * size);
-  if (result)
-    memset(result, 0, size);
-  return (TYPE*)result;
-}
-VOID FreeMemory(PVOID pointer);
-
 #endif
