@@ -9,86 +9,103 @@ INT wmain(INT argc, PWCHAR argv[])
   Device = CreateFileA("\\\\.\\KDRV", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
   if (Device == INVALID_HANDLE_VALUE)
   {
-    std::printf("KDRV link failed\n");
+    printf("KDRV link failed\n");
     return 1;
   }
-  // Dump processes
-  if (std::wcscmp(argv[1], L"/DumpImages") == 0)
+  // Dump kernel modules
+  if (wcscmp(argv[1], L"/DumpKernelModules") == 0)
   {
-    KDRV_REQ_DUMP_IMAGES request;
-    request.Size = std::wcstoul(argv[2], NULL, 10);
-    request.Images = (PSYSTEM_PROCESS_INFORMATION)std::malloc(sizeof(SYSTEM_PROCESS_INFORMATION) * request.Size);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), NULL, 0, NULL, NULL))
+    ULONG bufferSize = wcstoul(argv[2], NULL, 10);
+    KDRV_REQ_DUMP_MODULES request;
+    request.Mode = KDRV_REQ_DUMP_MODULES::Kernel;
+    request.Buffer = malloc(sizeof(RTL_PROCESS_MODULES) * bufferSize);
+    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
-      for (ULONG i = 0; i < request.Size; ++i)
-        std::printf("Pid: %u Name: %wZ\n", *(PULONG)request.Images[i].UniqueProcessId, &request.Images[i].ImageName);
-      std::printf("\n");
+      printf("Size: %u\n", request.Size);
+      printf("Buffer: %p\n", request.Buffer);
+      PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)request.Buffer;
+      PRTL_PROCESS_MODULE_INFORMATION module = modules->Modules;
+      for (ULONG i = 0; i < modules->NumberOfModules; ++i)
+      {
+        printf("Base: %p\n", module[i].ImageBase);
+        printf("Name: %s\n", (PCHAR)(module[i].FullPathName + module[i].OffsetToFileName));
+        printf("Size: %u\n", module[i].ImageSize);
+      }
     }
-    std::free(request.Images);
+    free(request.Buffer);
   }
-  // Dump process modules
-  if (std::wcscmp(argv[1], L"/DumpModules") == 0)
+  // Dump user modules
+  if (wcscmp(argv[1], L"/DumpUserModules") == 0)
   {
     KDRV_REQ_DUMP_MODULES request;
-    request.Pid = GetProcessId(argv[2]);
-    request.Size = std::wcstoul(argv[3], NULL, 10);
-    request.Modules = (PRTL_PROCESS_MODULES)std::malloc(sizeof(RTL_PROCESS_MODULES) * request.Size);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), NULL, 0, NULL, NULL))
+    request.Mode = KDRV_REQ_DUMP_MODULES::User;
+    request.Pid = wcstoul(argv[2], NULL, 10);
+    request.Size = wcstoul(argv[3], NULL, 10);
+    request.Buffer = malloc(sizeof(LDR_DATA_TABLE_ENTRY) * request.Size);
+    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
+      printf("Size: %u\n", request.Size);
+      printf("Buffer: %p\n", request.Buffer);
+      PLDR_DATA_TABLE_ENTRY ldrs = (PLDR_DATA_TABLE_ENTRY)request.Buffer;
       for (ULONG i = 0; i < request.Size; ++i)
-        std::printf("Name: %s BaseAddress: %p\n", (PCHAR)request.Modules[i].Modules[0].FullPathName, request.Modules[i].Modules[0].ImageBase);
-      std::printf("\n");
+      {
+        printf("Base: %p\n", ldrs[i].DllBase);
+        printf("Name: %wZ\n", &ldrs[i].FullDllName);
+        printf("Size: %u\n", ldrs[i].SizeOfImage);
+      }
     }
-    std::free(request.Modules);
+    free(request.Buffer);
   }
   // Dump process threads
-  if (std::wcscmp(argv[1], L"/DumpThreads") == 0)
+  if (wcscmp(argv[1], L"/DumpUserThreads") == 0)
   {
     KDRV_REQ_DUMP_THREADS request;
-    request.Pid = GetProcessId(argv[2]);
-    request.Size = std::wcstoul(argv[3], NULL, 10);
-    request.Threads = (PSYSTEM_THREAD_INFORMATION)std::malloc(sizeof(SYSTEM_THREAD_INFORMATION) * request.Size);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_THREADS, &request, sizeof(request), NULL, 0, NULL, NULL))
+    request.Pid = wcstoul(argv[2], NULL, 10);
+    request.Tid = wcstoul(argv[3], NULL, 10);
+    request.Size = wcstoul(argv[4], NULL, 10);
+    request.Buffer = malloc(sizeof(SYSTEM_THREAD_INFORMATION) * request.Size);
+    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_THREADS, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
+      PSYSTEM_THREAD_INFORMATION threads = (PSYSTEM_THREAD_INFORMATION)request.Buffer;
       for (ULONG i = 0; i < request.Size; ++i)
-        std::printf("Pid: %u Tid: %u BaseAddress: %p\n", *(PULONG)request.Threads[i].ClientId.UniqueProcess, *(PULONG)request.Threads[i].ClientId.UniqueThread, request.Threads[i].StartAddress);
-      std::printf("\n");
+        printf("Pid: %u Tid: %u BaseAddress: %p\n", *(PULONG)threads[i].ClientId.UniqueProcess, *(PULONG)threads[i].ClientId.UniqueThread, threads[i].StartAddress);
+      printf("\n");
     }
-    std::free(request.Threads);
+    free(request.Buffer);
   }
   // Dump thread registers
-  if (std::wcscmp(argv[1], L"/DumpRegisters") == 0)
+  if (wcscmp(argv[1], L"/DumpRegisters") == 0)
   {
     KDRV_REQ_DUMP_REGISTERS request;
     request.Pid = GetProcessId(argv[2]);
-    request.Tid = std::wcstoul(argv[3], NULL, 10);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_REGISTERS, &request, sizeof(request), NULL, 0, NULL, NULL))
+    request.Tid = wcstoul(argv[3], NULL, 10);
+    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_REGISTERS, &request, sizeof(request), &request, sizeof(KDRV_REQ_DUMP_REGISTERS), NULL, NULL))
     {
-      std::printf("EAX: %u\n", request.Registers.Eax);
-      std::printf("EBX: %u\n", request.Registers.Ebx);
-      std::printf("ECX: %u\n", request.Registers.Ecx);
-      std::printf("EDX: %u\n", request.Registers.Edx);
-      std::printf("\n");
-      std::printf("EBP: %u\n", request.Registers.Ebp);
-      std::printf("EIP: %u\n", request.Registers.Eip);
-      std::printf("ESP: %u\n", request.Registers.Esp);
-      std::printf("\n");
-      std::printf("EDI: %u\n", request.Registers.Edi);
-      std::printf("ESI: %u\n", request.Registers.Esi);
-      std::printf("\n");
-      std::printf("DR0: %u\n", request.Registers.Dr0);
-      std::printf("DR1: %u\n", request.Registers.Dr1);
-      std::printf("DR2: %u\n", request.Registers.Dr2);
-      std::printf("DR3: %u\n", request.Registers.Dr3);
-      std::printf("DR6: %u\n", request.Registers.Dr6);
-      std::printf("DR7: %u\n", request.Registers.Dr7);
-      std::printf("\n");
+      printf("EAX: %u\n", request.Registers.Eax);
+      printf("EBX: %u\n", request.Registers.Ebx);
+      printf("ECX: %u\n", request.Registers.Ecx);
+      printf("EDX: %u\n", request.Registers.Edx);
+      printf("\n");
+      printf("EBP: %u\n", request.Registers.Ebp);
+      printf("EIP: %u\n", request.Registers.Eip);
+      printf("ESP: %u\n", request.Registers.Esp);
+      printf("\n");
+      printf("EDI: %u\n", request.Registers.Edi);
+      printf("ESI: %u\n", request.Registers.Esi);
+      printf("\n");
+      printf("DR0: %u\n", request.Registers.Dr0);
+      printf("DR1: %u\n", request.Registers.Dr1);
+      printf("DR2: %u\n", request.Registers.Dr2);
+      printf("DR3: %u\n", request.Registers.Dr3);
+      printf("DR6: %u\n", request.Registers.Dr6);
+      printf("DR7: %u\n", request.Registers.Dr7);
+      printf("\n");
     }
   }
   // Close communication device
   if (!CloseHandle(Device))
   {
-    std::printf("KDRV link failed\n");
+    printf("KDRV link failed\n");
     return 1;
   }
   return 0;

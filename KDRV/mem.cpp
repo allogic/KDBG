@@ -94,6 +94,47 @@ NTSTATUS TryReadUserMemory(ULONG pid, PVOID base, PBYTE buffer, ULONG bufferSize
   return status;
 }
 
+NTSTATUS CopyUserMemory(PVOID destination, PVOID source, ULONG size)
+{
+  LOG_INFO("Copy from %p to %p\n", source, destination);
+  NTSTATUS status = STATUS_SUCCESS;
+  // Mdl for base addr
+  PMDL mdl = IoAllocateMdl(source, size, FALSE, FALSE, NULL);
+  if (!mdl)
+  {
+    LOG_ERROR("IoAllocateMdl\n");
+    return STATUS_ACCESS_VIOLATION;
+  }
+  // Lock pages
+  MmProbeAndLockPages(mdl, UserMode, IoReadAccess);
+  // Set protection levels
+  status = MmProtectMdlSystemAddress(mdl, PAGE_READONLY);
+  if (!NT_SUCCESS(status))
+  {
+    MmUnlockPages(mdl);
+    IoFreeMdl(mdl);
+    LOG_ERROR("MmProtectMdlSystemAddress %X\n", status);
+    return status;
+  }
+  // Address mapping
+  PBYTE mappedSource = (PBYTE)MmMapLockedPagesSpecifyCache(mdl, UserMode, MmNonCached, NULL, FALSE, HighPagePriority);
+  if (!mappedSource)
+  {
+    MmUnlockPages(mdl);
+    IoFreeMdl(mdl);
+    LOG_ERROR("MmMapLockedPagesSpecifyCache\n");
+    return STATUS_ACCESS_VIOLATION;
+  }
+  LOG_INFO("Found from %p to %p\n", destination, mappedSource);
+  // Copy memory
+  RtlCopyMemory(destination, mappedSource, size);
+  // Cleanup
+  MmUnmapLockedPages(mappedSource, mdl);
+  MmUnlockPages(mdl);
+  IoFreeMdl(mdl);
+  return status;
+}
+
 NTSTATUS TryWriteKernelMemory(PVOID base, PBYTE buffer, ULONG bufferSize)
 {
   NTSTATUS status = STATUS_SUCCESS;

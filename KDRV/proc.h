@@ -3,9 +3,14 @@
 
 #include "global.h"
 #include "undoc.h"
+#include "pe.h"
+#include "ioctrl.h"
+#include "mem.h"
 
-NTSTATUS GetUserImages(PSYSTEM_PROCESS_INFORMATION images, ULONG size);
-NTSTATUS GetUserImageModules(ULONG pid, PRTL_PROCESS_MODULES modules, ULONG size);
-NTSTATUS GetUserImageThreads(ULONG pid, PSYSTEM_THREAD_INFORMATION images, ULONG size);
+VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
+VOID GetUserModules(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
+
+PVOID GetKernelModuleBase(PCHAR moduleName);
+PVOID GetUserModuleBase(PEPROCESS process, PWCHAR moduleName);
 
 #endif

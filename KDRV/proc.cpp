@@ -1,68 +1,100 @@
 #include "proc.h"
 
-NTSTATUS GetUserImages(PSYSTEM_PROCESS_INFORMATION images, ULONG size)
+VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
 {
-  NTSTATUS status = STATUS_SUCCESS;
-  // Query user images
-  ULONG returnSize = 0;
-  status = ZwQuerySystemInformation(SystemProcessInformation, images, sizeof(SYSTEM_PROCESS_INFORMATION) * size, &returnSize);
-  if (!NT_SUCCESS(status))
+  ULONG bytes = 0;
+  ZwQuerySystemInformation(SystemModuleInformation, 0, bytes, &bytes);
+  PRTL_PROCESS_MODULES buffer = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, bytes);
+  ZwQuerySystemInformation(SystemModuleInformation, buffer, bytes, &bytes);
+  request->Size = bytes / sizeof(RTL_PROCESS_MODULES);
+  RtlCopyMemory(request->Buffer, buffer, bytes);
+  PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)buffer;
+  PRTL_PROCESS_MODULE_INFORMATION module = modules->Modules;
+  if (verbose)
   {
-    LOG_ERROR("ZwQuerySystemInformation %X\n", status);
-    return status;
+    for (ULONG i = 0; i < modules->NumberOfModules; ++i)
+    {
+      LOG_INFO("Module: %s\n", (PCHAR)(module[i].FullPathName + module[i].OffsetToFileName));
+      LOG_INFO("Size: %u\n", module[i].ImageSize);
+    }
   }
-  returnSize /= sizeof(SYSTEM_PROCESS_INFORMATION);
-  // Normalize and print images
-  LOG_INFO("Requested %u images\n", size);
-  LOG_INFO("Received %u images\n", returnSize);
-  for (ULONG i = 0; i < returnSize; ++i)
-  {
-    LOG_INFO("Pid: %u Name: %wZ\n", *(PULONG)images[i].UniqueProcessId, &images[i].ImageName);
-  }
-  return status;
+  RtlFreeMemory(buffer);
 }
-NTSTATUS GetUserImageModules(ULONG pid, PRTL_PROCESS_MODULES modules, ULONG size)
+VOID GetUserModules(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
 {
-  UNREFERENCED_PARAMETER(pid);
-  NTSTATUS status = STATUS_SUCCESS;
-  // Query user images
-  ULONG returnSize = 0;
-  status = ZwQuerySystemInformation(SystemModuleInformation, modules, sizeof(RTL_PROCESS_MODULES) * size, &returnSize);
-  if (!NT_SUCCESS(status))
+  KAPC_STATE apc;
+  KeStackAttachProcess(process, &apc);
+  PPEB64 peb64 = (PPEB64)PsGetProcessPeb(process);
+  PLDR_DATA_TABLE_ENTRY ldrTable = CONTAINING_RECORD(peb64->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+  PLDR_DATA_TABLE_ENTRY module = NULL;
+  PLIST_ENTRY entry = NULL;
+  PLIST_ENTRY head = &ldrTable->InMemoryOrderLinks;
+  ULONG moduleAcc = 0;
+  ULONG byteOffset = 0;
+  entry = head->Flink;
+  while (entry != head)
   {
-    LOG_ERROR("ZwQuerySystemInformation %X\n", status);
-    return status;
+    module = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+    //CopyUserMemory((PVOID)((ULONG_PTR)request->Buffer + byteOffset), module, sizeof(LDR_DATA_TABLE_ENTRY));
+    moduleAcc++;
+    byteOffset += sizeof(LDR_DATA_TABLE_ENTRY);
+    if (verbose)
+    {
+      LOG_INFO("Module: %wZ\n", &module->BaseDllName);
+      LOG_INFO("Size: %u\n", module->SizeOfImage);
+    }
+    entry = entry->Flink;
   }
-  returnSize /= sizeof(RTL_PROCESS_MODULES);
-  // Normalize and print modules
-  LOG_INFO("Requested %u modules\n", size);
-  LOG_INFO("Received %u modules\n", returnSize);
-  for (ULONG i = 0; i < returnSize; ++i)
-  {
-    LOG_INFO("Number of modules for module: %u\n", modules[i].NumberOfModules);
-    LOG_INFO("Name: %s BaseAddress: %p\n", (PCHAR)modules[i].Modules[0].FullPathName, modules[i].Modules[0].ImageBase);
-  }
-  return status;
+  // source 00000206DB0D06E0
+  // dest   0000015731E604D0
+  request->Size = moduleAcc;
+  KeUnstackDetachProcess(&apc);
 }
-NTSTATUS GetUserImageThreads(ULONG pid, PSYSTEM_THREAD_INFORMATION threads, ULONG size)
+
+PVOID GetKernelModuleBase(PCHAR moduleName)
 {
-  UNREFERENCED_PARAMETER(pid);
-  NTSTATUS status = STATUS_SUCCESS;
-  // Query user images
-  ULONG returnSize = 0;
-  status = ZwQuerySystemInformation(SystemProcessInformation, threads, sizeof(SYSTEM_THREAD_INFORMATION) * size, &returnSize);
-  if (!NT_SUCCESS(status))
+  PVOID moduleBase = 0;
+  ULONG bytes = 0;
+  ZwQuerySystemInformation(SystemModuleInformation, 0, bytes, &bytes);
+  PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, bytes);
+  ZwQuerySystemInformation(SystemModuleInformation, modules, bytes, &bytes);
+  PRTL_PROCESS_MODULE_INFORMATION module = modules->Modules;
+  for (ULONG i = 0; i < modules->NumberOfModules; ++i)
   {
-    LOG_ERROR("ZwQuerySystemInformation %X\n", status);
-    return status;
+    if (strcmp((PCHAR)(module[i].FullPathName + module[i].OffsetToFileName), moduleName) == 0)
+    {
+      moduleBase = module[i].ImageBase;
+      break;
+    }
   }
-  returnSize /= sizeof(SYSTEM_THREAD_INFORMATION);
-  // Normalize and print threads
-  LOG_INFO("Requested %u threads\n", size);
-  LOG_INFO("Received %u threads\n", returnSize);
-  for (ULONG i = 0; i < returnSize; ++i)
+  if (modules)
   {
-    LOG_INFO("Pid: %u Tid: %u BaseAddress: %p\n", *(PULONG)threads[i].ClientId.UniqueProcess, *(PULONG)threads[i].ClientId.UniqueThread, threads[i].StartAddress);
+    RtlFreeMemory(modules);
   }
-  return status;
+  return moduleName;
+}
+PVOID GetUserModuleBase(PEPROCESS process, PWCHAR moduleName)
+{
+  PVOID moduleBase = NULL;
+  KAPC_STATE apc;
+  KeStackAttachProcess(process, &apc);
+  PPEB64 peb64 = (PPEB64)PsGetProcessPeb(process);
+  PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb64->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+  PLDR_DATA_TABLE_ENTRY module = NULL;
+  PLIST_ENTRY moduleList = modules->InLoadOrderLinks.Flink;
+  PLIST_ENTRY moduleEntry = moduleList->Flink;
+  UNICODE_STRING dllName;
+  while (moduleEntry != moduleList)
+  {
+    module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+    RtlInitUnicodeString(&dllName, moduleName);
+    if (RtlCompareUnicodeString(&dllName, &module->BaseDllName, TRUE) == 0)
+    {
+      moduleBase = module->DllBase;
+      break;
+    }
+    moduleEntry = moduleEntry->Flink;
+  }
+  KeUnstackDetachProcess(&apc);
+  return moduleBase;
 }

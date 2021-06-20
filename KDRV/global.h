@@ -24,6 +24,11 @@ extern "C"
 
 #define LOG_INFO(MSG, ...) DbgPrintEx(0, 0, "[+] " MSG, __VA_ARGS__)
 #define LOG_ERROR(MSG, ...) DbgPrintEx(0, 0, "[-] " MSG, __VA_ARGS__)
+#define LOG_ERROR_IF_NOT_SUCCESS(STATUS, MSG, ...) \
+if (!NT_SUCCESS(STATUS))                           \
+{                                                  \
+  LOG_ERROR(MSG, __VA_ARGS__);                     \
+}
 
 #define LOG_ENTER_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[>] " STR(CLASS) "::" STR(FUNCTION) "\n")
 #define LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " STR(CLASS) "::" STR(FUNCTION) "\n")

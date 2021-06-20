@@ -31,7 +31,7 @@ NTSTATUS ZwQuerySystemInformation(
 }
 
 /////////////////////////////////////////////////
-/// Kernel Images
+/// Kernel Modules
 /////////////////////////////////////////////////
 
 NTSTATUS RtlQueryModuleInformation(
@@ -46,7 +46,7 @@ NTSTATUS RtlQueryModuleInformation(
 }
 
 /////////////////////////////////////////////////
-/// User Images
+/// User Modules
 /////////////////////////////////////////////////
 
 PPEB PsGetProcessPeb(
@@ -77,4 +77,14 @@ NTSTATUS PsResumeProcess(
 {
   return GetSystemRoutine<PSRESUMEPROCESS>(L"PsResumeProcess")(
     Process);
+}
+NTSTATUS PsGetContextThread(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode)
+{
+  return GetSystemRoutine<PSGETCONTEXTTHREAD>(L"PsGetContextThread")(
+    Thread,
+    ThreadContext,
+    Mode);
 }

@@ -6,17 +6,15 @@ extern "C"
 {
 #endif
 
+#include <stdio.h>
+#include <string.h>
+
 #include <windows.h>
 #include <tlhelp32.h>
 
 #ifdef __cplusplus
 }
 #endif
-
-#include <iostream>
-#include <string>
-#include <vector>
-#include <string>
 
 #include <capstone/capstone.h>
 #include <capstone/platform.h>

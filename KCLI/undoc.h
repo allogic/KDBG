@@ -78,4 +78,16 @@ typedef struct _SYSTEM_THREAD_INFORMATION
   ULONG WaitReason;
 } SYSTEM_THREAD_INFORMATION, * PSYSTEM_THREAD_INFORMATION;
 
+typedef struct _LDR_DATA_TABLE_ENTRY
+{
+  LIST_ENTRY InLoadOrderLinks;
+  LIST_ENTRY InMemoryOrderLinks;
+  CHAR Reserved0[0x10];
+  PVOID DllBase;
+  PVOID EntryPoint;
+  ULONG SizeOfImage;
+  UNICODE_STRING FullDllName;
+  UNICODE_STRING BaseDllName;
+} LDR_DATA_TABLE_ENTRY, * PLDR_DATA_TABLE_ENTRY;
+
 #endif
