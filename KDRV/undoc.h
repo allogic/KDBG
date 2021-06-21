@@ -793,7 +793,6 @@ typedef struct _KTHREAD
   PVOID SListFaultAddress;
   PVOID MdlForLockedTeb;
 } KTHREAD, * PKTHREAD;
-
 typedef struct _ETHREAD
 {
   KTHREAD Tcb;
@@ -897,9 +896,145 @@ typedef struct _ETHREAD
   ULONG CacheManagerCount;
 } ETHREAD;
 
+typedef struct _FLOATING_SAVE_AREA
+{
+  ULONG ControlWord;
+  ULONG StatusWord;
+  ULONG TagWord;
+  ULONG ErrorOffset;
+  ULONG ErrorSelector;
+  ULONG DataOffset;
+  ULONG DataSelector;
+  UCHAR RegisterArea[80];
+  ULONG Cr0NpxState;
+} FLOATING_SAVE_AREA, * PFLOATING_SAVE_AREA;
+/*
+typedef struct _KCONTEXT
+{
+  ULONG ContextFlags;
+  ULONG Dr0;
+  ULONG Dr1;
+  ULONG Dr2;
+  ULONG Dr3;
+  ULONG Dr6;
+  ULONG Dr7;
+  FLOATING_SAVE_AREA FloatSave;
+  ULONG SegGs;
+  ULONG SegFs;
+  ULONG SegEs;
+  ULONG SegDs;
+  ULONG Edi;
+  ULONG Esi;
+  ULONG Ebx;
+  ULONG Edx;
+  ULONG Ecx;
+  ULONG Eax;
+  ULONG Ebp;
+  ULONG Eip;
+  ULONG SegCs;
+  ULONG EFlags;
+  ULONG Esp;
+  ULONG SegSs;
+  UCHAR ExtendedRegisters[512];
+} KCONTEXT, * PKCONTEXT;
+*/
+typedef union _NEON128
+{
+  struct _Dummy0
+  {
+    ULONGLONG Low;
+    LONGLONG High;
+  };
+  double D[2];
+  float S[4];
+  WORD  H[8];
+  BYTE  B[16];
+} NEON128, * PNEON128;
+typedef struct _MYCONTEXT
+{
+  DWORD64 P1Home;
+  DWORD64 P2Home;
+  DWORD64 P3Home;
+  DWORD64 P4Home;
+  DWORD64 P5Home;
+  DWORD64 P6Home;
+  DWORD   ContextFlags;
+  DWORD   MxCsr;
+  WORD    SegCs;
+  WORD    SegDs;
+  WORD    SegEs;
+  WORD    SegFs;
+  WORD    SegGs;
+  WORD    SegSs;
+  DWORD   EFlags;
+  DWORD64 Dr0;
+  DWORD64 Dr1;
+  DWORD64 Dr2;
+  DWORD64 Dr3;
+  DWORD64 Dr6;
+  DWORD64 Dr7;
+  DWORD64 Rax;
+  DWORD64 Rcx;
+  DWORD64 Rdx;
+  DWORD64 Rbx;
+  DWORD64 Rsp;
+  DWORD64 Rbp;
+  DWORD64 Rsi;
+  DWORD64 Rdi;
+  DWORD64 R8;
+  DWORD64 R9;
+  DWORD64 R10;
+  DWORD64 R11;
+  DWORD64 R12;
+  DWORD64 R13;
+  DWORD64 R14;
+  DWORD64 R15;
+  DWORD64 Rip;
+  union
+  {
+    XMM_SAVE_AREA32 FltSave;
+    NEON128         Q[16];
+    ULONGLONG       D[32];
+    struct _Dummy0
+    {
+      M128A Header[2];
+      M128A Legacy[8];
+      M128A Xmm0;
+      M128A Xmm1;
+      M128A Xmm2;
+      M128A Xmm3;
+      M128A Xmm4;
+      M128A Xmm5;
+      M128A Xmm6;
+      M128A Xmm7;
+      M128A Xmm8;
+      M128A Xmm9;
+      M128A Xmm10;
+      M128A Xmm11;
+      M128A Xmm12;
+      M128A Xmm13;
+      M128A Xmm14;
+      M128A Xmm15;
+    };
+    DWORD           S[32];
+  };
+  M128A   VectorRegister[26];
+  DWORD64 VectorControl;
+  DWORD64 DebugControl;
+  DWORD64 LastBranchToRip;
+  DWORD64 LastBranchFromRip;
+  DWORD64 LastExceptionToRip;
+  DWORD64 LastExceptionFromRip;
+} MYCONTEXT, * PMYCONTEXT;
+
 NTSTATUS PsSuspendProcess(PEPROCESS Process);
 NTSTATUS PsResumeProcess(PEPROCESS Process);
+
 NTSTATUS PsGetContextThread(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
+NTSTATUS PsSetContextThread(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode);
@@ -909,6 +1044,10 @@ typedef NTSTATUS(*PSSUSPENDPROCESS)(
 typedef NTSTATUS(*PSRESUMEPROCESS)(
   PEPROCESS Process);
 typedef NTSTATUS(*PSGETCONTEXTTHREAD)(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
+typedef NTSTATUS(*PSSETCONTEXTTHREAD)(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode);

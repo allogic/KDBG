@@ -3,7 +3,7 @@
 
 #include "global.h"
 
-ULONG GetProcessId(PWCHAR processName);
+ULONG GetProcId(PWCHAR processName);
 
 SIZE_T ArgvLength(PWCHAR argv);
 PBYTE ArgvToBytes(PWCHAR argv);

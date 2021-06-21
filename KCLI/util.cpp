@@ -1,6 +1,6 @@
 #include "util.h"
 
-ULONG GetProcessId(PWCHAR processName)
+ULONG GetProcId(PWCHAR processName)
 {
   PROCESSENTRY32 pe;
   pe.dwSize = sizeof(PROCESSENTRY32);

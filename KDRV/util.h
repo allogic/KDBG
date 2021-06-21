@@ -3,6 +3,6 @@
 
 #include "global.h"
 
-NTSTATUS DumpToFile(PUNICODE_STRING path, PVOID bytes, ULONG size);
+NTSTATUS DumpToFile(PWSTR filePath, PVOID bytes, ULONG size);
 
 #endif

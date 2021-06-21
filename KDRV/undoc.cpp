@@ -78,12 +78,23 @@ NTSTATUS PsResumeProcess(
   return GetSystemRoutine<PSRESUMEPROCESS>(L"PsResumeProcess")(
     Process);
 }
+
 NTSTATUS PsGetContextThread(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode)
 {
   return GetSystemRoutine<PSGETCONTEXTTHREAD>(L"PsGetContextThread")(
+    Thread,
+    ThreadContext,
+    Mode);
+}
+NTSTATUS PsSetContextThread(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode)
+{
+  return GetSystemRoutine<PSSETCONTEXTTHREAD>(L"PsSetContextThread")(
     Thread,
     ThreadContext,
     Mode);

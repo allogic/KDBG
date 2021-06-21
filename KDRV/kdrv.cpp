@@ -70,6 +70,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
   irp->IoStatus.Information = 0;
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   PEPROCESS process = NULL;
+  PETHREAD thread = NULL;
   __try
   {
     switch (stack->Parameters.DeviceIoControl.IoControlCode)
@@ -87,7 +88,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
           case KDRV_REQ_DUMP_MODULES::User:
           {
             irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-            LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "Failed finding process\n");
+            LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
             GetUserModules(process, request, TRUE);
             break;
           }
@@ -97,17 +98,12 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
       }
       case KDRV_CTRL_DUMP_THREADS:
       {
-        PKDRV_REQ_DUMP_THREADS request = (PKDRV_REQ_DUMP_THREADS)irp->AssociatedIrp.SystemBuffer;
+        PKDRV_REQ_DUMP_THREADS request = (PKDRV_REQ_DUMP_THREADS)MmGetSystemAddressForMdl(irp->MdlAddress);
         irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "Failed finding process\n");
-        PETHREAD thread = NULL;
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
         irp->IoStatus.Status = PsLookupThreadByThreadId((HANDLE)request->Tid, &thread);
-        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "Failed finding thread %X\n", irp->IoStatus.Status);
-        LOG_INFO("Found thread at %p\n", thread);
-        UNICODE_STRING filePath;
-        RtlInitUnicodeString(&filePath, L"\\??\\C:\\Users\\Test\\Desktop\\krnl_dump.txt");
-        LOG_INFO("Dumping to file %wZ\n", filePath);
-        DumpToFile(&filePath, thread, sizeof(ETHREAD));
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
+        DumpToFile(L"\\??\\C:\\Users\\Test\\Desktop\\krnl_thread_dump.txt", thread, sizeof(ETHREAD));
         if (thread)
         {
           //LOG_INFO("Pid: %u\n", *(PULONG)((ETHREAD*)thread)->Cid.UniqueProcess);
@@ -120,7 +116,85 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
       }
       case KDRV_CTRL_DUMP_REGISTERS:
       {
-        //PKDRV_REQ_DUMP_REGISTERS request = (PKDRV_REQ_DUMP_REGISTERS)irp->AssociatedIrp.SystemBuffer;
+        PKDRV_REQ_DUMP_REGISTERS request = (PKDRV_REQ_DUMP_REGISTERS)MmGetSystemAddressForMdl(irp->MdlAddress);
+        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
+        irp->IoStatus.Status = PsLookupThreadByThreadId((HANDLE)request->Tid, &thread);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
+        CONTEXT Context;
+        RtlZeroMemory(&Context, sizeof(CONTEXT));
+        Context.ContextFlags = CONTEXT_ALL;
+        irp->IoStatus.Status = PsGetContextThread(thread, &Context, KernelMode);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsGetContextThread %X\n", irp->IoStatus.Status);
+        DumpToFile(L"\\??\\C:\\Users\\Test\\Desktop\\krnl_register_dump.txt", &Context, sizeof(CONTEXT));
+        LOG_INFO("Control flags\n");
+        LOG_INFO("ContextFlags: %u\n", Context.ContextFlags);
+        LOG_INFO("MxCsr: %u\n", Context.MxCsr);
+        LOG_INFO("\n");
+        LOG_INFO("Segment registers and processor flags\n");
+        LOG_INFO("SegCs: %u\n", Context.SegCs);
+        LOG_INFO("SegDs: %u\n", Context.SegDs);
+        LOG_INFO("SegEs: %u\n", Context.SegEs);
+        LOG_INFO("SegFs: %u\n", Context.SegFs);
+        LOG_INFO("SegGs: %u\n", Context.SegGs);
+        LOG_INFO("SegSs: %u\n", Context.SegSs);
+        LOG_INFO("EFlags: %u\n", Context.EFlags);
+        LOG_INFO("\n");
+        LOG_INFO("Debug registers\n");
+        LOG_INFO("Dr0: %llu\n", Context.Dr0);
+        LOG_INFO("Dr1: %llu\n", Context.Dr1);
+        LOG_INFO("Dr2: %llu\n", Context.Dr2);
+        LOG_INFO("Dr3: %llu\n", Context.Dr3);
+        LOG_INFO("Dr6: %llu\n", Context.Dr6);
+        LOG_INFO("Dr7: %llu\n", Context.Dr7);
+        LOG_INFO("\n");
+        LOG_INFO("Integer registers\n");
+        LOG_INFO("Rax: %llu\n", Context.Rax);
+        LOG_INFO("Rcx: %llu\n", Context.Rcx);
+        LOG_INFO("Rdx: %llu\n", Context.Rdx);
+        LOG_INFO("Rbx: %llu\n", Context.Rbx);
+        LOG_INFO("Rsp: %llu\n", Context.Rsp);
+        LOG_INFO("Rbp: %llu\n", Context.Rbp);
+        LOG_INFO("Rsi: %llu\n", Context.Rsi);
+        LOG_INFO("Rdi: %llu\n", Context.Rdi);
+        LOG_INFO("R8: %llu\n", Context.R8);
+        LOG_INFO("R9: %llu\n", Context.R9);
+        LOG_INFO("R10: %llu\n", Context.R10);
+        LOG_INFO("R11: %llu\n", Context.R11);
+        LOG_INFO("R12: %llu\n", Context.R12);
+        LOG_INFO("R13: %llu\n", Context.R13);
+        LOG_INFO("R14: %llu\n", Context.R14);
+        LOG_INFO("R15: %llu\n", Context.R15);
+        LOG_INFO("\n");
+        LOG_INFO("Program counter\n");
+        LOG_INFO("Rip: %llu\n", Context.Rip);
+        LOG_INFO("\n");
+        LOG_INFO("Special debug control registers\n");
+        LOG_INFO("DebugControl: %llu\n", Context.DebugControl);
+        LOG_INFO("LastBranchToRip: %llu\n", Context.LastBranchToRip);
+        LOG_INFO("LastBranchFromRip: %llu\n", Context.LastBranchFromRip);
+        LOG_INFO("LastExceptionToRip: %llu\n", Context.LastExceptionToRip);
+        LOG_INFO("LastExceptionFromRip: %llu\n", Context.LastExceptionFromRip);
+        break;
+      }
+      case KDRV_CTRL_THREAD_SUSPEND:
+      {
+        PKDRV_REQ_THREAD_SUSPEND request = (PKDRV_REQ_THREAD_SUSPEND)MmGetSystemAddressForMdl(irp->MdlAddress);
+        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "Failed finding process\n");
+        irp->IoStatus.Status = PsSuspendProcess(process);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsSuspendProcess %X\n", irp->IoStatus.Status);
+        // TODO: impl for KeSuspendThread ...
+        break;
+      }
+      case KDRV_CTRL_THREAD_RESUME:
+      {
+        PKDRV_REQ_THREAD_RESUME request = (PKDRV_REQ_THREAD_RESUME)MmGetSystemAddressForMdl(irp->MdlAddress);
+        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "Failed finding process\n");
+        irp->IoStatus.Status = PsResumeProcess(process);
+        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsResumeProcess %X\n", irp->IoStatus.Status);
+        // TODO: impl for KeResumeThread ...
         break;
       }
     }
@@ -133,6 +207,12 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
       ObDereferenceObject(process);
       process = NULL;
     }
+    if (thread != NULL)
+    {
+      LOG_INFO("Exception cleanup handler executed\n");
+      ObDereferenceObject(thread);
+      thread = NULL;
+    }
     LOG_ERROR("Something went wrong\n");
   }
   if (process != NULL)
@@ -140,6 +220,12 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
     LOG_INFO("Default cleanup handler executed\n");
     ObDereferenceObject(process);
     process = NULL;
+  }
+  if (thread != NULL)
+  {
+    LOG_INFO("Default cleanup handler executed\n");
+    ObDereferenceObject(thread);
+    thread = NULL;
   }
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;
