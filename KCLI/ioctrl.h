@@ -3,8 +3,10 @@
 
 #include "global.h"
 
-#define KDRV_CTRL_DUMP_MODULES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
-#define KDRV_CTRL_DUMP_THREADS CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
+#define KDRV_CTRL_DUMP_INFO CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0666, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
+
+#define KDRV_CTRL_DUMP_KRNL_IMAGES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
+#define KDRV_CTRL_DUMP_PROCESSES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 #define KDRV_CTRL_DUMP_REGISTERS CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0102, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 
 #define KDRV_CTRL_MEMORY_READ CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0200, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
@@ -13,44 +15,48 @@
 #define KDRV_CTRL_THREAD_SUSPEND CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0300, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 #define KDRV_CTRL_THREAD_RESUME CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0301, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 
-typedef struct _KDRV_REQ_DUMP_MODULES
+/////////////////////////////////////////////////
+/// Dump requests
+/////////////////////////////////////////////////
+
+typedef struct _KDRV_REQ_DUMP_KRNL_IMAGES
 {
-  enum
-  {
-    Kernel,
-    User,
-  } Mode;
-  ULONG Pid;
-  ULONG Size;
   typedef struct
   {
+    CHAR Name[256];
     PVOID Base;
-    union
-    {
-      CHAR Name[256];
-      WCHAR WName[256];
-    };
     ULONG Size;
   } MODULE, * PMODULE;
   PMODULE Modules;
-} KDRV_REQ_DUMP_MODULES, * PKDRV_REQ_DUMP_MODULES;
-typedef struct _KDRV_REQ_DUMP_THREADS
+  ULONG ModuleCount;
+} KDRV_REQ_DUMP_KRNL_IMAGES, * PKDRV_REQ_DUMP_KRNL_IMAGES;
+typedef struct _KDRV_REQ_DUMP_PROCESSES
 {
-  ULONG Size;
+  typedef struct
+  {
+    ULONG Tid;
+    PVOID Base;
+    ULONG State;
+  } THREAD, * PTHREAD;
   typedef struct
   {
     ULONG Pid;
-    ULONG Tid;
-    PVOID Start;
-    ULONG State;
-  } THREAD, * PTHREAD;
-  PTHREAD Threads;
-} KDRV_REQ_DUMP_THREADS, * PKDRV_REQ_DUMP_THREADS;
+    WCHAR Name[256];
+    PTHREAD Threads;
+    ULONG ThreadCount;
+  } PROCESS, * PPROCESS;
+  PPROCESS Processes;
+  ULONG ProcessCount;
+} KDRV_REQ_DUMP_PROCESSES, * PKDRV_REQ_DUMP_PROCESSES;
 typedef struct _KDRV_REQ_DUMP_REGISTERS
 {
   ULONG Tid;
   CONTEXT Registers;
 } KDRV_REQ_DUMP_REGISTERS, * PKDRV_REQ_DUMP_REGISTERS;
+
+/////////////////////////////////////////////////
+/// Memory requests
+/////////////////////////////////////////////////
 
 typedef struct _KDRV_REQ_MEMORY_READ
 {
@@ -68,6 +74,10 @@ typedef struct _KDRV_REQ_MEMORY_WRITE
   ULONG Offset;
   ULONG Size;
 } KDRV_REQ_MEMORY_WRITE, * PKDRV_REQ_MEMORY_WRITE;
+
+/////////////////////////////////////////////////
+/// Thread requests
+/////////////////////////////////////////////////
 
 typedef struct _KDRV_REQ_THREAD_SUSPEND
 {

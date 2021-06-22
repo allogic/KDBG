@@ -1,6 +1,6 @@
 #include "proc.h"
 
-VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
+VOID GetKernelImages(PKDRV_REQ_DUMP_KRNL_IMAGES request, BOOL verbose)
 {
   ULONG bytes = 0;
   ZwQuerySystemInformation(SystemModuleInformation, 0, bytes, &bytes);
@@ -8,69 +8,67 @@ VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
   ZwQuerySystemInformation(SystemModuleInformation, buffer, bytes, &bytes);
   PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)buffer;
   PRTL_PROCESS_MODULE_INFORMATION moduleInfo = modules->Modules;
-  ULONG size = bytes / sizeof(RTL_PROCESS_MODULES);
-  for (ULONG i = 0; i < size; ++i)
+  ULONG moduleCount = bytes / sizeof(RTL_PROCESS_MODULES);
+  for (ULONG i = 0; i < moduleCount; ++i)
   {
     if (verbose)
     {
       LOG_INFO("Base: %p\n", moduleInfo[i].ImageBase);
       LOG_INFO("Name: %s\n", (PCHAR)(moduleInfo[i].FullPathName + moduleInfo[i].OffsetToFileName));
       LOG_INFO("Size: %u\n", moduleInfo[i].ImageSize);
+      LOG_INFO("\n");
     }
     request->Modules[i].Base = moduleInfo[i].ImageBase;
     strcpy(request->Modules[i].Name, (PCHAR)(moduleInfo[i].FullPathName + moduleInfo[i].OffsetToFileName));
+    request->Modules[i].Size = moduleInfo[i].ImageSize;
   }
-  request->Size = size;
+  request->ModuleCount = moduleCount;
   RtlFreeMemory(buffer);
 }
-VOID GetUserModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
+VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
 {
   ULONG bytes = 0;
   ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
-  PRTL_PROCESS_MODULES buffer = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, bytes);
+  PVOID buffer = (PVOID)RtlAllocateMemory(TRUE, bytes);
   ZwQuerySystemInformation(SystemProcessInformation, buffer, bytes, &bytes);
-  PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)buffer;
-  PRTL_PROCESS_MODULE_INFORMATION moduleInfo = modules->Modules;
-  ULONG size = bytes / sizeof(RTL_PROCESS_MODULES);
-  for (ULONG i = 0; i < size; ++i)
+  PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)buffer;
+  ULONG processAcc = 0;
+  while (1)
   {
     if (verbose)
     {
-      LOG_INFO("Base: %p\n", moduleInfo[i].ImageBase);
-      LOG_INFO("Name: %s\n", (PCHAR)(moduleInfo[i].FullPathName + moduleInfo[i].OffsetToFileName));
-      LOG_INFO("Size: %u\n", moduleInfo[i].ImageSize);
+      LOG_INFO("Name: %wZ\n", &processInfo->ImageName);
+      LOG_INFO("Pid: %u\n", *(PULONG)processInfo->UniqueProcessId);
+      LOG_INFO("Threads: %u\n", processInfo->NumberOfThreads);
     }
-    request->Modules[i].Base = moduleInfo[i].ImageBase;
-    strcpy(request->Modules[i].Name, (PCHAR)(moduleInfo[i].FullPathName + moduleInfo[i].OffsetToFileName));
-  }
-  request->Size = size;
-  RtlFreeMemory(buffer);
-}
-VOID GetUserThreads(PKDRV_REQ_DUMP_THREADS request, BOOL verbose)
-{
-  ULONG bytes = 0;
-  ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
-  PSYSTEM_THREAD_INFORMATION buffer = (PSYSTEM_THREAD_INFORMATION)RtlAllocateMemory(TRUE, bytes);
-  ZwQuerySystemInformation(SystemProcessInformation, buffer, bytes, &bytes);
-  ULONG size = bytes / sizeof(SYSTEM_THREAD_INFORMATION);
-  for (ULONG i = 0; i < size; ++i)
-  {
-    if (verbose)
+    for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
     {
-      LOG_INFO("Pid: %u\n", *(PULONG)(buffer[i].ClientId.UniqueProcess));
-      LOG_INFO("Tid: %u\n", *(PULONG)(buffer[i].ClientId.UniqueThread));
-      LOG_INFO("Start: %p\n", buffer[i].StartAddress);
-      LOG_INFO("State: %u\n", buffer[i].ThreadState);
+      PSYSTEM_THREAD_INFORMATION thread = (PSYSTEM_THREAD_INFORMATION)(((PBYTE)processInfo) + sizeof(SYSTEM_PROCESS_INFORMATION) + sizeof(SYSTEM_THREAD_INFORMATION) * i);
+      if (verbose)
+      {
+        LOG_INFO("\tTid: %u\n", *(PULONG)thread->ClientId.UniqueThread);
+        LOG_INFO("\tBase: %p\n", thread->StartAddress);
+        LOG_INFO("\n");
+      }
+      request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
+      request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
+      request->Processes[processAcc].Threads[i].State = thread->ThreadState;
     }
-    request->Threads[i].Pid = *(PULONG)(buffer[i].ClientId.UniqueProcess);
-    request->Threads[i].Tid = *(PULONG)(buffer[i].ClientId.UniqueThread);
-    request->Threads[i].Start = buffer[i].StartAddress;
-    request->Threads[i].State = buffer[i].ThreadState;
+    request->Processes[processAcc].Pid = *(PULONG)processInfo->UniqueProcessId;
+    wcscpy(request->Processes[processAcc].Name, processInfo->ImageName.Buffer);
+    request->Processes[processAcc].ThreadCount = processInfo->NumberOfThreads;
+    if (!processInfo->NextEntryOffset)
+    {
+      break;
+    }
+    processInfo = (PSYSTEM_PROCESS_INFORMATION)(((PBYTE)processInfo) + processInfo->NextEntryOffset);
+    processAcc++;
   }
-  request->Size = size;
+  request->ProcessCount = processAcc;
   RtlFreeMemory(buffer);
 }
 
+/*
 VOID GetUserModulesSave(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
 {
   KAPC_STATE apc;
@@ -100,6 +98,7 @@ VOID GetUserModulesSave(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL 
   request->Size = moduleAcc;
   KeUnstackDetachProcess(&apc);
 }
+*/
 
 PVOID GetKernelModuleBase(PCHAR moduleName)
 {

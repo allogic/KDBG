@@ -7,12 +7,8 @@
 #include "ioctrl.h"
 #include "mem.h"
 
-VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
-
-VOID GetUserModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
-VOID GetUserThreads(PKDRV_REQ_DUMP_THREADS request, BOOL verbose = FALSE);
-
-VOID GetUserModulesSave(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
+VOID GetKernelImages(PKDRV_REQ_DUMP_KRNL_IMAGES request, BOOL verbose = FALSE);
+VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose = FALSE);
 
 PVOID GetKernelModuleBase(PCHAR moduleName);
 PVOID GetUserModuleBase(PEPROCESS process, PWCHAR moduleName);

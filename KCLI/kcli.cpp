@@ -13,62 +13,57 @@ INT wmain(INT argc, PWCHAR argv[])
     return 1;
   }
   // Dump kernel modules
-  if (wcscmp(argv[1], L"/DumpKernelModules") == 0)
+  if (wcscmp(argv[1], L"/DumpKernelImages") == 0)
   {
-    KDRV_REQ_DUMP_MODULES request;
-    request.Mode = KDRV_REQ_DUMP_MODULES::Kernel;
-    request.Size = wcstoul(argv[2], NULL, 10);
-    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::MODULE) * request.Size);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
+    KDRV_REQ_DUMP_KRNL_IMAGES request;
+    request.ModuleCount = wcstoul(argv[2], NULL, 10);
+    request.Modules = (KDRV_REQ_DUMP_KRNL_IMAGES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_KRNL_IMAGES::MODULE) * request.ModuleCount);
+    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_KRNL_IMAGES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
-      for (ULONG i = 0; i < request.Size; ++i)
+      for (ULONG i = 0; i < request.ModuleCount; ++i)
       {
-        LOG_INFO("Base: %p\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Base);
-        LOG_INFO("Name: %s\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Name);
-        LOG_INFO("Size: %u\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Size);
+        LOG_INFO("Name: %s\n", request.Modules[i].Name);
+        LOG_INFO("Base: %p\n", request.Modules[i].Base);
+        LOG_INFO("Size: %u\n", request.Modules[i].Size);
+        LOG_INFO("\n");
       }
     }
     free(request.Modules);
   }
   // Dump user modules
-  if (wcscmp(argv[1], L"/DumpUserModules") == 0)
+  if (wcscmp(argv[1], L"/DumpUserProcesses") == 0)
   {
-    KDRV_REQ_DUMP_MODULES request;
-    request.Mode = KDRV_REQ_DUMP_MODULES::User;
-    request.Pid = wcstoul(argv[2], NULL, 10);
-    request.Size = wcstoul(argv[3], NULL, 10);
-    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::MODULE) * request.Size);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
+    KDRV_REQ_DUMP_PROCESSES request;
+    ULONG processCount = wcstoul(argv[2], NULL, 10);
+    ULONG threadCount = wcstoul(argv[3], NULL, 10);
+    request.Processes = (KDRV_REQ_DUMP_PROCESSES::PPROCESS)malloc(sizeof(KDRV_REQ_DUMP_PROCESSES::PROCESS) * processCount);
+    for (ULONG i = 0; i < processCount; ++i)
     {
-      for (ULONG i = 0; i < request.Size; ++i)
+      request.Processes[i].Threads = (KDRV_REQ_DUMP_PROCESSES::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_PROCESSES::THREAD) * threadCount);
+    }
+    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_PROCESSES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
+    {
+      for (ULONG i = 0; i < request.ProcessCount; ++i)
       {
-        LOG_INFO("Base: %p\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Base);
-        LOG_INFO("Name: %s\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Name);
-        LOG_INFO("Size: %u\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Size);
+        LOG_INFO("Pid: %u\n", request.Processes[i].Pid);
+        LOG_INFO("Name: %wZ\n", request.Processes[i].Name);
+        LOG_INFO("Threads:\n");
+        for (ULONG j = 0; j < request.Processes[i].ThreadCount; ++j)
+        {
+          LOG_INFO("\tTid: %u\n", request.Processes[i].Threads[j].Tid);
+          LOG_INFO("\tBase: %p\n", request.Processes[i].Threads[j].Base);
+          LOG_INFO("\tState: %u\n", request.Processes[i].Threads[j].State);
+        }
       }
     }
-    free(request.Modules);
-  }
-  // Dump process threads
-  if (wcscmp(argv[1], L"/DumpUserThreads") == 0)
-  {
-    KDRV_REQ_DUMP_THREADS request;
-    request.Size = wcstoul(argv[2], NULL, 10);
-    request.Threads = (KDRV_REQ_DUMP_THREADS::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_THREADS::THREAD) * request.Size);
-    if (DeviceIoControl(Device, KDRV_CTRL_DUMP_THREADS, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
+    for (ULONG i = 0; i < request.ProcessCount; ++i)
     {
-      for (ULONG i = 0; i < request.Size; ++i)
-      {
-        LOG_INFO("Pid: %u\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].Pid);
-        LOG_INFO("Tid: %u\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].Tid);
-        LOG_INFO("Start: %p\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].Start);
-        LOG_INFO("State: %u\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].State);
-      }
+      free(request.Processes[i].Threads);
     }
-    free(request.Threads);
+    free(request.Processes);
   }
   // Dump thread registers
-  if (wcscmp(argv[1], L"/DumpUserThreadRegisters") == 0)
+  if (wcscmp(argv[1], L"/DumpThreadRegisters") == 0)
   {
     KDRV_REQ_DUMP_REGISTERS request;
     request.Tid = wcstoul(argv[2], NULL, 10);

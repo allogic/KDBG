@@ -75,35 +75,24 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
   {
     switch (stack->Parameters.DeviceIoControl.IoControlCode)
     {
-      case KDRV_CTRL_DUMP_MODULES:
+      case KDRV_CTRL_DUMP_INFO:
       {
-        PKDRV_REQ_DUMP_MODULES request = (PKDRV_REQ_DUMP_MODULES)MmGetSystemAddressForMdl(irp->MdlAddress);
-        switch (request->Mode)
-        {
-          case KDRV_REQ_DUMP_MODULES::Kernel:
-          {
-            GetKernelModules(request, TRUE);
-            break;
-          }
-          case KDRV_REQ_DUMP_MODULES::User:
-          {
-            irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-            LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
-            GetUserModules(request, TRUE);
-            break;
-          }
-        }
-        irp->IoStatus.Information = sizeof(KDRV_REQ_DUMP_MODULES);
+        PKDRV_REQ_DUMP_INFO request = (PKDRV_REQ_DUMP_INFO)MmGetSystemAddressForMdl(irp->MdlAddress);
+        switch (request)
         break;
       }
-      case KDRV_CTRL_DUMP_THREADS:
+      case KDRV_CTRL_DUMP_KRNL_IMAGES:
       {
-        PKDRV_REQ_DUMP_THREADS request = (PKDRV_REQ_DUMP_THREADS)MmGetSystemAddressForMdl(irp->MdlAddress);
-        //irp->IoStatus.Status = PsLookupThreadByThreadId((HANDLE)request->Tid, &thread);
-        //LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
-        GetUserThreads(request, TRUE);
-        DumpToFile(L"\\??\\C:\\Users\\Test\\Desktop\\krnl_thread_dump.txt", thread, sizeof(ETHREAD));
-        // TODO: enum all threads of current process ...
+        PKDRV_REQ_DUMP_KRNL_IMAGES request = (PKDRV_REQ_DUMP_KRNL_IMAGES)MmGetSystemAddressForMdl(irp->MdlAddress);
+        GetKernelImages(request, TRUE);
+        irp->IoStatus.Information = sizeof(KDRV_REQ_DUMP_KRNL_IMAGES);
+        break;
+      }
+      case KDRV_CTRL_DUMP_PROCESSES:
+      {
+        PKDRV_REQ_DUMP_PROCESSES request = (PKDRV_REQ_DUMP_PROCESSES)MmGetSystemAddressForMdl(irp->MdlAddress);
+        GetUserProcesses(request, TRUE);
+        irp->IoStatus.Information = sizeof(KDRV_REQ_DUMP_PROCESSES);
         break;
       }
       case KDRV_CTRL_DUMP_REGISTERS:
@@ -171,6 +160,16 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
         SIZE_T regionSize = 0;
         irp->IoStatus.Status = ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, &regionSize, MEM_RELEASE);
         LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "ZwFreeVirtualMemory %X\n", irp->IoStatus.Status);
+        break;
+      }
+      case KDRV_CTRL_MEMORY_READ:
+      {
+        // TODO: impl me ...
+        break;
+      }
+      case KDRV_CTRL_MEMORY_WRITE:
+      {
+        // TODO: impl me ...
         break;
       }
       case KDRV_CTRL_THREAD_SUSPEND:
