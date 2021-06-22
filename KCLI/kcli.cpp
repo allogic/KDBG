@@ -18,95 +18,117 @@ INT wmain(INT argc, PWCHAR argv[])
     KDRV_REQ_DUMP_MODULES request;
     request.Mode = KDRV_REQ_DUMP_MODULES::Kernel;
     request.Size = wcstoul(argv[2], NULL, 10);
-    request.Buffer = malloc(sizeof(RTL_PROCESS_MODULES) * request.Size);
+    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::PMODULE) * request.Size);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
-      LOG_INFO("Size: %u\n", request.Size);
-      LOG_INFO("Buffer: %p\n", request.Buffer);
-      PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)request.Buffer;
-      PRTL_PROCESS_MODULE_INFORMATION module = modules->Modules;
-      for (ULONG i = 0; i < modules->NumberOfModules; ++i)
+      for (ULONG i = 0; i < request.Size; ++i)
       {
-        LOG_INFO("Base: %p\n", module[i].ImageBase);
-        LOG_INFO("Name: %s\n", (PCHAR)(module[i].FullPathName + module[i].OffsetToFileName));
-        LOG_INFO("Size: %u\n", module[i].ImageSize);
+        LOG_INFO("Base: %p\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Base);
+        LOG_INFO("Name: %s\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Name);
+        LOG_INFO("Size: %u\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Size);
       }
     }
-    free(request.Buffer);
+    free(request.Modules);
   }
   // Dump user modules
   if (wcscmp(argv[1], L"/DumpUserModules") == 0)
   {
     KDRV_REQ_DUMP_MODULES request;
     request.Mode = KDRV_REQ_DUMP_MODULES::User;
-    request.Pid = GetProcId(L"TaskMgr.exe");
+    request.Pid = wcstoul(argv[2], NULL, 10);
     request.Size = wcstoul(argv[3], NULL, 10);
-    request.Buffer = malloc(sizeof(LDR_DATA_TABLE_ENTRY) * request.Size);
+    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::PMODULE) * request.Size);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
-      LOG_INFO("Size: %u\n", request.Size);
-      LOG_INFO("Buffer: %p\n", request.Buffer);
-      PLDR_DATA_TABLE_ENTRY ldrs = (PLDR_DATA_TABLE_ENTRY)request.Buffer;
       for (ULONG i = 0; i < request.Size; ++i)
       {
-        LOG_INFO("Base: %p\n", ldrs[i].DllBase);
-        LOG_INFO("Name: %wZ\n", &ldrs[i].FullDllName);
-        LOG_INFO("Size: %u\n", ldrs[i].SizeOfImage);
+        LOG_INFO("Base: %p\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Base);
+        LOG_INFO("Name: %s\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Name);
+        LOG_INFO("Size: %u\n", ((KDRV_REQ_DUMP_MODULES::PMODULE)request.Modules)[i].Size);
       }
     }
-    free(request.Buffer);
+    free(request.Modules);
   }
   // Dump process threads
   if (wcscmp(argv[1], L"/DumpUserThreads") == 0)
   {
     KDRV_REQ_DUMP_THREADS request;
-    request.Pid = GetProcId(L"TaskMgr.exe");
-    request.Tid = wcstoul(argv[3], NULL, 10);
-    request.Size = wcstoul(argv[4], NULL, 10);
-    request.Buffer = malloc(sizeof(SYSTEM_THREAD_INFORMATION) * request.Size);
+    request.Size = wcstoul(argv[2], NULL, 10);
+    request.Threads = (KDRV_REQ_DUMP_THREADS::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_THREADS::PTHREAD) * request.Size);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_THREADS, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
-      PSYSTEM_THREAD_INFORMATION threads = (PSYSTEM_THREAD_INFORMATION)request.Buffer;
       for (ULONG i = 0; i < request.Size; ++i)
-        LOG_INFO("Pid: %u Tid: %u BaseAddress: %p\n", *(PULONG)threads[i].ClientId.UniqueProcess, *(PULONG)threads[i].ClientId.UniqueThread, threads[i].StartAddress);
-      LOG_INFO("\n");
+      {
+        LOG_INFO("Pid: %u\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].Pid);
+        LOG_INFO("Tid: %u\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].Tid);
+        LOG_INFO("Start: %p\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].Start);
+        LOG_INFO("State: %u\n", ((KDRV_REQ_DUMP_THREADS::PTHREAD)request.Threads)[i].State);
+      }
     }
-    free(request.Buffer);
+    free(request.Threads);
   }
   // Dump thread registers
   if (wcscmp(argv[1], L"/DumpUserThreadRegisters") == 0)
   {
     KDRV_REQ_DUMP_REGISTERS request;
-    request.Pid = GetProcId(L"TaskMgr.exe");
-    request.Tid = wcstoul(argv[3], NULL, 10);
+    request.Tid = wcstoul(argv[2], NULL, 10);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_REGISTERS, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
-      LOG_INFO("EAX: %u\n", request.Registers.Eax);
-      LOG_INFO("EBX: %u\n", request.Registers.Ebx);
-      LOG_INFO("ECX: %u\n", request.Registers.Ecx);
-      LOG_INFO("EDX: %u\n", request.Registers.Edx);
+      LOG_INFO("Control flags\n");
+      LOG_INFO("ContextFlags: %u\n", request.Registers.ContextFlags);
+      LOG_INFO("MxCsr: %u\n", request.Registers.MxCsr);
       LOG_INFO("\n");
-      LOG_INFO("EBP: %u\n", request.Registers.Ebp);
-      LOG_INFO("EIP: %u\n", request.Registers.Eip);
-      LOG_INFO("ESP: %u\n", request.Registers.Esp);
+      LOG_INFO("Segment registers and processor flags\n");
+      LOG_INFO("SegCs: %u\n", request.Registers.SegCs);
+      LOG_INFO("SegDs: %u\n", request.Registers.SegDs);
+      LOG_INFO("SegEs: %u\n", request.Registers.SegEs);
+      LOG_INFO("SegFs: %u\n", request.Registers.SegFs);
+      LOG_INFO("SegGs: %u\n", request.Registers.SegGs);
+      LOG_INFO("SegSs: %u\n", request.Registers.SegSs);
+      LOG_INFO("EFlags: %u\n", request.Registers.EFlags);
       LOG_INFO("\n");
-      LOG_INFO("EDI: %u\n", request.Registers.Edi);
-      LOG_INFO("ESI: %u\n", request.Registers.Esi);
+      LOG_INFO("Debug registers\n");
+      LOG_INFO("Dr0: %llu\n", request.Registers.Dr0);
+      LOG_INFO("Dr1: %llu\n", request.Registers.Dr1);
+      LOG_INFO("Dr2: %llu\n", request.Registers.Dr2);
+      LOG_INFO("Dr3: %llu\n", request.Registers.Dr3);
+      LOG_INFO("Dr6: %llu\n", request.Registers.Dr6);
+      LOG_INFO("Dr7: %llu\n", request.Registers.Dr7);
       LOG_INFO("\n");
-      LOG_INFO("DR0: %u\n", request.Registers.Dr0);
-      LOG_INFO("DR1: %u\n", request.Registers.Dr1);
-      LOG_INFO("DR2: %u\n", request.Registers.Dr2);
-      LOG_INFO("DR3: %u\n", request.Registers.Dr3);
-      LOG_INFO("DR6: %u\n", request.Registers.Dr6);
-      LOG_INFO("DR7: %u\n", request.Registers.Dr7);
+      LOG_INFO("Integer registers\n");
+      LOG_INFO("Rax: %llu\n", request.Registers.Rax);
+      LOG_INFO("Rcx: %llu\n", request.Registers.Rcx);
+      LOG_INFO("Rdx: %llu\n", request.Registers.Rdx);
+      LOG_INFO("Rbx: %llu\n", request.Registers.Rbx);
+      LOG_INFO("Rsp: %llu\n", request.Registers.Rsp);
+      LOG_INFO("Rbp: %llu\n", request.Registers.Rbp);
+      LOG_INFO("Rsi: %llu\n", request.Registers.Rsi);
+      LOG_INFO("Rdi: %llu\n", request.Registers.Rdi);
+      LOG_INFO("R8: %llu\n", request.Registers.R8);
+      LOG_INFO("R9: %llu\n", request.Registers.R9);
+      LOG_INFO("R10: %llu\n", request.Registers.R10);
+      LOG_INFO("R11: %llu\n", request.Registers.R11);
+      LOG_INFO("R12: %llu\n", request.Registers.R12);
+      LOG_INFO("R13: %llu\n", request.Registers.R13);
+      LOG_INFO("R14: %llu\n", request.Registers.R14);
+      LOG_INFO("R15: %llu\n", request.Registers.R15);
       LOG_INFO("\n");
+      LOG_INFO("Program counter\n");
+      LOG_INFO("Rip: %llu\n", request.Registers.Rip);
+      LOG_INFO("\n");
+      LOG_INFO("Special debug control registers\n");
+      LOG_INFO("DebugControl: %llu\n", request.Registers.DebugControl);
+      LOG_INFO("LastBranchToRip: %llu\n", request.Registers.LastBranchToRip);
+      LOG_INFO("LastBranchFromRip: %llu\n", request.Registers.LastBranchFromRip);
+      LOG_INFO("LastExceptionToRip: %llu\n", request.Registers.LastExceptionToRip);
+      LOG_INFO("LastExceptionFromRip: %llu\n", request.Registers.LastExceptionFromRip);
     }
   }
   // Suspend user thread
   if (wcscmp(argv[1], L"/SuspendUserThread") == 0)
   {
     KDRV_REQ_THREAD_SUSPEND request;
-    request.Pid = GetProcId(L"TaskMgr.exe");
+    request.Pid = wcstoul(argv[2], NULL, 10);
     request.Tid = 666;
     if (DeviceIoControl(Device, KDRV_CTRL_THREAD_SUSPEND, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
@@ -117,7 +139,7 @@ INT wmain(INT argc, PWCHAR argv[])
   if (wcscmp(argv[1], L"/ResumeUserThread") == 0)
   {
     KDRV_REQ_THREAD_RESUME request;
-    request.Pid = GetProcId(L"TaskMgr.exe");
+    request.Pid = wcstoul(argv[2], NULL, 10);
     request.Tid = 666;
     if (DeviceIoControl(Device, KDRV_CTRL_THREAD_RESUME, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {

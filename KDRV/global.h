@@ -39,6 +39,12 @@ ULONG GetNextPoolTag();
 PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size);
 VOID RtlFreeMemory(PVOID pointer);
 
+PVOID AllocKernelMemory();
+PVOID AllocUserMemory();
+
+VOID FreeKernelMemory();
+VOID FreeUserMemory();
+
 NTSTATUS DriverSleep(LONGLONG ms);
 
 #endif

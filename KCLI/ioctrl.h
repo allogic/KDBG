@@ -2,7 +2,6 @@
 #define _IOCTRL_H
 
 #include "global.h"
-#include "undoc.h"
 
 #define KDRV_CTRL_DUMP_MODULES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 #define KDRV_CTRL_DUMP_THREADS CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
@@ -21,22 +20,36 @@ typedef struct _KDRV_REQ_DUMP_MODULES
     Kernel,
     User,
   } Mode;
-  PVOID Buffer;
-  ULONG Size;
   ULONG Pid;
+  ULONG Size;
+  typedef struct
+  {
+    PVOID Base;
+    union
+    {
+      CHAR Name[256];
+      WCHAR WName[256];
+    };
+    ULONG Size;
+  } MODULE, * PMODULE;
+  PMODULE Modules;
 } KDRV_REQ_DUMP_MODULES, * PKDRV_REQ_DUMP_MODULES;
 typedef struct _KDRV_REQ_DUMP_THREADS
 {
-  ULONG Pid;
-  ULONG Tid;
   ULONG Size;
-  PVOID Buffer;
+  typedef struct
+  {
+    ULONG Pid;
+    ULONG Tid;
+    PVOID Start;
+    ULONG State;
+  } THREAD, * PTHREAD;
+  PTHREAD Threads;
 } KDRV_REQ_DUMP_THREADS, * PKDRV_REQ_DUMP_THREADS;
 typedef struct _KDRV_REQ_DUMP_REGISTERS
 {
-  ULONG Pid;
   ULONG Tid;
-  WOW64_CONTEXT Registers;
+  CONTEXT Registers;
 } KDRV_REQ_DUMP_REGISTERS, * PKDRV_REQ_DUMP_REGISTERS;
 
 typedef struct _KDRV_REQ_MEMORY_READ

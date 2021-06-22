@@ -3,8 +3,6 @@
 
 #include "global.h"
 
-ULONG GetProcId(PWCHAR processName);
-
 SIZE_T ArgvLength(PWCHAR argv);
 PBYTE ArgvToBytes(PWCHAR argv);
 PWCHAR ArgvToWcStr(PWCHAR argv);

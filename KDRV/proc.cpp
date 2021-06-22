@@ -6,49 +6,73 @@ VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
   ZwQuerySystemInformation(SystemModuleInformation, 0, bytes, &bytes);
   PRTL_PROCESS_MODULES buffer = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, bytes);
   ZwQuerySystemInformation(SystemModuleInformation, buffer, bytes, &bytes);
-  request->Size = bytes / sizeof(RTL_PROCESS_MODULES);
-  RtlCopyMemory(request->Buffer, buffer, bytes);
   PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)buffer;
-  PRTL_PROCESS_MODULE_INFORMATION module = modules->Modules;
-  if (verbose)
+  PRTL_PROCESS_MODULE_INFORMATION moduleInfo = modules->Modules;
+  ULONG size = bytes / sizeof(RTL_PROCESS_MODULES);
+  for (ULONG i = 0; i < size; ++i)
   {
-    for (ULONG i = 0; i < modules->NumberOfModules; ++i)
+    if (verbose)
     {
-      LOG_INFO("Module: %s\n", (PCHAR)(module[i].FullPathName + module[i].OffsetToFileName));
-      LOG_INFO("Size: %u\n", module[i].ImageSize);
+      LOG_INFO("Name: %p\n", moduleInfo[i].ImageBase);
+      LOG_INFO("Name: %s\n", (PCHAR)(moduleInfo[i].FullPathName + moduleInfo[i].OffsetToFileName));
+      LOG_INFO("Size: %u\n", moduleInfo[i].ImageSize);
     }
+    request->Modules[i].Base = moduleInfo[i].ImageBase;
+    strcpy(request->Modules[i].Name, (PCHAR)(moduleInfo[i].FullPathName + moduleInfo[i].OffsetToFileName));
   }
+  request->Size = size;
   RtlFreeMemory(buffer);
 }
-VOID GetUserModules(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
+VOID GetUserThreads(PKDRV_REQ_DUMP_THREADS request, BOOL verbose)
 {
-  KAPC_STATE apc;
-  KeStackAttachProcess(process, &apc);
+  ULONG bytes = 0;
+  ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
+  PSYSTEM_THREAD_INFORMATION buffer = (PSYSTEM_THREAD_INFORMATION)RtlAllocateMemory(TRUE, bytes);
+  ZwQuerySystemInformation(SystemProcessInformation, buffer, bytes, &bytes);
+  ULONG size = bytes / sizeof(SYSTEM_THREAD_INFORMATION);
+  for (ULONG i = 0; i < size; ++i)
+  {
+    if (verbose)
+    {
+      LOG_INFO("Pid: %u\n", *(PULONG)(buffer[i].ClientId.UniqueProcess));
+      LOG_INFO("Tid: %u\n", *(PULONG)(buffer[i].ClientId.UniqueThread));
+      LOG_INFO("Start: %p\n", buffer[i].StartAddress);
+      LOG_INFO("State: %u\n", buffer[i].ThreadState);
+    }
+    request->Threads[i].Pid = *(PULONG)(buffer[i].ClientId.UniqueProcess);
+    request->Threads[i].Tid = *(PULONG)(buffer[i].ClientId.UniqueThread);
+    request->Threads[i].Start = buffer[i].StartAddress;
+    request->Threads[i].State = buffer[i].ThreadState;
+  }
+  request->Size = size;
+  RtlFreeMemory(buffer);
+}
+
+VOID GetUserModulesSave(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose)
+{
   PPEB64 peb64 = (PPEB64)PsGetProcessPeb(process);
   PLDR_DATA_TABLE_ENTRY ldrTable = CONTAINING_RECORD(peb64->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-  PLDR_DATA_TABLE_ENTRY module = NULL;
+  PLDR_DATA_TABLE_ENTRY ldr = NULL;
   PLIST_ENTRY entry = NULL;
   PLIST_ENTRY head = &ldrTable->InMemoryOrderLinks;
   ULONG moduleAcc = 0;
-  ULONG byteOffset = 0;
   entry = head->Flink;
   while (entry != head)
   {
-    module = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-    //CopyUserMemory((PVOID)((ULONG_PTR)request->Buffer + byteOffset), module, sizeof(LDR_DATA_TABLE_ENTRY));
-    moduleAcc++;
-    byteOffset += sizeof(LDR_DATA_TABLE_ENTRY);
+    ldr = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
     if (verbose)
     {
-      LOG_INFO("Module: %wZ\n", &module->BaseDllName);
-      LOG_INFO("Size: %u\n", module->SizeOfImage);
+      LOG_INFO("Base: %p\n", ldr->DllBase);
+      LOG_INFO("Name: %wZ\n", &ldr->BaseDllName);
+      LOG_INFO("Size: %u\n", ldr->SizeOfImage);
     }
+    request->Modules[moduleAcc].Base = ldr->DllBase;
+    wcscpy(request->Modules[moduleAcc].WName, ldr->BaseDllName.Buffer);
+    request->Modules[moduleAcc].Size = ldr->SizeOfImage;
+    ++moduleAcc;
     entry = entry->Flink;
   }
-  // source 00000206DB0D06E0
-  // dest   0000015731E604D0
   request->Size = moduleAcc;
-  KeUnstackDetachProcess(&apc);
 }
 
 PVOID GetKernelModuleBase(PCHAR moduleName)

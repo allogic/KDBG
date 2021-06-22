@@ -8,7 +8,9 @@
 #include "mem.h"
 
 VOID GetKernelModules(PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
-VOID GetUserModules(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
+VOID GetUserThreads(PKDRV_REQ_DUMP_THREADS request, BOOL verbose = TRUE);
+
+VOID GetUserModulesSave(PEPROCESS process, PKDRV_REQ_DUMP_MODULES request, BOOL verbose = FALSE);
 
 PVOID GetKernelModuleBase(PCHAR moduleName);
 PVOID GetUserModuleBase(PEPROCESS process, PWCHAR moduleName);

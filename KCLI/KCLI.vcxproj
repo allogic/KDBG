@@ -159,7 +159,6 @@
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
     <ClInclude Include="kcli.h" />
-    <ClInclude Include="undoc.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="wdk.h" />
   </ItemGroup>

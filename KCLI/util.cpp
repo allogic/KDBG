@@ -1,28 +1,5 @@
 #include "util.h"
 
-ULONG GetProcId(PWCHAR processName)
-{
-  PROCESSENTRY32 pe;
-  pe.dwSize = sizeof(PROCESSENTRY32);
-  PVOID snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if (!Process32First(snapshot, &pe))
-  {
-    CloseHandle(snapshot);
-    return 0;
-  }
-  do
-  {
-    if (_wcsicmp(processName, pe.szExeFile) == 0)
-    {
-      ULONG pid = pe.th32ProcessID;
-      CloseHandle(snapshot);
-      return pid;
-    }
-  } while (Process32Next(snapshot, &pe));
-  CloseHandle(snapshot);
-  return -1;
-}
-
 SIZE_T ArgvLength(PWCHAR argv)
 {
   SIZE_T length = 0;

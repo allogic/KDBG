@@ -87,9 +87,9 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
           }
           case KDRV_REQ_DUMP_MODULES::User:
           {
-            irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-            LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
-            GetUserModules(process, request, TRUE);
+            //irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+            //LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
+            GetUserModulesSave(process, request, TRUE);
             break;
           }
         }
@@ -99,26 +99,16 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
       case KDRV_CTRL_DUMP_THREADS:
       {
         PKDRV_REQ_DUMP_THREADS request = (PKDRV_REQ_DUMP_THREADS)MmGetSystemAddressForMdl(irp->MdlAddress);
-        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
-        irp->IoStatus.Status = PsLookupThreadByThreadId((HANDLE)request->Tid, &thread);
-        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
+        //irp->IoStatus.Status = PsLookupThreadByThreadId((HANDLE)request->Tid, &thread);
+        //LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
+        GetUserThreads(request, TRUE);
         DumpToFile(L"\\??\\C:\\Users\\Test\\Desktop\\krnl_thread_dump.txt", thread, sizeof(ETHREAD));
-        if (thread)
-        {
-          //LOG_INFO("Pid: %u\n", *(PULONG)((ETHREAD*)thread)->Cid.UniqueProcess);
-          //LOG_INFO("Tid: %u\n", *(PULONG)((ETHREAD*)thread)->Cid.UniqueThread);
-          //LOG_INFO("Cid: %u\n", *(PULONG)((ETHREAD*)thread)->Cid.UniqueProcess);
-          //LOG_INFO("Base: %p\n", ((ETHREAD*)thread)->Shadow.StartAddress);
-        }
-        ObDereferenceObject(thread);
+        // TODO: enum all threads of current process ...
         break;
       }
       case KDRV_CTRL_DUMP_REGISTERS:
       {
         PKDRV_REQ_DUMP_REGISTERS request = (PKDRV_REQ_DUMP_REGISTERS)MmGetSystemAddressForMdl(irp->MdlAddress);
-        irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-        LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
         irp->IoStatus.Status = PsLookupThreadByThreadId((HANDLE)request->Tid, &thread);
         LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
         PCONTEXT context = NULL;
@@ -209,13 +199,13 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
   {
     if (process != NULL)
     {
-      LOG_INFO("Exception cleanup handler executed\n");
+      LOG_INFO("Exception process cleanup handler executed\n");
       ObDereferenceObject(process);
       process = NULL;
     }
     if (thread != NULL)
     {
-      LOG_INFO("Exception cleanup handler executed\n");
+      LOG_INFO("Exception thread cleanup handler executed\n");
       ObDereferenceObject(thread);
       thread = NULL;
     }
@@ -223,13 +213,13 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
   }
   if (process != NULL)
   {
-    LOG_INFO("Default cleanup handler executed\n");
+    LOG_INFO("Default process cleanup handler executed\n");
     ObDereferenceObject(process);
     process = NULL;
   }
   if (thread != NULL)
   {
-    LOG_INFO("Default cleanup handler executed\n");
+    LOG_INFO("Default thread cleanup handler executed\n");
     ObDereferenceObject(thread);
     thread = NULL;
   }
