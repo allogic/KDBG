@@ -27,16 +27,19 @@ VOID GetKernelImages(PKDRV_REQ_DUMP_KRNL_IMAGES request, BOOL verbose)
 }
 VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
 {
+  KSPIN_LOCK spinLock;
+  KeInitializeSpinLock(&spinLock);
+  KLOCK_QUEUE_HANDLE queueLock;
+  KeAcquireInStackQueuedSpinLock(&spinLock, &queueLock);
   ULONG bytes = 0;
-  NTSTATUS status = STATUS_SUCCESS;
-  status = ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "ZwQuerySystemInformation %u\n", status);
+  ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
   LOG_INFO("Got %u bytes\n", bytes);
   LOG_INFO("Required %u bytes\n", sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount);
-  PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateMemory(TRUE, max(bytes, sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount));
-  status = ZwQuerySystemInformation(SystemProcessInformation, processInfo, max(bytes, sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount), &bytes);
+  // KERNEL_MODE_HEAP_CORRUPTION !!
+  PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateMemory(TRUE, bytes);
+  ZwQuerySystemInformation(SystemProcessInformation, processInfo, bytes, &bytes);
   LOG_INFO("Received %u bytes\n", bytes);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "ZwQuerySystemInformation %u\n", status);
+  //KeAcquireInStackQueuedSpinLockAtDpcLevel(&spinLock, &queueLock); also initializes
   ULONG processAcc = 0;
   while (1)
   {
@@ -46,19 +49,19 @@ VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
       LOG_INFO("Pid: %u\n", *(PULONG)processInfo->UniqueProcessId);
       LOG_INFO("Threads: %u\n", processInfo->NumberOfThreads);
     }
-    for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
-    {
-      PSYSTEM_THREAD_INFORMATION thread = (PSYSTEM_THREAD_INFORMATION)(((PBYTE)processInfo) + sizeof(SYSTEM_PROCESS_INFORMATION) + sizeof(SYSTEM_THREAD_INFORMATION) * i);
-      if (verbose)
-      {
-        LOG_INFO("\tTid: %u\n", *(PULONG)thread->ClientId.UniqueThread);
-        LOG_INFO("\tBase: %p\n", thread->StartAddress);
-        LOG_INFO("\n");
-      }
-      //request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
-      //request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
-      //request->Processes[processAcc].Threads[i].State = thread->ThreadState;
-    }
+    //for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
+    //{
+    //  PSYSTEM_THREAD_INFORMATION thread = (PSYSTEM_THREAD_INFORMATION)(((PBYTE)processInfo) + sizeof(SYSTEM_PROCESS_INFORMATION) + sizeof(SYSTEM_THREAD_INFORMATION) * i);
+    //  if (verbose)
+    //  {
+    //    LOG_INFO("\tTid: %u\n", *(PULONG)thread->ClientId.UniqueThread);
+    //    LOG_INFO("\tBase: %p\n", thread->StartAddress);
+    //    LOG_INFO("\n");
+    //  }
+    //  //request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
+    //  //request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
+    //  //request->Processes[processAcc].Threads[i].State = thread->ThreadState;
+    //}
     //request->Processes[processAcc].Pid = *(PULONG)processInfo->UniqueProcessId;
     //wcscpy(request->Processes[processAcc].Name, processInfo->ImageName.Buffer);
     if (!processInfo->NextEntryOffset)
@@ -69,6 +72,7 @@ VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
     processAcc++;
   }
   request->ProcessCount = processAcc;
+  KeReleaseInStackQueuedSpinLock(&queueLock);
   RtlFreeMemory(processInfo);
 }
 
