@@ -28,16 +28,21 @@ VOID GetKernelImages(PKDRV_REQ_DUMP_KRNL_IMAGES request, BOOL verbose)
 VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
 {
   ULONG bytes = 0;
-  ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
-  PVOID buffer = (PVOID)RtlAllocateMemory(TRUE, bytes);
-  ZwQuerySystemInformation(SystemProcessInformation, buffer, bytes, &bytes);
-  PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)buffer;
+  NTSTATUS status = STATUS_SUCCESS;
+  status = ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
+  LOG_ERROR_IF_NOT_SUCCESS(status, "ZwQuerySystemInformation %u\n", status);
+  LOG_INFO("Got %u bytes\n", bytes);
+  LOG_INFO("Required %u bytes\n", sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount);
+  PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateMemory(TRUE, max(bytes, sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount));
+  status = ZwQuerySystemInformation(SystemProcessInformation, processInfo, max(bytes, sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount), &bytes);
+  LOG_INFO("Received %u bytes\n", bytes);
+  LOG_ERROR_IF_NOT_SUCCESS(status, "ZwQuerySystemInformation %u\n", status);
   ULONG processAcc = 0;
   while (1)
   {
     if (verbose)
     {
-      LOG_INFO("Name: %wZ\n", &processInfo->ImageName);
+      //LOG_INFO("Name: %wZ\n", processInfo->ImageName.Buffer);
       LOG_INFO("Pid: %u\n", *(PULONG)processInfo->UniqueProcessId);
       LOG_INFO("Threads: %u\n", processInfo->NumberOfThreads);
     }
@@ -50,13 +55,12 @@ VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
         LOG_INFO("\tBase: %p\n", thread->StartAddress);
         LOG_INFO("\n");
       }
-      request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
-      request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
-      request->Processes[processAcc].Threads[i].State = thread->ThreadState;
+      //request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
+      //request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
+      //request->Processes[processAcc].Threads[i].State = thread->ThreadState;
     }
-    request->Processes[processAcc].Pid = *(PULONG)processInfo->UniqueProcessId;
-    wcscpy(request->Processes[processAcc].Name, processInfo->ImageName.Buffer);
-    request->Processes[processAcc].ThreadCount = processInfo->NumberOfThreads;
+    //request->Processes[processAcc].Pid = *(PULONG)processInfo->UniqueProcessId;
+    //wcscpy(request->Processes[processAcc].Name, processInfo->ImageName.Buffer);
     if (!processInfo->NextEntryOffset)
     {
       break;
@@ -65,7 +69,7 @@ VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
     processAcc++;
   }
   request->ProcessCount = processAcc;
-  RtlFreeMemory(buffer);
+  RtlFreeMemory(processInfo);
 }
 
 /*

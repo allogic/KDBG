@@ -34,12 +34,14 @@ INT wmain(INT argc, PWCHAR argv[])
   if (wcscmp(argv[1], L"/DumpUserProcesses") == 0)
   {
     KDRV_REQ_DUMP_PROCESSES request;
-    ULONG processCount = wcstoul(argv[2], NULL, 10);
-    ULONG threadCount = wcstoul(argv[3], NULL, 10);
-    request.Processes = (KDRV_REQ_DUMP_PROCESSES::PPROCESS)malloc(sizeof(KDRV_REQ_DUMP_PROCESSES::PROCESS) * processCount);
-    for (ULONG i = 0; i < processCount; ++i)
+    request.ProcessCount = wcstoul(argv[2], NULL, 10);
+    request.ThreadCount = wcstoul(argv[3], NULL, 10);
+    request.Processes = (KDRV_REQ_DUMP_PROCESSES::PPROCESS)malloc(sizeof(KDRV_REQ_DUMP_PROCESSES::PROCESS) * request.ProcessCount);
+    memset(request.Processes, 0, sizeof(KDRV_REQ_DUMP_PROCESSES::PROCESS) * request.ProcessCount);
+    for (ULONG i = 0; i < request.ProcessCount; ++i)
     {
-      request.Processes[i].Threads = (KDRV_REQ_DUMP_PROCESSES::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_PROCESSES::THREAD) * threadCount);
+      request.Processes[i].Threads = (KDRV_REQ_DUMP_PROCESSES::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_PROCESSES::THREAD) * request.ThreadCount);
+      memset(request.Processes[i].Threads, 0, sizeof(KDRV_REQ_DUMP_PROCESSES::THREAD) * request.ThreadCount);
     }
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_PROCESSES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
@@ -48,7 +50,7 @@ INT wmain(INT argc, PWCHAR argv[])
         LOG_INFO("Pid: %u\n", request.Processes[i].Pid);
         LOG_INFO("Name: %wZ\n", request.Processes[i].Name);
         LOG_INFO("Threads:\n");
-        for (ULONG j = 0; j < request.Processes[i].ThreadCount; ++j)
+        for (ULONG j = 0; j < request.ThreadCount; ++j)
         {
           LOG_INFO("\tTid: %u\n", request.Processes[i].Threads[j].Tid);
           LOG_INFO("\tBase: %p\n", request.Processes[i].Threads[j].Base);

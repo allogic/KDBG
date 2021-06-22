@@ -75,23 +75,17 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
   {
     switch (stack->Parameters.DeviceIoControl.IoControlCode)
     {
-      case KDRV_CTRL_DUMP_INFO:
-      {
-        PKDRV_REQ_DUMP_INFO request = (PKDRV_REQ_DUMP_INFO)MmGetSystemAddressForMdl(irp->MdlAddress);
-        switch (request)
-        break;
-      }
       case KDRV_CTRL_DUMP_KRNL_IMAGES:
       {
         PKDRV_REQ_DUMP_KRNL_IMAGES request = (PKDRV_REQ_DUMP_KRNL_IMAGES)MmGetSystemAddressForMdl(irp->MdlAddress);
-        GetKernelImages(request, TRUE);
+        GetKernelImages(request, FALSE);
         irp->IoStatus.Information = sizeof(KDRV_REQ_DUMP_KRNL_IMAGES);
         break;
       }
       case KDRV_CTRL_DUMP_PROCESSES:
       {
         PKDRV_REQ_DUMP_PROCESSES request = (PKDRV_REQ_DUMP_PROCESSES)MmGetSystemAddressForMdl(irp->MdlAddress);
-        GetUserProcesses(request, TRUE);
+        GetUserProcesses(request, FALSE);
         irp->IoStatus.Information = sizeof(KDRV_REQ_DUMP_PROCESSES);
         break;
       }
