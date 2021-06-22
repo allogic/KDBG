@@ -123,10 +123,11 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
         LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupThreadByThreadId %X\n", irp->IoStatus.Status);
         PCONTEXT context = NULL;
         SIZE_T contextSize = sizeof(CONTEXT);
-        irp->IoStatus.Status = ZwAllocateVirtualMemory((HANDLE)request->Pid, (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        irp->IoStatus.Status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
         LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "ZwAllocateVirtualMemory %X\n", irp->IoStatus.Status);
+        RtlZeroMemory(context, sizeof(CONTEXT));
         context->ContextFlags = CONTEXT_ALL;
-        irp->IoStatus.Status = PsGetContextThread(thread, context, KernelMode);
+        irp->IoStatus.Status = PsGetContextThread(thread, context, UserMode);
         LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsGetContextThread %X\n", irp->IoStatus.Status);
         DumpToFile(L"\\??\\C:\\Users\\Test\\Desktop\\krnl_register_dump.txt", context, sizeof(CONTEXT));
         LOG_INFO("Control flags\n");
@@ -178,7 +179,7 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
         LOG_INFO("LastExceptionToRip: %llu\n", context->LastExceptionToRip);
         LOG_INFO("LastExceptionFromRip: %llu\n", context->LastExceptionFromRip);
         SIZE_T regionSize = 0;
-        irp->IoStatus.Status = ZwFreeVirtualMemory((HANDLE)request->Pid, (PVOID*)&context, &regionSize, MEM_RELEASE);
+        irp->IoStatus.Status = ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, &regionSize, MEM_RELEASE);
         LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "ZwFreeVirtualMemory %X\n", irp->IoStatus.Status);
         break;
       }
