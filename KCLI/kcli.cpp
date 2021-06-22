@@ -18,7 +18,7 @@ INT wmain(INT argc, PWCHAR argv[])
     KDRV_REQ_DUMP_MODULES request;
     request.Mode = KDRV_REQ_DUMP_MODULES::Kernel;
     request.Size = wcstoul(argv[2], NULL, 10);
-    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::PMODULE) * request.Size);
+    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::MODULE) * request.Size);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
       for (ULONG i = 0; i < request.Size; ++i)
@@ -37,7 +37,7 @@ INT wmain(INT argc, PWCHAR argv[])
     request.Mode = KDRV_REQ_DUMP_MODULES::User;
     request.Pid = wcstoul(argv[2], NULL, 10);
     request.Size = wcstoul(argv[3], NULL, 10);
-    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::PMODULE) * request.Size);
+    request.Modules = (KDRV_REQ_DUMP_MODULES::PMODULE)malloc(sizeof(KDRV_REQ_DUMP_MODULES::MODULE) * request.Size);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_MODULES, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
       for (ULONG i = 0; i < request.Size; ++i)
@@ -54,7 +54,7 @@ INT wmain(INT argc, PWCHAR argv[])
   {
     KDRV_REQ_DUMP_THREADS request;
     request.Size = wcstoul(argv[2], NULL, 10);
-    request.Threads = (KDRV_REQ_DUMP_THREADS::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_THREADS::PTHREAD) * request.Size);
+    request.Threads = (KDRV_REQ_DUMP_THREADS::PTHREAD)malloc(sizeof(KDRV_REQ_DUMP_THREADS::THREAD) * request.Size);
     if (DeviceIoControl(Device, KDRV_CTRL_DUMP_THREADS, &request, sizeof(request), &request, sizeof(request), NULL, NULL))
     {
       for (ULONG i = 0; i < request.Size; ++i)

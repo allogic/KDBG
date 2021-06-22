@@ -87,9 +87,9 @@ NTSTATUS OnIrpIoCtrl(PDEVICE_OBJECT device, PIRP irp)
           }
           case KDRV_REQ_DUMP_MODULES::User:
           {
-            //irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
-            //LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
-            GetUserModulesSave(process, request, TRUE);
+            irp->IoStatus.Status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
+            LOG_ERROR_IF_NOT_SUCCESS(irp->IoStatus.Status, "PsLookupProcessByProcessId %X\n", irp->IoStatus.Status);
+            GetUserModules(request, TRUE);
             break;
           }
         }

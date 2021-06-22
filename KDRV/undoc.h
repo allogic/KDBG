@@ -43,14 +43,16 @@ typedef enum _SYSTEM_INFORMATION_CLASS
   SystemPerformanceInformation = 2,
   SystemTimeOfDayInformation = 3,
   SystemProcessInformation = 5,
-  SystemModuleInformation = 11,
   SystemProcessorPerformanceInformation = 8,
+  SystemModuleInformation = 11,
   SystemInterruptInformation = 23,
   SystemExceptionInformation = 33,
   SystemRegistryQuotaInformation = 37,
   SystemLookasideInformation = 45,
+  SystemExtendedProcessInformation = 57,
   SystemCodeIntegrityInformation = 103,
   SystemPolicyInformation = 134,
+  SystemFullProcessInformation = 148,
 } SYSTEM_INFORMATION_CLASS;
 
 typedef struct _RTL_PROCESS_MODULE_INFORMATION
