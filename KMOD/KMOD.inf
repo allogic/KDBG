@@ -1,0 +1,87 @@
+;
+; KMOD.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=Sample ; TODO: edit Class
+ClassGuid={78A1C341-4539-11d3-B88D-00C04FAD5171} ; TODO: edit ClassGuid
+Provider=%ManufacturerName%
+CatalogFile=KMOD.cat
+DriverVer= ; TODO: set DriverVer in stampinf property pages
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+KMOD_Device_CoInstaller_CopyFiles = 11
+
+; ================= Class section =====================
+
+[ClassInstall32]
+Addreg=SampleClassReg
+
+[SampleClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+KMOD.sys  = 1,,
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%KMOD.DeviceDesc%=KMOD_Device, Root\KMOD ; TODO: edit hw-id
+
+[KMOD_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+KMOD.sys
+
+;-------------- Service installation
+[KMOD_Device.NT.Services]
+AddService = KMOD,%SPSVCINST_ASSOCSERVICE%, KMOD_Service_Inst
+
+; -------------- KMOD driver install sections
+[KMOD_Service_Inst]
+DisplayName    = %KMOD.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\KMOD.sys
+
+;
+;--- KMOD_Device Coinstaller installation ------
+;
+
+[KMOD_Device.NT.CoInstallers]
+AddReg=KMOD_Device_CoInstaller_AddReg
+CopyFiles=KMOD_Device_CoInstaller_CopyFiles
+
+[KMOD_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[KMOD_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[KMOD_Device.NT.Wdf]
+KmdfService =  KMOD, KMOD_wdfsect
+[KMOD_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+ClassName="Samples" ; TODO: edit ClassName
+DiskName = "KMOD Installation Disk"
+KMOD.DeviceDesc = "KMOD Device"
+KMOD.SVCDESC = "KMOD Service"
