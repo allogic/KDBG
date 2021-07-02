@@ -8,7 +8,11 @@ INT main(INT argc, PCHAR argv[])
 {
   // Connect to driver
   HANDLE Device = CreateFileA(KMOD_DEVICE_NAME, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-  if (Device)
+  if (Device == INVALID_HANDLE_VALUE)
+  {
+    LOG_ERROR("Device connection cannot be established\n");
+  }
+  else
   {
     // Issue commands
     if (strcmp(argv[1], "/Exec") == 0)

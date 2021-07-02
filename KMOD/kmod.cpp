@@ -517,6 +517,23 @@ VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
   IoDeleteDevice(device);
 }
 
+NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(device);
+  irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
+  irp->IoStatus.Information = 0;
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
+NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(device);
+  LOG_INFO("Received create request\n");
+  irp->IoStatus.Status = STATUS_SUCCESS;
+  irp->IoStatus.Information = 0;
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
 NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
@@ -529,10 +546,10 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
     case KMOD_EXEC:
     {
       PBYTE req = (PBYTE)MmGetSystemAddressForMdl(irp->MdlAddress);
-      ULONG tid = *(PULONG)req;
-      LOG_INFO("Received tid %u\n", tid);
       __try
       {
+        ULONG tid = *(PULONG)req;
+        LOG_INFO("Received tid %u\n", tid);
         ContextScan((HANDLE)tid, 100);
         irp->IoStatus.Status = STATUS_SUCCESS;
         irp->IoStatus.Information = 0;
@@ -546,6 +563,15 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       break;
     }
   }
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
+NTSTATUS OnIrpClose(PDEVICE_OBJECT device, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(device);
+  LOG_INFO("Received close request\n");
+  irp->IoStatus.Status = STATUS_SUCCESS;
+  irp->IoStatus.Information = 0;
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;
 }
@@ -566,8 +592,13 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
   CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
-  driver->DriverUnload = DriverUnload;
+  // Register default interrupt callbacks
+  for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
+    driver->MajorFunction[i] = OnIrpDflt;
+  // Register interrupt callbacks
+  driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
+  driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
   LOG_INFO_IF_SUCCESS(status, "Initialized\n");
   return status;
 }
