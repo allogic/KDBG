@@ -1,16 +1,9 @@
+#pragma warning(disable : 4995)
+
 #include "global.h"
 
 // TODO: Refactor types - specifically ptrs and ptr binary operations PBYTE would be nice mixed with ULONG
 // TODO: Refactor ptr to stack objects
-
-/*
-* Global state.
-*/
-
-#define PID 666
-#define TID 6508
-
-HANDLE NoobThreadHandle = NULL;
 
 /*
 * Stack frames.
@@ -486,28 +479,75 @@ VOID StackScan(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
 }
 
 /*
-* Kernel threads.
+* Communication device.
 */
 
-VOID NoobThread(PVOID context)
+#define KMOD_DEVICE_NAME L"\\Device\\KMOD"
+#define KMOD_DEVICE_SYMBOL_NAME L"\\DosDevices\\KMOD"
+
+#define KMOD_EXEC CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0666, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
+
+PDEVICE_OBJECT Device = NULL;
+
+VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT& device, PCWCHAR deviceName, PCWCHAR symbolicName)
 {
-  UNREFERENCED_PARAMETER(context);
-  KIRQL irql = DISPATCH_LEVEL;
-  KeRaiseIrql(irql, &irql);
-  while (KeGetCurrentIrql() != DISPATCH_LEVEL)
+  NTSTATUS status = STATUS_SUCCESS;
+  UNICODE_STRING deviceNameTmp;
+  UNICODE_STRING symbolicNameTmp;
+  // Create I/O device
+  RtlInitUnicodeString(&deviceNameTmp, deviceName);
+  RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
+  status = IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, &device);
+  LOG_ERROR_IF_NOT_SUCCESS(status, "IoCreateDevice %X\n", status);
+  device->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
+  device->Flags &= ~DO_DEVICE_INITIALIZING;
+  // Create symbolic link
+  status = IoCreateSymbolicLink(&symbolicNameTmp, &deviceNameTmp);
+  LOG_ERROR_IF_NOT_SUCCESS(status, "IoCreateSymbolicLink %X\n", status);
+}
+VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  UNICODE_STRING symbolicNameTmp;
+  // Delete symbolic link
+  RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
+  status = IoDeleteSymbolicLink(&symbolicNameTmp);
+  LOG_ERROR_IF_NOT_SUCCESS(status, "IoDeleteSymbolicLink %X\n", status);
+  // Delete I/O device
+  IoDeleteDevice(device);
+}
+
+NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(device);
+  LOG_INFO("Received request\n");
+  irp->IoStatus.Status = STATUS_SUCCESS;
+  irp->IoStatus.Information = 0;
+  PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
+  switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
-    LOG_INFO("Waiting\n");
+    case KMOD_EXEC:
+    {
+      PBYTE req = (PBYTE)MmGetSystemAddressForMdl(irp->MdlAddress);
+      ULONG tid = *(PULONG)req;
+      LOG_INFO("Received tid %u\n", tid);
+      __try
+      {
+        ContextScan((HANDLE)tid, 100);
+        irp->IoStatus.Status = STATUS_SUCCESS;
+        irp->IoStatus.Information = 0;
+      }
+      __except (EXCEPTION_EXECUTE_HANDLER)
+      {
+        LOG_ERROR("Something went wrong\n");
+        irp->IoStatus.Status = STATUS_UNHANDLED_EXCEPTION;
+        irp->IoStatus.Information = 0;
+      }
+      break;
+    }
   }
-  LOG_INFO("Scan started\n");
-  __try
-  {
-    ContextScan((HANDLE)TID, 100);
-  }
-  __except (EXCEPTION_EXECUTE_HANDLER)
-  {
-    LOG_ERROR("Something went wrong\n");
-  }
-  KeLowerIrql(irql);
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
 }
 
 /*
@@ -518,40 +558,16 @@ VOID DriverUnload(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
-  //status = ZwClose(NoobThreadHandle);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "ZwClose %X", status);
-  if (NT_SUCCESS(status))
-  {
-    LOG_INFO("KMOD deinitialized\n");
-  }
+  DeleteDevice(Device, KMOD_DEVICE_SYMBOL_NAME);
+  LOG_INFO_IF_SUCCESS(status, "DeInitialized\n");
 }
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
-  UNREFERENCED_PARAMETER(driver);
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
+  CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
   driver->DriverUnload = DriverUnload;
-  //status = PsCreateSystemThread(&NoobThreadHandle, THREAD_ALL_ACCESS, NULL, NULL, NULL, NoobThread, NULL);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsCreateSystemThread %X\n", status);
-  KIRQL irql = DISPATCH_LEVEL;
-  KeRaiseIrql(irql, &irql);
-  while (KeGetCurrentIrql() != DISPATCH_LEVEL)
-  {
-    LOG_INFO("Waiting\n");
-  }
-  LOG_INFO("Scan started\n");
-  __try
-  {
-    ContextScan((HANDLE)TID, 100);
-  }
-  __except (EXCEPTION_EXECUTE_HANDLER)
-  {
-    LOG_ERROR("Something went wrong\n");
-  }
-  KeLowerIrql(irql);
-  if (NT_SUCCESS(status))
-  {
-    LOG_INFO("KMOD initialized\n");
-  }
+  driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
+  LOG_INFO_IF_SUCCESS(status, "Initialized\n");
   return status;
 }

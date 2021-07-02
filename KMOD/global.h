@@ -22,13 +22,48 @@ extern "C"
 #define _STR(VAL) #VAL
 #define STR(VAL) _STR(VAL)
 
+/*
+* Logging utilities.
+*/
+
 #define LOG_INFO(MSG, ...) DbgPrintEx(0, 0, "[+] " MSG, __VA_ARGS__)
 #define LOG_ERROR(MSG, ...) DbgPrintEx(0, 0, "[-] " MSG, __VA_ARGS__)
 
+#define LOG_INFO_IF(EXPR, MSG, ...) \
+if (EXPR)                           \
+{                                   \
+  LOG_INFO(MSG, __VA_ARGS__);       \
+}
+#define LOG_INFO_IF_NOT(EXPR, MSG, ...) \
+if (!(EXPR))                            \
+{                                       \
+  LOG_INFO(MSG, __VA_ARGS__);           \
+}
+#define LOG_INFO_IF_SUCCESS(STATUS, MSG, ...) \
+if (NT_SUCCESS(STATUS))                       \
+{                                             \
+  LOG_INFO(MSG, __VA_ARGS__);                 \
+}
+#define LOG_INFO_IF_NOT_SUCCESS(STATUS, MSG, ...) \
+if (!NT_SUCCESS(STATUS))                          \
+{                                                 \
+  LOG_INFO(MSG, __VA_ARGS__);                     \
+}
+
+#define LOG_ERROR_IF(EXPR, MSG, ...) \
+if (EXPR)                            \
+{                                    \
+  LOG_ERROR(MSG, __VA_ARGS__);       \
+}
 #define LOG_ERROR_IF_NOT(EXPR, MSG, ...) \
 if (!(EXPR))                             \
 {                                        \
   LOG_ERROR(MSG, __VA_ARGS__);           \
+}
+#define LOG_ERROR_IF_SUCCESS(STATUS, MSG, ...) \
+if (NT_SUCCESS(STATUS))                        \
+{                                              \
+  LOG_ERROR(MSG, __VA_ARGS__);                 \
 }
 #define LOG_ERROR_IF_NOT_SUCCESS(STATUS, MSG, ...) \
 if (!NT_SUCCESS(STATUS))                           \
