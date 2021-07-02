@@ -485,11 +485,11 @@ VOID StackScan(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
 #define KMOD_DEVICE_NAME L"\\Device\\KMOD"
 #define KMOD_DEVICE_SYMBOL_NAME L"\\DosDevices\\KMOD"
 
-#define KMOD_EXEC CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0666, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
+#define KMOD_EXEC CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 
 PDEVICE_OBJECT Device = NULL;
 
-VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT& device, PCWCHAR deviceName, PCWCHAR symbolicName)
+VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT* device, PCWCHAR deviceName, PCWCHAR symbolicName)
 {
   NTSTATUS status = STATUS_SUCCESS;
   UNICODE_STRING deviceNameTmp;
@@ -497,10 +497,10 @@ VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT& device, PCWCHAR deviceN
   // Create I/O device
   RtlInitUnicodeString(&deviceNameTmp, deviceName);
   RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
-  status = IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, &device);
+  status = IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, device);
   LOG_ERROR_IF_NOT_SUCCESS(status, "IoCreateDevice %X\n", status);
-  device->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
-  device->Flags &= ~DO_DEVICE_INITIALIZING;
+  (*device)->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
+  (*device)->Flags &= ~DO_DEVICE_INITIALIZING;
   // Create symbolic link
   status = IoCreateSymbolicLink(&symbolicNameTmp, &deviceNameTmp);
   LOG_ERROR_IF_NOT_SUCCESS(status, "IoCreateSymbolicLink %X\n", status);
@@ -545,12 +545,11 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
   {
     case KMOD_EXEC:
     {
-      PBYTE req = (PBYTE)MmGetSystemAddressForMdl(irp->MdlAddress);
       __try
       {
-        ULONG tid = *(PULONG)req;
+        ULONG tid = *(PULONG)MmGetSystemAddressForMdl(irp->MdlAddress);
         LOG_INFO("Received tid %u\n", tid);
-        ContextScan((HANDLE)tid, 100);
+        //ContextScan((HANDLE)tid, 100);
         irp->IoStatus.Status = STATUS_SUCCESS;
         irp->IoStatus.Information = 0;
       }
@@ -591,7 +590,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
-  CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
+  CreateDevice(driver, &Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
   // Register default interrupt callbacks
   for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
     driver->MajorFunction[i] = OnIrpDflt;

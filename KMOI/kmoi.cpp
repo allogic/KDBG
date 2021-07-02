@@ -2,7 +2,7 @@
 
 #define KMOD_DEVICE_NAME "\\\\.\\KMOD"
 
-#define KMOD_EXEC CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0666, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
+#define KMOD_EXEC CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 
 INT main(INT argc, PCHAR argv[])
 {
@@ -17,8 +17,8 @@ INT main(INT argc, PCHAR argv[])
     // Issue commands
     if (strcmp(argv[1], "/Exec") == 0)
     {
-      PBYTE req = (PBYTE)argv[2];
-      if (DeviceIoControl(Device, KMOD_EXEC, &req, sizeof(req), NULL, NULL, NULL, NULL))
+      ULONG tid = strtoul(argv[2], NULL, 10);
+      if (DeviceIoControl(Device, KMOD_EXEC, &tid, sizeof(tid), NULL, NULL, NULL, NULL))
       {
         LOG_INFO("Success\n");
       }
