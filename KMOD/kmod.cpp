@@ -393,12 +393,14 @@ VOID ContextScan(HANDLE tid, SIZE_T iterations)
   SIZE_T contextSize = sizeof(CONTEXT);
   status = PsLookupThreadByThreadId(tid, &thread);
   LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
-  status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+  status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
+  RtlZeroMemory(context, contextSize);
   LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
   for (SIZE_T i = 0; i < iterations; ++i)
   {
-    status = PsGetContextThread(thread, context, KernelMode);
+    context->ContextFlags = CONTEXT_ALL;
+    status = PsGetContextThread(thread, context, UserMode);
     LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
     LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
   }
@@ -414,6 +416,7 @@ VOID StackScan(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
   PEPROCESS process = NULL;
   PETHREAD thread = NULL;
   PCONTEXT context = NULL;
+  SIZE_T contextSize = sizeof(CONTEXT);
   PLDR_DATA_TABLE_ENTRY modules = NULL;
   PLDR_DATA_TABLE_ENTRY module = NULL;
   PLIST_ENTRY moduleList = NULL;
@@ -421,13 +424,12 @@ VOID StackScan(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
   STACK_FRAME_X64 stackFrame64;
   PPEB64 peb = NULL;
   KAPC_STATE apc;
-  SIZE_T contextSize = sizeof(CONTEXT);
   // Get context infos
   status = PsLookupProcessByProcessId(pid, &process);
   LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
   status = PsLookupThreadByThreadId(tid, &thread);
   LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
-  status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+  status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
   // Attach to process
   KeStackAttachProcess(process, &apc);
@@ -537,7 +539,7 @@ NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
 NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
-  LOG_INFO("Received request\n");
+  LOG_INFO("Received ctrl request\n");
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
@@ -549,7 +551,7 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       {
         ULONG tid = *(PULONG)MmGetSystemAddressForMdl(irp->MdlAddress);
         LOG_INFO("Received tid %u\n", tid);
-        //ContextScan((HANDLE)tid, 100);
+        ContextScan((HANDLE)tid, 100);
         irp->IoStatus.Status = STATUS_SUCCESS;
         irp->IoStatus.Information = 0;
       }
@@ -583,6 +585,7 @@ VOID DriverUnload(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
+  // Delete devices
   DeleteDevice(Device, KMOD_DEVICE_SYMBOL_NAME);
   LOG_INFO_IF_SUCCESS(status, "DeInitialized\n");
 }
@@ -590,7 +593,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
-  CreateDevice(driver, &Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
+  // Register driver callbacks
+  driver->DriverUnload = DriverUnload;
   // Register default interrupt callbacks
   for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
     driver->MajorFunction[i] = OnIrpDflt;
@@ -598,6 +602,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
   driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
+  // Create devices
+  CreateDevice(driver, &Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
   LOG_INFO_IF_SUCCESS(status, "Initialized\n");
   return status;
 }

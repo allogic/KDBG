@@ -18,7 +18,7 @@ INT main(INT argc, PCHAR argv[])
     if (strcmp(argv[1], "/Exec") == 0)
     {
       ULONG tid = strtoul(argv[2], NULL, 10);
-      if (DeviceIoControl(Device, KMOD_EXEC, &tid, sizeof(tid), NULL, NULL, NULL, NULL))
+      if (DeviceIoControl(Device, KMOD_EXEC, &tid, sizeof(tid), &tid, sizeof(tid), NULL, NULL))
       {
         LOG_INFO("Success\n");
       }

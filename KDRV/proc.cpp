@@ -4,9 +4,8 @@ VOID GetKernelImages(PKDRV_REQ_DUMP_KRNL_IMAGES request, BOOL verbose)
 {
   ULONG bytes = 0;
   ZwQuerySystemInformation(SystemModuleInformation, 0, bytes, &bytes);
-  PRTL_PROCESS_MODULES buffer = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, bytes);
-  ZwQuerySystemInformation(SystemModuleInformation, buffer, bytes, &bytes);
-  PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)buffer;
+  PRTL_PROCESS_MODULES modules = (PRTL_PROCESS_MODULES)RtlAllocateMemory(TRUE, bytes);
+  ZwQuerySystemInformation(SystemModuleInformation, modules, bytes, &bytes);
   PRTL_PROCESS_MODULE_INFORMATION moduleInfo = modules->Modules;
   ULONG moduleCount = bytes / sizeof(RTL_PROCESS_MODULES);
   for (ULONG i = 0; i < moduleCount; ++i)
@@ -23,29 +22,20 @@ VOID GetKernelImages(PKDRV_REQ_DUMP_KRNL_IMAGES request, BOOL verbose)
     request->Modules[i].Size = moduleInfo[i].ImageSize;
   }
   request->ModuleCount = moduleCount;
-  RtlFreeMemory(buffer);
+  RtlFreeMemory(modules);
 }
 VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
 {
-  KSPIN_LOCK spinLock;
-  KeInitializeSpinLock(&spinLock);
-  KLOCK_QUEUE_HANDLE queueLock;
-  KeAcquireInStackQueuedSpinLock(&spinLock, &queueLock);
   ULONG bytes = 0;
   ZwQuerySystemInformation(SystemProcessInformation, 0, bytes, &bytes);
-  LOG_INFO("Got %u bytes\n", bytes);
-  LOG_INFO("Required %u bytes\n", sizeof(SYSTEM_PROCESS_INFORMATION) * request->ProcessCount + sizeof(SYSTEM_THREAD_INFORMATION) * request->ThreadCount);
-  // KERNEL_MODE_HEAP_CORRUPTION !!
   PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)RtlAllocateMemory(TRUE, bytes);
   ZwQuerySystemInformation(SystemProcessInformation, processInfo, bytes, &bytes);
-  LOG_INFO("Received %u bytes\n", bytes);
-  //KeAcquireInStackQueuedSpinLockAtDpcLevel(&spinLock, &queueLock); also initializes
   ULONG processAcc = 0;
   while (1)
   {
     if (verbose)
     {
-      //LOG_INFO("Name: %wZ\n", processInfo->ImageName.Buffer);
+      LOG_INFO("Name: %wZ\n", processInfo->ImageName.Buffer);
       LOG_INFO("Pid: %u\n", *(PULONG)processInfo->UniqueProcessId);
       LOG_INFO("Threads: %u\n", processInfo->NumberOfThreads);
     }
@@ -72,7 +62,6 @@ VOID GetUserProcesses(PKDRV_REQ_DUMP_PROCESSES request, BOOL verbose)
     processAcc++;
   }
   request->ProcessCount = processAcc;
-  KeReleaseInStackQueuedSpinLock(&queueLock);
   RtlFreeMemory(processInfo);
 }
 
