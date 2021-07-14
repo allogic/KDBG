@@ -4,6 +4,34 @@
 
 // TODO: Refactor types - specifically ptrs and ptr binary operations PBYTE would be nice mixed with ULONG
 // TODO: Refactor ptr to stack objects
+// TODO: Refactor most ULONG or PBYTE to PVOID
+
+/*
+* I/O communication.
+*/
+
+#define KMOD_REQ_SCAN_INT_SIGNED CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define KMOD_REQ_SCAN_CONTEXT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define KMOD_REQ_SCAN_STACK CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0102, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+typedef struct _REQ_SCAN_INT_SIGNED
+{
+  ULONG Pid;
+  PWCHAR Name;
+  ULONG Offset;
+  SIZE_T Size;
+  INT Value;
+} REQ_SCAN_INT_SIGNED, * PREQ_SCAN_INT_SIGNED;
+typedef struct _REQ_SCAN_CONTEXT
+{
+  ULONG Tid;
+  ULONG Iterations; // Change to TIME_T
+} REQ_SCAN_CONTEXT, * PREQ_SCAN_CONTEXT;
+typedef struct _REQ_SCAN_STACK
+{
+  ULONG Tid;
+  ULONG Iterations; // Change to TIME_T
+} REQ_SCAN_STACK, * PREQ_SCAN_STACK;
 
 /*
 * Stack frames.
@@ -129,7 +157,7 @@ VOID DumpContext(PCONTEXT context)
 * PE utilities.
 */
 
-#define PE_ERROR_VALUE (ULONG)-1
+#define PE_ERROR_VALUE (PVOID)-1
 
 typedef PPEB(*PSGETPROCESSPEB)(
   PEPROCESS Process);
@@ -168,71 +196,74 @@ typedef struct _PEB64 {
   PPEB_LDR_DATA Ldr;
 } PEB64, * PPEB64;
 
-ULONG RvaToSection(PIMAGE_NT_HEADERS ntHeaders, ULONG rva)
+USHORT RvaToSection(PIMAGE_NT_HEADERS ntHeaders, PVOID rva)
 {
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
   USHORT numSections = ntHeaders->FileHeader.NumberOfSections;
-  for (USHORT i = 0; i < numSections; i++)
-    if (sectionHeader[i].VirtualAddress <= rva)
-      if ((sectionHeader[i].VirtualAddress + sectionHeader[i].Misc.VirtualSize) > rva)
+  for (USHORT i = 0; i < numSections; ++i)
+    if (sectionHeader[i].VirtualAddress <= (ULONG64)rva)
+      if ((sectionHeader[i].VirtualAddress + sectionHeader[i].Misc.VirtualSize) > (ULONG64)rva)
         return i;
-  return PE_ERROR_VALUE;
+  return (USHORT)PE_ERROR_VALUE;
 }
-ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, ULONG rva, ULONG fileSize)
+ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize)
 {
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
   USHORT numSections = ntHeaders->FileHeader.NumberOfSections;
-  for (USHORT i = 0; i < numSections; i++)
-    if (sectionHeader[i].VirtualAddress <= rva)
-      if ((sectionHeader[i].VirtualAddress + sectionHeader[i].Misc.VirtualSize) > rva)
+  for (USHORT i = 0; i < numSections; ++i)
+    if (sectionHeader[i].VirtualAddress <= (ULONG)rva)
+      if ((sectionHeader[i].VirtualAddress + sectionHeader[i].Misc.VirtualSize) > (ULONG)rva)
       {
-        rva -= sectionHeader[i].VirtualAddress;
-        rva += sectionHeader[i].PointerToRawData;
-        return rva < fileSize ? rva : PE_ERROR_VALUE;
+        *((PULONG)rva) -= sectionHeader[i].VirtualAddress;
+        *((PULONG)rva) += sectionHeader[i].PointerToRawData;
+        return (ULONG)rva < imageSize ? (ULONG)rva : (ULONG)PE_ERROR_VALUE;
       }
-  return PE_ERROR_VALUE;
+  return (ULONG)PE_ERROR_VALUE;
 }
-PVOID GetModuleBase(PBYTE ntHeader, ULONG virtualBase)
+PVOID GetModuleBase(PVOID imageBase, PVOID virtualBase)
 {
-  if ((PBYTE)virtualBase < ntHeader)
+  if ((ULONG64)virtualBase < (ULONG64)imageBase)
   {
     return NULL;
   }
-  ULONG rva = (ULONG)((PBYTE)virtualBase - ntHeader);
-  PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)ntHeader;
+  PVOID rva = (PVOID)((ULONG64)virtualBase - (ULONG64)imageBase);
+  PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
+  LOG_INFO("e_magic %u\n", dosHeader->e_magic);
+  LOG_INFO("e_lfanew %p\n", (PULONG)dosHeader->e_lfanew);
+  LOG_INFO("e_cp %u\n", dosHeader->e_cp);
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
     LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
     return NULL;
   }
-  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(ntHeader + dosHeader->e_lfanew);
+  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
     LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
     return NULL;
   }
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
-  ULONG section = RvaToSection(ntHeaders, rva);
-  if (section == PE_ERROR_VALUE)
+  USHORT section = RvaToSection(ntHeaders, rva);
+  if (section == (USHORT)PE_ERROR_VALUE)
   {
     LOG_ERROR("Invalid section\n");
     return NULL;
   }
-  return (PVOID)(ntHeader + sectionHeader[section].VirtualAddress);
+  return (PVOID)((PBYTE)imageBase + sectionHeader[section].VirtualAddress);
 }
-ULONG GetModuleExportOffset(PBYTE ntHeader, ULONG fileSize, PCCHAR exportName)
+ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
 {
-  PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)ntHeader;
+  PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
     LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
-    return PE_ERROR_VALUE;
+    return (ULONG)PE_ERROR_VALUE;
   }
-  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(ntHeader + dosHeader->e_lfanew);
+  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
     LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
-    return PE_ERROR_VALUE;
+    return (ULONG)PE_ERROR_VALUE;
   }
   PIMAGE_DATA_DIRECTORY dataDir;
   if (ntHeaders->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
@@ -245,34 +276,34 @@ ULONG GetModuleExportOffset(PBYTE ntHeader, ULONG fileSize, PCCHAR exportName)
   }
   ULONG exportDirRva = dataDir[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
   ULONG exportDirSize = dataDir[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
-  ULONG exportDirOffset = RvaToOffset(ntHeaders, exportDirRva, fileSize);
-  if (exportDirOffset == PE_ERROR_VALUE)
+  ULONG exportDirOffset = RvaToOffset(ntHeaders, &exportDirRva, fileSize);
+  if (exportDirOffset == (ULONG)PE_ERROR_VALUE)
   {
     LOG_ERROR("Invalid export directory\n");
-    return PE_ERROR_VALUE;
+    return (ULONG)PE_ERROR_VALUE;
   }
-  PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)(ntHeader + exportDirOffset);
+  PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)imageBase + exportDirOffset);
   ULONG numOfNames = exportDir->NumberOfNames;
-  ULONG addressOfFunctionsOffset = RvaToOffset(ntHeaders, exportDir->AddressOfFunctions, fileSize);
-  ULONG addressOfNameOrdinalsOffset = RvaToOffset(ntHeaders, exportDir->AddressOfNameOrdinals, fileSize);
-  ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, exportDir->AddressOfNames, fileSize);
-  if (addressOfFunctionsOffset == PE_ERROR_VALUE || addressOfNameOrdinalsOffset == PE_ERROR_VALUE || addressOfNamesOffset == PE_ERROR_VALUE)
+  ULONG addressOfFunctionsOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfFunctions, fileSize);
+  ULONG addressOfNameOrdinalsOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNameOrdinals, fileSize);
+  ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
+  if (addressOfFunctionsOffset == (ULONG)PE_ERROR_VALUE || addressOfNameOrdinalsOffset == (ULONG)PE_ERROR_VALUE || addressOfNamesOffset == (ULONG)PE_ERROR_VALUE)
   {
     LOG_ERROR("Invalid export directory content\n");
-    return PE_ERROR_VALUE;
+    return (ULONG)PE_ERROR_VALUE;
   }
-  PULONG addressOfFunctions = (PULONG)(ntHeader + addressOfFunctionsOffset);
-  PUSHORT addressOfNameOrdinals = (PUSHORT)(ntHeader + addressOfNameOrdinalsOffset);
-  PULONG addressOfNames = (PULONG)(ntHeader + addressOfNamesOffset);
-  ULONG exportOffset = PE_ERROR_VALUE;
+  PULONG addressOfFunctions = (PULONG)((PBYTE)imageBase + addressOfFunctionsOffset);
+  PUSHORT addressOfNameOrdinals = (PUSHORT)((PBYTE)imageBase + addressOfNameOrdinalsOffset);
+  PULONG addressOfNames = (PULONG)((PBYTE)imageBase + addressOfNamesOffset);
+  ULONG exportOffset = (ULONG)PE_ERROR_VALUE;
   for (ULONG i = 0; i < numOfNames; i++)
   {
-    ULONG currentNameOffset = RvaToOffset(ntHeaders, addressOfNames[i], fileSize);
-    if (currentNameOffset == PE_ERROR_VALUE)
+    ULONG currentNameOffset = RvaToOffset(ntHeaders, &addressOfNames[i], fileSize);
+    if (currentNameOffset == (ULONG)PE_ERROR_VALUE)
     {
       continue;
     }
-    PCCHAR currentName = (PCCHAR)(ntHeader + currentNameOffset);
+    PCCHAR currentName = (PCCHAR)((PBYTE)imageBase + currentNameOffset);
     ULONG currentFunctionRva = addressOfFunctions[addressOfNameOrdinals[i]];
     if (currentFunctionRva >= exportDirRva && currentFunctionRva < exportDirRva + exportDirSize)
     {
@@ -280,25 +311,25 @@ ULONG GetModuleExportOffset(PBYTE ntHeader, ULONG fileSize, PCCHAR exportName)
     }
     if (strcmp(currentName, exportName) == 0)
     {
-      exportOffset = RvaToOffset(ntHeaders, currentFunctionRva, fileSize);
+      exportOffset = RvaToOffset(ntHeaders, &currentFunctionRva, fileSize);
       break;
     }
   }
-  if (exportOffset == PE_ERROR_VALUE)
+  if (exportOffset == (ULONG)PE_ERROR_VALUE)
   {
     LOG_ERROR("Export %s not found\n", exportName);
-    return PE_ERROR_VALUE;
+    return (ULONG)PE_ERROR_VALUE;
   }
   return exportOffset;
 }
-VOID DumpModuleExports(PBYTE ntHeader, ULONG fileSize)
+VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
 {
-  PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)ntHeader;
+  PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
     LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
   }
-  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(ntHeader + dosHeader->e_lfanew);
+  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
     LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
@@ -314,39 +345,39 @@ VOID DumpModuleExports(PBYTE ntHeader, ULONG fileSize)
   }
   ULONG exportDirRva = dataDir[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
   ULONG exportDirSize = dataDir[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
-  ULONG exportDirOffset = RvaToOffset(ntHeaders, exportDirRva, fileSize);
-  if (exportDirOffset == PE_ERROR_VALUE)
+  ULONG exportDirOffset = RvaToOffset(ntHeaders, &exportDirRva, fileSize);
+  if (exportDirOffset == (ULONG)PE_ERROR_VALUE)
   {
     LOG_ERROR("Invalid export directory\n");
   }
-  PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)(ntHeader + exportDirOffset);
+  PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)imageBase + exportDirOffset);
   ULONG numOfNames = exportDir->NumberOfNames;
-  ULONG addressOfFunctionsOffset = RvaToOffset(ntHeaders, exportDir->AddressOfFunctions, fileSize);
-  ULONG addressOfNameOrdinalsOffset = RvaToOffset(ntHeaders, exportDir->AddressOfNameOrdinals, fileSize);
-  ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, exportDir->AddressOfNames, fileSize);
-  if (addressOfFunctionsOffset == PE_ERROR_VALUE || addressOfNameOrdinalsOffset == PE_ERROR_VALUE || addressOfNamesOffset == PE_ERROR_VALUE)
+  ULONG addressOfFunctionsOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfFunctions, fileSize);
+  ULONG addressOfNameOrdinalsOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNameOrdinals, fileSize);
+  ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
+  if (addressOfFunctionsOffset == (ULONG)PE_ERROR_VALUE || addressOfNameOrdinalsOffset == (ULONG)PE_ERROR_VALUE || addressOfNamesOffset == (ULONG)PE_ERROR_VALUE)
   {
     LOG_ERROR("Invalid export directory content\n");
   }
-  PULONG addressOfFunctions = (PULONG)(ntHeader + addressOfFunctionsOffset);
-  PUSHORT addressOfNameOrdinals = (PUSHORT)(ntHeader + addressOfNameOrdinalsOffset);
-  PULONG addressOfNames = (PULONG)(ntHeader + addressOfNamesOffset);
-  ULONG exportOffset = PE_ERROR_VALUE;
+  PULONG addressOfFunctions = (PULONG)((PBYTE)imageBase + addressOfFunctionsOffset);
+  PUSHORT addressOfNameOrdinals = (PUSHORT)((PBYTE)imageBase + addressOfNameOrdinalsOffset);
+  PULONG addressOfNames = (PULONG)((PBYTE)imageBase + addressOfNamesOffset);
+  ULONG exportOffset = (ULONG)PE_ERROR_VALUE;
   LOG_INFO("Exports:\n");
   for (ULONG i = 0; i < numOfNames; i++)
   {
-    ULONG currentNameOffset = RvaToOffset(ntHeaders, addressOfNames[i], fileSize);
-    if (currentNameOffset == PE_ERROR_VALUE)
+    ULONG currentNameOffset = RvaToOffset(ntHeaders, &addressOfNames[i], fileSize);
+    if (currentNameOffset == (ULONG)PE_ERROR_VALUE)
     {
       continue;
     }
-    PCCHAR currentName = (PCCHAR)(ntHeader + currentNameOffset);
+    PCCHAR currentName = (PCCHAR)((PBYTE)imageBase + currentNameOffset);
     ULONG currentFunctionRva = addressOfFunctions[addressOfNameOrdinals[i]];
     if (currentFunctionRva >= exportDirRva && currentFunctionRva < exportDirRva + exportDirSize)
     {
       continue;
     }
-    exportOffset = RvaToOffset(ntHeaders, currentFunctionRva, fileSize);
+    exportOffset = RvaToOffset(ntHeaders, &currentFunctionRva, fileSize);
     LOG_INFO("\t%X %s\n", exportOffset, currentName);
   }
 }
@@ -368,116 +399,116 @@ VOID WriteVirtualMemory()
 * Scanning utilities.
 */
 
-PINT SignedIntScan(PBYTE base, SIZE_T size, INT value)
+INT ScanIntSigned(PVOID base, SIZE_T size, INT value)
 {
   PINT result = NULL;
   SIZE_T offset = 0;
-  while ((base + offset) < (base + size))
+  while (((ULONG64)base + offset) < ((ULONG64)base + size))
   {
-    result = (PINT)(base + offset);
+    result = (PINT)((ULONG64)base + offset);
     offset += sizeof(INT);
-    LOG_INFO("Searching %p -> %d", result, *result);
+    LOG_INFO("Searching %p -> %d\n", result, *result);
     if (*result == value)
     {
-      LOG_INFO("Found %p -> %d", result, *result);
+      LOG_INFO("Found %p -> %d\n", result, *result);
       break;
     }
   }
-  return result;
+  return *result;
 }
-VOID ContextScan(HANDLE tid, SIZE_T iterations)
+VOID ScanContext(HANDLE tid, SIZE_T iterations)
 {
-  NTSTATUS status = STATUS_SUCCESS;
-  PETHREAD thread = NULL;
-  PCONTEXT context = NULL;
-  SIZE_T contextSize = sizeof(CONTEXT);
-  status = PsLookupThreadByThreadId(tid, &thread);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
-  status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
-  RtlZeroMemory(context, contextSize);
-  LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
-  for (SIZE_T i = 0; i < iterations; ++i)
-  {
-    context->ContextFlags = CONTEXT_ALL;
-    status = PsGetContextThread(thread, context, UserMode);
-    LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
-    LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
-  }
-  if (context)
-  {
-    ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)context, &contextSize, MEM_RELEASE);
-  }
-  ObDereferenceObject(thread);
+  //NTSTATUS status = STATUS_SUCCESS;
+  //PETHREAD thread = NULL;
+  //PCONTEXT context = NULL;
+  //SIZE_T contextSize = sizeof(CONTEXT);
+  //status = PsLookupThreadByThreadId(tid, &thread);
+  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
+  //status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+  //LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
+  //RtlZeroMemory(context, contextSize);
+  //LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
+  //for (SIZE_T i = 0; i < iterations; ++i)
+  //{
+  //  context->ContextFlags = CONTEXT_ALL;
+  //  status = PsGetContextThread(thread, context, UserMode);
+  //  LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
+  //  LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
+  //}
+  //if (context)
+  //{
+  //  ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)context, &contextSize, MEM_RELEASE);
+  //}
+  //ObDereferenceObject(thread);
 }
-VOID StackScan(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
+VOID ScanStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
 {
-  NTSTATUS status = STATUS_SUCCESS;
-  PEPROCESS process = NULL;
-  PETHREAD thread = NULL;
-  PCONTEXT context = NULL;
-  SIZE_T contextSize = sizeof(CONTEXT);
-  PLDR_DATA_TABLE_ENTRY modules = NULL;
-  PLDR_DATA_TABLE_ENTRY module = NULL;
-  PLIST_ENTRY moduleList = NULL;
-  PLIST_ENTRY moduleEntry = NULL;
-  STACK_FRAME_X64 stackFrame64;
-  PPEB64 peb = NULL;
-  KAPC_STATE apc;
-  // Get context infos
-  status = PsLookupProcessByProcessId(pid, &process);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
-  status = PsLookupThreadByThreadId(tid, &thread);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
-  status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
-  // Attach to process
-  KeStackAttachProcess(process, &apc);
-  // Get module base
-  peb = (PPEB64)PsGetProcessPeb(process);
-  LOG_ERROR_IF_NOT(!peb, "PsGetProcessPeb\n");
-  modules = CONTAINING_RECORD(peb->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-  moduleList = modules->InLoadOrderLinks.Flink;
-  moduleEntry = moduleList->Flink;
-  while (moduleEntry != moduleList)
-  {
-    module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-    if (wcscmp(moduleName, module->BaseDllName.Buffer) == 0)
-    {
-      break;
-    }
-    moduleEntry = moduleEntry->Flink;
-  }
-  LOG_ERROR_IF_NOT(!module, "Module not found\n");
-  PVOID moduleBase = GetModuleBase((PBYTE)module->DllBase, *(PULONG)module->EntryPoint);
-  LOG_INFO("ModuleBase %p\n", moduleBase);
-  //ULONG moduleExportOffset = GetModuleExportOffset((PBYTE)module->DllBase, module->SizeOfImage, "");
-  //LOG_INFO("moduleExportOffset %p\n", moduleExportOffset);
-  // Dump exports
-  DumpModuleExports((PBYTE)module->DllBase, module->SizeOfImage);
-  // Dump stack frames
-  LOG_INFO("\n");
-  LOG_INFO("Stack Frames:\n");
-  for (SIZE_T i = 0; i < iterations; ++i)
-  {
-    // Get context
-    status = PsGetContextThread(thread, context, UserMode);
-    LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
-    // Get stack frame
-    stackFrame64.AddrOffset = context->Rip; // Instruction ptr
-    stackFrame64.StackOffset = context->Rsp; // Stack ptr
-    stackFrame64.FrameOffset = context->Rbp; // Stack base ptr
-    LOG_INFO("%4X %llu %llu %llu\n", i, stackFrame64.AddrOffset, stackFrame64.StackOffset, stackFrame64.FrameOffset);
-  }
-  // Detach from process
-  KeUnstackDetachProcess(&apc);
-  // Cleanup
-  if (context)
-  {
-    ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)context, &contextSize, MEM_RELEASE);
-  }
-  ObDereferenceObject(thread);
-  ObDereferenceObject(process);
+  //NTSTATUS status = STATUS_SUCCESS;
+  //PEPROCESS process = NULL;
+  //PETHREAD thread = NULL;
+  //PCONTEXT context = NULL;
+  //SIZE_T contextSize = sizeof(CONTEXT);
+  //PLDR_DATA_TABLE_ENTRY modules = NULL;
+  //PLDR_DATA_TABLE_ENTRY module = NULL;
+  //PLIST_ENTRY moduleList = NULL;
+  //PLIST_ENTRY moduleEntry = NULL;
+  //STACK_FRAME_X64 stackFrame64;
+  //PPEB64 peb = NULL;
+  //KAPC_STATE apc;
+  //// Get context infos
+  //status = PsLookupProcessByProcessId(pid, &process);
+  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
+  //status = PsLookupThreadByThreadId(tid, &thread);
+  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
+  //status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+  //LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
+  //// Attach to process
+  //KeStackAttachProcess(process, &apc);
+  //// Get module base
+  //peb = (PPEB64)PsGetProcessPeb(process);
+  //LOG_ERROR_IF_NOT(!peb, "PsGetProcessPeb\n");
+  //modules = CONTAINING_RECORD(peb->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+  //moduleList = modules->InLoadOrderLinks.Flink;
+  //moduleEntry = moduleList->Flink;
+  //while (moduleEntry != moduleList)
+  //{
+  //  module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+  //  if (wcscmp(moduleName, module->BaseDllName.Buffer) == 0)
+  //  {
+  //    break;
+  //  }
+  //  moduleEntry = moduleEntry->Flink;
+  //}
+  //LOG_ERROR_IF_NOT(!module, "Module not found\n");
+  //PVOID moduleBase = GetModuleBase((PBYTE)module->DllBase, *(PULONG)module->EntryPoint);
+  //LOG_INFO("ModuleBase %p\n", moduleBase);
+  ////ULONG moduleExportOffset = GetModuleExportOffset((PBYTE)module->DllBase, module->SizeOfImage, "");
+  ////LOG_INFO("moduleExportOffset %p\n", moduleExportOffset);
+  //// Dump exports
+  //DumpModuleExports((PBYTE)module->DllBase, module->SizeOfImage);
+  //// Dump stack frames
+  //LOG_INFO("\n");
+  //LOG_INFO("Stack Frames:\n");
+  //for (SIZE_T i = 0; i < iterations; ++i)
+  //{
+  //  // Get context
+  //  status = PsGetContextThread(thread, context, UserMode);
+  //  LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
+  //  // Get stack frame
+  //  stackFrame64.AddrOffset = context->Rip; // Instruction ptr
+  //  stackFrame64.StackOffset = context->Rsp; // Stack ptr
+  //  stackFrame64.FrameOffset = context->Rbp; // Stack base ptr
+  //  LOG_INFO("%4X %llu %llu %llu\n", i, stackFrame64.AddrOffset, stackFrame64.StackOffset, stackFrame64.FrameOffset);
+  //}
+  //// Detach from process
+  //KeUnstackDetachProcess(&apc);
+  //// Cleanup
+  //if (context)
+  //{
+  //  ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)context, &contextSize, MEM_RELEASE);
+  //}
+  //ObDereferenceObject(thread);
+  //ObDereferenceObject(process);
 }
 
 /*
@@ -486,8 +517,6 @@ VOID StackScan(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
 
 #define KMOD_DEVICE_NAME L"\\Device\\KMOD"
 #define KMOD_DEVICE_SYMBOL_NAME L"\\DosDevices\\KMOD"
-
-#define KMOD_EXEC CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_OUT_DIRECT, FILE_SPECIAL_ACCESS)
 
 PDEVICE_OBJECT Device = NULL;
 
@@ -540,27 +569,78 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
   LOG_INFO("Received ctrl request\n");
-  irp->IoStatus.Status = STATUS_SUCCESS;
-  irp->IoStatus.Information = 0;
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
-    case KMOD_EXEC:
+    case KMOD_REQ_SCAN_INT_SIGNED:
     {
-      __try
+      PREQ_SCAN_INT_SIGNED req = (PREQ_SCAN_INT_SIGNED)irp->AssociatedIrp.SystemBuffer;
+      UNICODE_STRING moduleName;
+      RtlInitUnicodeString(&moduleName, req->Name);
+      LOG_INFO("%lu\n", req->Pid);
+      LOG_INFO("%ls\n", req->Name);
+      LOG_INFO("%lu\n", req->Offset);
+      LOG_INFO("%llu\n", req->Size);
+      LOG_INFO("%u\n", req->Value);
+      NTSTATUS status;
+      PEPROCESS process;
+      KAPC_STATE apc;
+      status = PsLookupProcessByProcessId((HANDLE)req->Pid, &process);
+      LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
+      if (NT_SUCCESS(status))
       {
-        ULONG tid = *(PULONG)MmGetSystemAddressForMdl(irp->MdlAddress);
-        LOG_INFO("Received tid %u\n", tid);
-        ContextScan((HANDLE)tid, 100);
-        irp->IoStatus.Status = STATUS_SUCCESS;
-        irp->IoStatus.Information = 0;
+        KeStackAttachProcess(process, &apc);
+        __try
+        {
+          PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
+          if (peb)
+          {
+            PVOID imageBase = peb->ImageBaseAddress;
+            LOG_INFO("Image base %p\n", imageBase);
+            // Refactor to InLoadOrderLinks for stability
+            PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
+            PLDR_DATA_TABLE_ENTRY module = NULL;
+            PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
+            PLIST_ENTRY moduleEntry = moduleHead->Flink;
+            while (moduleEntry != moduleHead)
+            {
+              module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+              if (module && module->DllBase)
+              {
+                LOG_INFO("Found base %p size %u name %wZ\n", module->DllBase, module->SizeOfImage, &module->BaseDllName);
+                //if (_wcsicmp(moduleName.Buffer, module->BaseDllName.Buffer) == 0)
+                //{
+                //  break;
+                //}
+                //if (RtlCompareUnicodeString(&moduleName, &module->BaseDllName, TRUE) == 0)
+                //{
+                //  break;
+                //}
+              }
+              moduleEntry = moduleEntry->Flink;
+            }
+            module = CONTAINING_RECORD(moduleHead->Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+            if (module)
+            {
+              LOG_INFO("Selected module name %wZ\n", &module->BaseDllName);
+              LOG_INFO("Selected module base %p\n", module->DllBase);
+              LOG_INFO("Selected module enty %p\n", module->EntryPoint);
+              PVOID moduleBase = GetModuleBase(module->DllBase, module->EntryPoint);
+              INT result = ScanIntSigned((PVOID)((PBYTE)moduleBase + req->Offset), req->Size, req->Value);
+              LOG_INFO("Found %u\n", result);
+            }
+          }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+          LOG_ERROR("Something went wrong!\n");
+          status = STATUS_UNHANDLED_EXCEPTION;
+        }
+        KeUnstackDetachProcess(&apc);
+        ObDereferenceObject(process);
       }
-      __except (EXCEPTION_EXECUTE_HANDLER)
-      {
-        LOG_ERROR("Something went wrong\n");
-        irp->IoStatus.Status = STATUS_UNHANDLED_EXCEPTION;
-        irp->IoStatus.Information = 0;
-      }
+      irp->IoStatus.Status = status;
+      irp->IoStatus.Information = NT_SUCCESS(status) ? sizeof(REQ_SCAN_INT_SIGNED) : 0;
       break;
     }
   }
