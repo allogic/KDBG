@@ -6,14 +6,16 @@ extern "C"
 {
 #endif
 
-#include <stddef.h>
-#include <stdio.h>
-
 #include <windows.h>
 
 #ifdef __cplusplus
 }
 #endif
+
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <vector>
 
 #define _STR(VAL) #VAL
 #define STR(VAL) _STR(VAL)

@@ -2,17 +2,16 @@
 
 #include "global.h"
 
-// TODO: Refactor types - specifically ptrs and ptr binary operations PBYTE would be nice mixed with ULONG
+// TODO: fix wchar_t comparisons inhandled exception
 // TODO: Refactor ptr to stack objects
-// TODO: Refactor most ULONG or PBYTE to PVOID
 
 /*
 * I/O communication.
 */
 
-#define KMOD_REQ_SCAN_INT_SIGNED CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
-#define KMOD_REQ_SCAN_CONTEXT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
-#define KMOD_REQ_SCAN_STACK CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0102, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define KMOD_REQ_SCAN_INT_SIGNED CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
+#define KMOD_REQ_SCAN_CONTEXT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
+#define KMOD_REQ_SCAN_STACK CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0102, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
 
 typedef struct _REQ_SCAN_INT_SIGNED
 {
@@ -20,7 +19,7 @@ typedef struct _REQ_SCAN_INT_SIGNED
   PWCHAR Name;
   ULONG Offset;
   SIZE_T Size;
-  INT Value;
+  PVOID Buffer;
 } REQ_SCAN_INT_SIGNED, * PREQ_SCAN_INT_SIGNED;
 typedef struct _REQ_SCAN_CONTEXT
 {
@@ -47,6 +46,57 @@ typedef struct _STACK_FRAME_X64
 /*
 * Kernel utilities.
 */
+
+ULONG Seed = 0;
+
+ULONG RtlNextRandom(ULONG min, ULONG max)
+{
+  Seed = (ULONG)__rdtsc();
+  const ULONG scale = (ULONG)MAXINT32 / (max - min);
+  return RtlRandomEx(&Seed) / scale + min;
+}
+ULONG GetNextPoolTag()
+{
+  constexpr ULONG poolTags[] =
+  {
+    ' prI', // Allocated IRP packets
+    '+prI', // I/O verifier allocated IRP packets
+    'eliF', // File objects
+    'atuM', // Mutant objects
+    'sFtN', // ntfs.sys!StrucSup.c
+    'ameS', // Semaphore objects
+    'RwtE', // Etw KM RegEntry
+    'nevE', // Event objects
+    ' daV', // Mm virtual address descriptors
+    'sdaV', // Mm virtual address descriptors (short)
+    'aCmM', // Mm control areas for mapped files
+    '  oI', // I/O manager
+    'tiaW', // WaitCompletion Packets
+    'eSmM', // Mm secured VAD allocation
+    'CPLA', // ALPC port objects
+    'GwtE', // ETW GUID
+    ' ldM', // Memory Descriptor Lists
+    'erhT', // Thread objects
+    'cScC', // Cache Manager Shared Cache Map
+    'KgxD', // Vista display driver support
+  };
+  constexpr ULONG numPoolTags = ARRAYSIZE(poolTags);
+  const ULONG index = RtlNextRandom(0, numPoolTags);
+  NT_ASSERT(index <= numPoolTags - 1);
+  return index;
+}
+
+PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size)
+{
+  PVOID ptr = ExAllocatePoolWithTag(NonPagedPool, size, GetNextPoolTag());
+  if (zeroMemory && ptr)
+    RtlZeroMemory(ptr, size);
+  return ptr;
+}
+VOID RtlFreeMemory(PVOID ptr)
+{
+  ExFreePool(ptr);
+}
 
 template<typename FUNCTION>
 FUNCTION GetSystemRoutine(PCWCHAR procName)
@@ -220,7 +270,7 @@ ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize)
       }
   return (ULONG)PE_ERROR_VALUE;
 }
-PVOID GetModuleBase(PVOID imageBase, PVOID virtualBase)
+PVOID GetVirtualBase(PVOID imageBase, PVOID virtualBase)
 {
   if ((ULONG64)virtualBase < (ULONG64)imageBase)
   {
@@ -251,6 +301,7 @@ PVOID GetModuleBase(PVOID imageBase, PVOID virtualBase)
   }
   return (PVOID)((PBYTE)imageBase + sectionHeader[section].VirtualAddress);
 }
+
 ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
 {
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
@@ -383,39 +434,121 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
 }
 
 /*
-* Memory utilities.
+* Process utilities relative to kernel space.
 */
 
-VOID ReadVirtualMemory()
+NTSTATUS GetProcessImageBase(ULONG pid, PWCHAR name, PVOID& base)
 {
-
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PEPROCESS process = NULL;
+  KAPC_STATE apc;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (NT_SUCCESS(status))
+  {
+    status = STATUS_UNSUCCESSFUL;
+    KeStackAttachProcess(process, &apc);
+    __try
+    {
+      PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
+      if (peb)
+      {
+        PVOID imageBase = peb->ImageBaseAddress;
+        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
+        PLDR_DATA_TABLE_ENTRY module = NULL;
+        PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
+        PLIST_ENTRY moduleEntry = moduleHead->Flink;
+        while (moduleEntry != moduleHead)
+        {
+          module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+          if (module && module->DllBase)
+          {
+            LOG_INFO("Found base %p size %u name %wZ\n", module->DllBase, module->SizeOfImage, &module->BaseDllName);
+            //if (_wcsicmp(moduleName.Buffer, module->BaseDllName.Buffer) == 0)
+            //{
+            //  break;
+            //}
+            //if (RtlCompareUnicodeString(&moduleName, &module->BaseDllName, TRUE) == 0)
+            //{
+            //  break;
+            //}
+          }
+          moduleEntry = moduleEntry->Flink;
+        }
+        module = CONTAINING_RECORD(moduleHead->Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+        base = module->DllBase;
+        status = STATUS_SUCCESS;
+        LOG_INFO("Selected base %p size %u name %wZ\n", module->DllBase, module->SizeOfImage, &module->BaseDllName);
+      }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+      LOG_ERROR("Something went wrong!\n");
+    }
+    KeUnstackDetachProcess(&apc);
+    ObDereferenceObject(process);
+  }
+  return status;
 }
-VOID WriteVirtualMemory()
-{
 
+NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PEPROCESS process = NULL;
+  KAPC_STATE apc;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (NT_SUCCESS(status))
+  {
+    status = STATUS_UNSUCCESSFUL;
+    PBYTE asyncBuffer = (PBYTE)RtlAllocateMemory(TRUE, size);
+    if (asyncBuffer)
+    {
+      PMDL mdl = IoAllocateMdl(base, size, FALSE, FALSE, NULL);
+      if (mdl)
+      {
+        KeStackAttachProcess(process, &apc);
+        __try
+        {
+          MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
+          PBYTE mappedBuffer = (PBYTE)MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmNonCached, NULL, FALSE, HighPagePriority);
+          if (mappedBuffer)
+          {
+            status = MmProtectMdlSystemAddress(mdl, PAGE_READONLY);
+            LOG_ERROR_IF_NOT_SUCCESS(status, "MmProtectMdlSystemAddress %X\n", status);
+            if (NT_SUCCESS(status))
+            {
+              status = STATUS_UNSUCCESSFUL;
+              memcpy(asyncBuffer, mappedBuffer, size);
+              LOG_INFO("Copy successfull\n");
+              status = STATUS_SUCCESS;
+            }
+            MmUnmapLockedPages(mappedBuffer, mdl);
+          }
+          MmUnlockPages(mdl);
+          IoFreeMdl(mdl);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+          LOG_ERROR("Something went wrong!\n");
+          status = STATUS_UNHANDLED_EXCEPTION;
+        }
+        KeUnstackDetachProcess(&apc);
+      }
+      memcpy(buffer, asyncBuffer, size);
+      RtlFreeMemory(asyncBuffer);
+    }
+    ObDereferenceObject(process);
+  }
+  return status;
+}
+NTSTATUS WriteVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
+{
+  return STATUS_UNSUCCESSFUL;
 }
 
 /*
 * Scanning utilities.
 */
 
-INT ScanIntSigned(PVOID base, SIZE_T size, INT value)
-{
-  PINT result = NULL;
-  SIZE_T offset = 0;
-  while (((ULONG64)base + offset) < ((ULONG64)base + size))
-  {
-    result = (PINT)((ULONG64)base + offset);
-    offset += sizeof(INT);
-    LOG_INFO("Searching %p -> %d\n", result, *result);
-    if (*result == value)
-    {
-      LOG_INFO("Found %p -> %d\n", result, *result);
-      break;
-    }
-  }
-  return *result;
-}
 VOID ScanContext(HANDLE tid, SIZE_T iterations)
 {
   //NTSTATUS status = STATUS_SUCCESS;
@@ -548,6 +681,26 @@ VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
   IoDeleteDevice(device);
 }
 
+/*
+* Request/Response handlers.
+*/
+
+NTSTATUS HandleScanRequest(PREQ_SCAN_INT_SIGNED req)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PVOID base = NULL;
+  status = GetProcessImageBase(req->Pid, req->Name, base);
+  if (NT_SUCCESS(status))
+  {
+    status = ReadVirtualProcessMemory(req->Pid, (PVOID)((PBYTE)base + req->Offset), req->Size, req->Buffer);
+  }
+  return status;
+}
+
+/*
+* I/O callbacks.
+*/
+
 NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
@@ -575,72 +728,8 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
     case KMOD_REQ_SCAN_INT_SIGNED:
     {
       PREQ_SCAN_INT_SIGNED req = (PREQ_SCAN_INT_SIGNED)irp->AssociatedIrp.SystemBuffer;
-      UNICODE_STRING moduleName;
-      RtlInitUnicodeString(&moduleName, req->Name);
-      LOG_INFO("%lu\n", req->Pid);
-      LOG_INFO("%ls\n", req->Name);
-      LOG_INFO("%lu\n", req->Offset);
-      LOG_INFO("%llu\n", req->Size);
-      LOG_INFO("%u\n", req->Value);
-      NTSTATUS status;
-      PEPROCESS process;
-      KAPC_STATE apc;
-      status = PsLookupProcessByProcessId((HANDLE)req->Pid, &process);
-      LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
-      if (NT_SUCCESS(status))
-      {
-        KeStackAttachProcess(process, &apc);
-        __try
-        {
-          PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
-          if (peb)
-          {
-            PVOID imageBase = peb->ImageBaseAddress;
-            LOG_INFO("Image base %p\n", imageBase);
-            // Refactor to InLoadOrderLinks for stability
-            PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
-            PLDR_DATA_TABLE_ENTRY module = NULL;
-            PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
-            PLIST_ENTRY moduleEntry = moduleHead->Flink;
-            while (moduleEntry != moduleHead)
-            {
-              module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-              if (module && module->DllBase)
-              {
-                LOG_INFO("Found base %p size %u name %wZ\n", module->DllBase, module->SizeOfImage, &module->BaseDllName);
-                //if (_wcsicmp(moduleName.Buffer, module->BaseDllName.Buffer) == 0)
-                //{
-                //  break;
-                //}
-                //if (RtlCompareUnicodeString(&moduleName, &module->BaseDllName, TRUE) == 0)
-                //{
-                //  break;
-                //}
-              }
-              moduleEntry = moduleEntry->Flink;
-            }
-            module = CONTAINING_RECORD(moduleHead->Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-            if (module)
-            {
-              LOG_INFO("Selected module name %wZ\n", &module->BaseDllName);
-              LOG_INFO("Selected module base %p\n", module->DllBase);
-              LOG_INFO("Selected module enty %p\n", module->EntryPoint);
-              PVOID moduleBase = GetModuleBase(module->DllBase, module->EntryPoint);
-              INT result = ScanIntSigned((PVOID)((PBYTE)moduleBase + req->Offset), req->Size, req->Value);
-              LOG_INFO("Found %u\n", result);
-            }
-          }
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-          LOG_ERROR("Something went wrong!\n");
-          status = STATUS_UNHANDLED_EXCEPTION;
-        }
-        KeUnstackDetachProcess(&apc);
-        ObDereferenceObject(process);
-      }
-      irp->IoStatus.Status = status;
-      irp->IoStatus.Information = NT_SUCCESS(status) ? sizeof(REQ_SCAN_INT_SIGNED) : 0;
+      irp->IoStatus.Status = HandleScanRequest(req);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_SCAN_INT_SIGNED) : 0;
       break;
     }
   }
