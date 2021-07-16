@@ -1,36 +1,16 @@
 #pragma warning(disable : 4995)
 
 #include "global.h"
+#include "ioctrl.h"
 
 // TODO: fix wchar_t comparisons inhandled exception
 // TODO: Refactor ptr to stack objects
 
 /*
-* I/O communication.
+* Global driver state.
 */
 
-#define KMOD_REQ_SCAN_INT_SIGNED CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
-#define KMOD_REQ_SCAN_CONTEXT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
-#define KMOD_REQ_SCAN_STACK CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0102, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
-
-typedef struct _REQ_SCAN_INT_SIGNED
-{
-  ULONG Pid;
-  PWCHAR Name;
-  ULONG Offset;
-  SIZE_T Size;
-  PVOID Buffer;
-} REQ_SCAN_INT_SIGNED, * PREQ_SCAN_INT_SIGNED;
-typedef struct _REQ_SCAN_CONTEXT
-{
-  ULONG Tid;
-  ULONG Iterations; // Change to TIME_T
-} REQ_SCAN_CONTEXT, * PREQ_SCAN_CONTEXT;
-typedef struct _REQ_SCAN_STACK
-{
-  ULONG Tid;
-  ULONG Iterations; // Change to TIME_T
-} REQ_SCAN_STACK, * PREQ_SCAN_STACK;
+ULONG Pid = 0;
 
 /*
 * Stack frames.
@@ -685,14 +665,40 @@ VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
 * Request/Response handlers.
 */
 
-NTSTATUS HandleScanRequest(PREQ_SCAN_INT_SIGNED req)
+NTSTATUS HandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  Pid = req->Pid;
+  LOG_INFO("Attached to process %u\n", Pid);
+  status = STATUS_SUCCESS;
+  return status;
+}
+NTSTATUS HandleMemoryReadRequest(PREQ_MEMORY_READ req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PVOID base = NULL;
-  status = GetProcessImageBase(req->Pid, req->Name, base);
-  if (NT_SUCCESS(status))
+  if (Pid)
   {
-    status = ReadVirtualProcessMemory(req->Pid, (PVOID)((PBYTE)base + req->Offset), req->Size, req->Buffer);
+    LOG_INFO("Got module name %ls", req->Name);
+    status = GetProcessImageBase(Pid, req->Name, base);
+    if (NT_SUCCESS(status))
+    {
+      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->Offset), req->Size, req->Buffer);
+    }
+  }
+  return status;
+}
+NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PVOID base = NULL;
+  if (Pid)
+  {
+    status = GetProcessImageBase(Pid, req->Name, base);
+    if (NT_SUCCESS(status))
+    {
+      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->Offset), req->Size, req->Buffer);
+    }
   }
   return status;
 }
@@ -725,11 +731,25 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
-    case KMOD_REQ_SCAN_INT_SIGNED:
+    case KMOD_REQ_PROCESS_ATTACH:
     {
-      PREQ_SCAN_INT_SIGNED req = (PREQ_SCAN_INT_SIGNED)irp->AssociatedIrp.SystemBuffer;
-      irp->IoStatus.Status = HandleScanRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_SCAN_INT_SIGNED) : 0;
+      PREQ_PROCESS_ATTACH req = (PREQ_PROCESS_ATTACH)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = HandleProcessAttachRequest(req);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_PROCESS_ATTACH) : 0;
+      break;
+    }
+    case KMOD_REQ_MEMORY_READ:
+    {
+      PREQ_MEMORY_READ req = (PREQ_MEMORY_READ)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = HandleMemoryReadRequest(req);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_MEMORY_READ) : 0;
+      break;
+    }
+    case KMOD_REQ_MEMORY_WRITE:
+    {
+      PREQ_MEMORY_WRITE req = (PREQ_MEMORY_WRITE)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = HandleMemoryWriteRequest(req);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_MEMORY_WRITE) : 0;
       break;
     }
   }

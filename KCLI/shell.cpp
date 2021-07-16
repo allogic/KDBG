@@ -6,8 +6,8 @@ Shell::Shell()
   StdIn = GetStdHandle(STD_INPUT_HANDLE);
   GetConsoleScreenBufferInfo(StdOut, &CsbInfo);
   AttrOld = CsbInfo.wAttributes;
-  ScreenWidth = (USHORT)CsbInfo.srWindow.Right;
-  ScreenHeight = (USHORT)CsbInfo.srWindow.Bottom;
+  ScreenWidth = NormalizeMul2((USHORT)CsbInfo.srWindow.Right);
+  ScreenHeight = NormalizeMul2((USHORT)CsbInfo.srWindow.Bottom);
   GetConsoleCursorInfo(StdOut, &CcInfoOld);
   CcInfoNew = CcInfoOld;
   CcInfoNew.bVisible = 0;
@@ -36,28 +36,32 @@ VOID Shell::Poll()
 {
   DWORD read = 0;
   ReadConsoleInput(StdIn, &InputEvent, 1, &read);
-  switch (InputEvent.EventType)
+  if (read)
   {
-    case WINDOW_BUFFER_SIZE_EVENT:
+    switch (InputEvent.EventType)
     {
-      SetConsoleCursorInfo(StdOut, &CcInfoNew);
-      ScreenWidth = (USHORT)InputEvent.Event.WindowBufferSizeEvent.dwSize.X;
-      ScreenHeight = (USHORT)InputEvent.Event.WindowBufferSizeEvent.dwSize.Y;
-      break;
-    }
-    case KEY_EVENT:
-    {
-      if (InputEvent.Event.KeyEvent.bKeyDown)
+      case WINDOW_BUFFER_SIZE_EVENT:
       {
-        switch (InputEvent.Event.KeyEvent.wVirtualKeyCode)
-        {
-          case VK_LEFT:  break;
-          case VK_RIGHT: break;
-          case VK_UP:    break;
-          case VK_DOWN:  break;
-        }
+        GetConsoleScreenBufferInfo(StdOut, &CsbInfo);
+        ScreenWidth = NormalizeMul2((USHORT)CsbInfo.srWindow.Right);
+        ScreenHeight = NormalizeMul2((USHORT)CsbInfo.srWindow.Bottom);
+        SetConsoleCursorInfo(StdOut, &CcInfoNew);
+        break;
       }
-      break;
+      case KEY_EVENT:
+      {
+        if (InputEvent.Event.KeyEvent.bKeyDown)
+        {
+          switch (InputEvent.Event.KeyEvent.wVirtualKeyCode)
+          {
+            case VK_LEFT:  break;
+            case VK_RIGHT: break;
+            case VK_UP:    break;
+            case VK_DOWN:  break;
+          }
+        }
+        break;
+      }
     }
   }
 }
@@ -112,7 +116,43 @@ VOID Shell::Frame(USHORT x, USHORT y, USHORT w, USHORT h)
   );
   free(charInfos);
 }
-VOID Shell::Text(USHORT x, USHORT y, PCWCHAR str)
+
+VOID Shell::Char(USHORT x, USHORT y, CHAR chr)
+{
+  CHAR_INFO charInfo;
+  charInfo.Char.AsciiChar = chr;
+  charInfo.Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+  SMALL_RECT rect{ (SHORT)x, (SHORT)y, (SHORT)x, (SHORT)y };
+  WriteConsoleOutput(
+    StdOut,
+    &charInfo,
+    COORD{ 1, 1 },
+    COORD{ 0, 0 },
+    &rect
+  );
+}
+
+VOID Shell::Text(USHORT x, USHORT y, PCHAR str)
+{
+  SIZE_T strLen = strlen(str);
+  PCHAR_INFO charInfos = (PCHAR_INFO)malloc(sizeof(CHAR_INFO) * strLen);
+  memset(charInfos, 0, sizeof(CHAR_INFO) * strLen);
+  for (SIZE_T i = 0; i < strLen; ++i)
+  {
+    charInfos[i].Char.AsciiChar = str[i];
+    charInfos[i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+  }
+  SMALL_RECT rect{ (SHORT)x, (SHORT)y, (SHORT)(x + strLen), (SHORT)y };
+  WriteConsoleOutput(
+    StdOut,
+    charInfos,
+    COORD{ (SHORT)strLen, 1 },
+    COORD{ 0, 0 },
+    &rect
+  );
+  free(charInfos);
+}
+VOID Shell::TextW(USHORT x, USHORT y, PCWCHAR str)
 {
   SIZE_T strLen = wcslen(str);
   PCHAR_INFO charInfos = (PCHAR_INFO)malloc(sizeof(CHAR_INFO) * strLen);

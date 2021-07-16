@@ -1,5 +1,6 @@
 #include "global.h"
 #include "shell.h"
+#include "view.h"
 
 /*
 * Disassembler.
@@ -43,32 +44,75 @@ void DisassembleBytes(std::uint8_t* bytes, std::size_t size, std::size_t offset)
 * Entry point.
 */
 
-enum State
-{
-  None,
-  Exit,
-};
-
 std::int32_t wmain(std::int32_t argc, wchar_t* argv[])
 {
-  Shell shell;
-  State state = None;
-  while (state != Exit)
+  // Connect to driver
+  HANDLE device = CreateFileA("\\\\.\\KMOD", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  if (device == INVALID_HANDLE_VALUE)
   {
-    shell.Poll();
-    switch (state)
+    LOG_ERROR("Device connection cannot be established\n");
+  }
+  else
+  {
+    // Attach to process
+    REQ_PROCESS_ATTACH reqest{};
+    reqest.Pid = wcstoul(argv[1], NULL, 10);
+    if (DeviceIoControl(device, KMOD_REQ_PROCESS_ATTACH, &reqest, sizeof(reqest), &reqest, sizeof(reqest), NULL, NULL))
     {
-      case None:
+      std::this_thread::sleep_for(std::chrono::milliseconds{ 1000 });
+      // User interface
+      Shell shell;
+      std::map<std::string, View*> views
       {
-        shell.Clear(0, 0, shell.Width(), shell.Height());
-        shell.Frame(0, 0, shell.Width(), 9);
-        shell.Text(2, 0, L"Stack");
-        shell.Frame(0, 10, shell.Width(), 9);
-        shell.Text(2, 10, L"Memory");
-        shell.Frame(0, 20, shell.Width(), 9);
-        shell.Text(2, 20, L"Debugger");
+        { "memory", new Memory{ L"Memory" } },
+        { "scanner", new Scanner{ L"Scanner" } },
+        { "debugger", new Debugger{ L"Debugger" } },
+      };
+      RenderMode mode = Invalidate;
+      while (true)
+      {
+        switch (mode)
+        {
+          case Idle:
+          {
+            break;
+          }
+          case Invalidate:
+          {
+            //shell.Clear(0, 0, shell.Width() + 1, shell.Height() + 1);
+            USHORT thirdWidth = (USHORT)(shell.Width() / 3);
+            USHORT halfHeight = (USHORT)(shell.Height() / 2);
+            ((Memory*)views["memory"])->Fetch(device, L"TaskMgr.exe", 0, 0, 32);
+            views["memory"]->Render(
+              thirdWidth,
+              halfHeight,
+              shell.Width() - thirdWidth,
+              halfHeight,
+              &shell
+            );
+            //((Scanner*)views["scanner"])->Fetch(device);
+            //views["scanner"]->Render(
+            //  0,
+            //  0,
+            //  thirdWidth,
+            //  shell.Height(),
+            //  &shell
+            //);
+            //((Debugger*)views["debugger"])->Fetch(device);
+            //views["debugger"]->Render(
+            //  thirdWidth,
+            //  0,
+            //  shell.Width() - thirdWidth,
+            //  shell.Height() - halfHeight,
+            //  &shell
+            //);
+            mode = Idle;
+            break;
+          }
+        }
+        shell.Poll();
         break;
-      }
+      };
     }
-  };
+  }
 }

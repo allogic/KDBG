@@ -30,33 +30,6 @@
 */
 
 /*
-* I/O communication.
-*/
-
-#define KMOD_REQ_SCAN_INT_SIGNED CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
-#define KMOD_REQ_SCAN_CONTEXT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
-#define KMOD_REQ_SCAN_STACK CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0102, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
-
-typedef struct _REQ_SCAN_INT_SIGNED
-{
-  ULONG Pid;
-  PWCHAR Name;
-  ULONG Offset;
-  SIZE_T Size;
-  PVOID Buffer;
-} REQ_SCAN_INT_SIGNED, * PREQ_SCAN_INT_SIGNED;
-typedef struct _REQ_SCAN_CONTEXT
-{
-  ULONG Tid;
-  ULONG Iterations; // Change to TIME_T
-} REQ_SCAN_CONTEXT, * PREQ_SCAN_CONTEXT;
-typedef struct _REQ_SCAN_STACK
-{
-  ULONG Tid;
-  ULONG Iterations; // Change to TIME_T
-} REQ_SCAN_STACK, * PREQ_SCAN_STACK;
-
-/*
 * Communication device.
 */
 
@@ -113,25 +86,25 @@ INT wmain(INT argc, PWCHAR argv[])
       }
       if ("/Read" == tokens[0])
       {
-        REQ_SCAN_INT_SIGNED req;
-        req.Pid = std::wcstoul(argv[2], NULL, 10);
-        req.Name = (PWCHAR)std::malloc(sizeof(WCHAR) * std::wcslen(argv[3]));
-        std::memcpy(req.Name, argv[3], sizeof(WCHAR) * std::wcslen(argv[3]));
-        req.Offset = std::wcstoul(argv[4], NULL, 10);
-        req.Size = sizeof(INT) * std::wcstoul(argv[5], NULL, 10);
-        req.Buffer = (PINT)std::malloc(req.Size);
-        // Issue request
-        if (DeviceIoControl(Device, KMOD_REQ_SCAN_INT_SIGNED, &req, sizeof(req), &req, sizeof(req), NULL, NULL))
-        {
-          std::printf("");
-          for (SIZE_T i = 0; i < (req.Size / sizeof(INT)); ++i)
-          {
-            std::printf("%u\n", ((PINT)req.Buffer)[i]);
-          }
-        }
+        //REQ_SCAN_INT_SIGNED req;
+        //req.Pid = std::wcstoul(argv[2], NULL, 10);
+        //req.Name = (PWCHAR)std::malloc(sizeof(WCHAR) * std::wcslen(argv[3]));
+        //std::memcpy(req.Name, argv[3], sizeof(WCHAR) * std::wcslen(argv[3]));
+        //req.Offset = std::wcstoul(argv[4], NULL, 10);
+        //req.Size = sizeof(INT) * std::wcstoul(argv[5], NULL, 10);
+        //req.Buffer = (PINT)std::malloc(req.Size);
+        //// Issue request
+        //if (DeviceIoControl(Device, KMOD_REQ_SCAN_INT_SIGNED, &req, sizeof(req), &req, sizeof(req), NULL, NULL))
+        //{
+        //  std::printf("");
+        //  for (SIZE_T i = 0; i < (req.Size / sizeof(INT)); ++i)
+        //  {
+        //    std::printf("%u\n", ((PINT)req.Buffer)[i]);
+        //  }
+        //}
         // Cleanup
-        std::free(req.Name);
-        std::free(req.Buffer);
+        //std::free(req.Name);
+        //std::free(req.Buffer);
       }
     }
     // Cleanup

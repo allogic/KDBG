@@ -3,6 +3,13 @@
 
 #include "global.h"
 
+static USHORT NormalizeMul2(USHORT value)
+{
+  return value & 1
+    ? value ^ 1
+    : value;
+}
+
 struct Shell
 {
   HANDLE                     StdOut;
@@ -18,7 +25,7 @@ struct Shell
   INPUT_RECORD               InputEvent;
 
   Shell();
-  ~Shell();
+  virtual ~Shell();
 
   USHORT Width();
   USHORT Height();
@@ -27,7 +34,11 @@ struct Shell
 
   VOID Clear(USHORT x, USHORT y, USHORT w, USHORT h);
   VOID Frame(USHORT x, USHORT y, USHORT w, USHORT h);
-  VOID Text(USHORT x, USHORT y, PCWCHAR str);
+
+  VOID Char(USHORT x, USHORT y, CHAR chr);
+
+  VOID Text(USHORT x, USHORT y, PCHAR str);
+  VOID TextW(USHORT x, USHORT y, PCWCHAR str);
 };
 
 #endif

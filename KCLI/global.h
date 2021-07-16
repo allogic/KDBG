@@ -16,7 +16,10 @@ extern "C"
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 #include <cstdint>
+#include <thread>
+#include <chrono>
 
 #include <capstone/capstone.h>
 #include <capstone/platform.h>

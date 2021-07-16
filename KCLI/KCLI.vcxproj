@@ -153,10 +153,13 @@
   <ItemGroup>
     <ClCompile Include="kcli.cpp" />
     <ClCompile Include="shell.cpp" />
+    <ClCompile Include="view.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h" />
+    <ClInclude Include="ioctrl.h" />
     <ClInclude Include="shell.h" />
+    <ClInclude Include="view.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
