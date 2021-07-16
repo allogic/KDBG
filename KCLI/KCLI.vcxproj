@@ -151,16 +151,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="global.cpp" />
     <ClCompile Include="kcli.cpp" />
-    <ClCompile Include="util.cpp" />
+    <ClCompile Include="shell.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h" />
-    <ClInclude Include="ioctrl.h" />
-    <ClInclude Include="kcli.h" />
-    <ClInclude Include="util.h" />
-    <ClInclude Include="wdk.h" />
+    <ClInclude Include="shell.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

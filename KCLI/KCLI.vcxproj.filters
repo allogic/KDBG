@@ -18,27 +18,15 @@
     <ClCompile Include="kcli.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="global.cpp">
+    <ClCompile Include="shell.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ioctrl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="global.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="kcli.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wdk.h">
+    <ClInclude Include="shell.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
