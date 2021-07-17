@@ -27,57 +27,6 @@ typedef struct _STACK_FRAME_X64
 * Kernel utilities.
 */
 
-ULONG Seed = 0;
-
-ULONG RtlNextRandom(ULONG min, ULONG max)
-{
-  Seed = (ULONG)__rdtsc();
-  const ULONG scale = (ULONG)MAXINT32 / (max - min);
-  return RtlRandomEx(&Seed) / scale + min;
-}
-ULONG GetNextPoolTag()
-{
-  constexpr ULONG poolTags[] =
-  {
-    ' prI', // Allocated IRP packets
-    '+prI', // I/O verifier allocated IRP packets
-    'eliF', // File objects
-    'atuM', // Mutant objects
-    'sFtN', // ntfs.sys!StrucSup.c
-    'ameS', // Semaphore objects
-    'RwtE', // Etw KM RegEntry
-    'nevE', // Event objects
-    ' daV', // Mm virtual address descriptors
-    'sdaV', // Mm virtual address descriptors (short)
-    'aCmM', // Mm control areas for mapped files
-    '  oI', // I/O manager
-    'tiaW', // WaitCompletion Packets
-    'eSmM', // Mm secured VAD allocation
-    'CPLA', // ALPC port objects
-    'GwtE', // ETW GUID
-    ' ldM', // Memory Descriptor Lists
-    'erhT', // Thread objects
-    'cScC', // Cache Manager Shared Cache Map
-    'KgxD', // Vista display driver support
-  };
-  constexpr ULONG numPoolTags = ARRAYSIZE(poolTags);
-  const ULONG index = RtlNextRandom(0, numPoolTags);
-  NT_ASSERT(index <= numPoolTags - 1);
-  return index;
-}
-
-PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size)
-{
-  PVOID ptr = ExAllocatePoolWithTag(NonPagedPool, size, GetNextPoolTag());
-  if (zeroMemory && ptr)
-    RtlZeroMemory(ptr, size);
-  return ptr;
-}
-VOID RtlFreeMemory(PVOID ptr)
-{
-  ExFreePool(ptr);
-}
-
 template<typename FUNCTION>
 FUNCTION GetSystemRoutine(PCWCHAR procName)
 {
@@ -89,7 +38,7 @@ FUNCTION GetSystemRoutine(PCWCHAR procName)
     functionPointer = (FUNCTION)MmGetSystemRoutineAddress(&functionName);
     if (!functionPointer)
     {
-      LOG_ERROR("MmGetSystemRoutineAddress\n");
+      KMOD_LOG_ERROR("MmGetSystemRoutineAddress\n");
       return NULL;
     }
   }
@@ -132,55 +81,55 @@ NTSTATUS PsSetContextThread(
 
 VOID DumpContext(PCONTEXT context)
 {
-  LOG_INFO("Control flags\n");
-  LOG_INFO("ContextFlags: %u\n", context->ContextFlags);
-  LOG_INFO("MxCsr: %u\n", context->MxCsr);
-  LOG_INFO("\n");
-  LOG_INFO("Segment registers and processor flags\n");
-  LOG_INFO("SegCs: %u\n", context->SegCs);
-  LOG_INFO("SegDs: %u\n", context->SegDs);
-  LOG_INFO("SegEs: %u\n", context->SegEs);
-  LOG_INFO("SegFs: %u\n", context->SegFs);
-  LOG_INFO("SegGs: %u\n", context->SegGs);
-  LOG_INFO("SegSs: %u\n", context->SegSs);
-  LOG_INFO("EFlags: %u\n", context->EFlags);
-  LOG_INFO("\n");
-  LOG_INFO("Debug registers\n");
-  LOG_INFO("Dr0: %llu\n", context->Dr0);
-  LOG_INFO("Dr1: %llu\n", context->Dr1);
-  LOG_INFO("Dr2: %llu\n", context->Dr2);
-  LOG_INFO("Dr3: %llu\n", context->Dr3);
-  LOG_INFO("Dr6: %llu\n", context->Dr6);
-  LOG_INFO("Dr7: %llu\n", context->Dr7);
-  LOG_INFO("\n");
-  LOG_INFO("Integer registers\n");
-  LOG_INFO("Rax: %llu\n", context->Rax);
-  LOG_INFO("Rcx: %llu\n", context->Rcx);
-  LOG_INFO("Rdx: %llu\n", context->Rdx);
-  LOG_INFO("Rbx: %llu\n", context->Rbx);
-  LOG_INFO("Rsp: %llu\n", context->Rsp);
-  LOG_INFO("Rbp: %llu\n", context->Rbp);
-  LOG_INFO("Rsi: %llu\n", context->Rsi);
-  LOG_INFO("Rdi: %llu\n", context->Rdi);
-  LOG_INFO("R8: %llu\n", context->R8);
-  LOG_INFO("R9: %llu\n", context->R9);
-  LOG_INFO("R10: %llu\n", context->R10);
-  LOG_INFO("R11: %llu\n", context->R11);
-  LOG_INFO("R12: %llu\n", context->R12);
-  LOG_INFO("R13: %llu\n", context->R13);
-  LOG_INFO("R14: %llu\n", context->R14);
-  LOG_INFO("R15: %llu\n", context->R15);
-  LOG_INFO("\n");
-  LOG_INFO("Program counter\n");
-  LOG_INFO("Rip: %llu\n", context->Rip);
-  LOG_INFO("\n");
-  LOG_INFO("Special debug control registers\n");
-  LOG_INFO("DebugControl: %llu\n", context->DebugControl);
-  LOG_INFO("LastBranchToRip: %llu\n", context->LastBranchToRip);
-  LOG_INFO("LastBranchFromRip: %llu\n", context->LastBranchFromRip);
-  LOG_INFO("LastExceptionToRip: %llu\n", context->LastExceptionToRip);
-  LOG_INFO("LastExceptionFromRip: %llu\n", context->LastExceptionFromRip);
-  LOG_INFO("\n");
+  KMOD_LOG_INFO("Control flags\n");
+  KMOD_LOG_INFO("ContextFlags: %u\n", context->ContextFlags);
+  KMOD_LOG_INFO("MxCsr: %u\n", context->MxCsr);
+  KMOD_LOG_INFO("\n");
+  KMOD_LOG_INFO("Segment registers and processor flags\n");
+  KMOD_LOG_INFO("SegCs: %u\n", context->SegCs);
+  KMOD_LOG_INFO("SegDs: %u\n", context->SegDs);
+  KMOD_LOG_INFO("SegEs: %u\n", context->SegEs);
+  KMOD_LOG_INFO("SegFs: %u\n", context->SegFs);
+  KMOD_LOG_INFO("SegGs: %u\n", context->SegGs);
+  KMOD_LOG_INFO("SegSs: %u\n", context->SegSs);
+  KMOD_LOG_INFO("EFlags: %u\n", context->EFlags);
+  KMOD_LOG_INFO("\n");
+  KMOD_LOG_INFO("Debug registers\n");
+  KMOD_LOG_INFO("Dr0: %llu\n", context->Dr0);
+  KMOD_LOG_INFO("Dr1: %llu\n", context->Dr1);
+  KMOD_LOG_INFO("Dr2: %llu\n", context->Dr2);
+  KMOD_LOG_INFO("Dr3: %llu\n", context->Dr3);
+  KMOD_LOG_INFO("Dr6: %llu\n", context->Dr6);
+  KMOD_LOG_INFO("Dr7: %llu\n", context->Dr7);
+  KMOD_LOG_INFO("\n");
+  KMOD_LOG_INFO("Integer registers\n");
+  KMOD_LOG_INFO("Rax: %llu\n", context->Rax);
+  KMOD_LOG_INFO("Rcx: %llu\n", context->Rcx);
+  KMOD_LOG_INFO("Rdx: %llu\n", context->Rdx);
+  KMOD_LOG_INFO("Rbx: %llu\n", context->Rbx);
+  KMOD_LOG_INFO("Rsp: %llu\n", context->Rsp);
+  KMOD_LOG_INFO("Rbp: %llu\n", context->Rbp);
+  KMOD_LOG_INFO("Rsi: %llu\n", context->Rsi);
+  KMOD_LOG_INFO("Rdi: %llu\n", context->Rdi);
+  KMOD_LOG_INFO("R8: %llu\n", context->R8);
+  KMOD_LOG_INFO("R9: %llu\n", context->R9);
+  KMOD_LOG_INFO("R10: %llu\n", context->R10);
+  KMOD_LOG_INFO("R11: %llu\n", context->R11);
+  KMOD_LOG_INFO("R12: %llu\n", context->R12);
+  KMOD_LOG_INFO("R13: %llu\n", context->R13);
+  KMOD_LOG_INFO("R14: %llu\n", context->R14);
+  KMOD_LOG_INFO("R15: %llu\n", context->R15);
+  KMOD_LOG_INFO("\n");
+  KMOD_LOG_INFO("Program counter\n");
+  KMOD_LOG_INFO("Rip: %llu\n", context->Rip);
+  KMOD_LOG_INFO("\n");
+  KMOD_LOG_INFO("Special debug control registers\n");
+  KMOD_LOG_INFO("DebugControl: %llu\n", context->DebugControl);
+  KMOD_LOG_INFO("LastBranchToRip: %llu\n", context->LastBranchToRip);
+  KMOD_LOG_INFO("LastBranchFromRip: %llu\n", context->LastBranchFromRip);
+  KMOD_LOG_INFO("LastExceptionToRip: %llu\n", context->LastExceptionToRip);
+  KMOD_LOG_INFO("LastExceptionFromRip: %llu\n", context->LastExceptionFromRip);
+  KMOD_LOG_INFO("\n");
 }
 
 /*
@@ -258,25 +207,25 @@ PVOID GetVirtualBase(PVOID imageBase, PVOID virtualBase)
   }
   PVOID rva = (PVOID)((ULONG64)virtualBase - (ULONG64)imageBase);
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
-  LOG_INFO("e_magic %u\n", dosHeader->e_magic);
-  LOG_INFO("e_lfanew %p\n", (PULONG)dosHeader->e_lfanew);
-  LOG_INFO("e_cp %u\n", dosHeader->e_cp);
+  KMOD_LOG_INFO("e_magic %u\n", dosHeader->e_magic);
+  KMOD_LOG_INFO("e_lfanew %p\n", (PULONG)dosHeader->e_lfanew);
+  KMOD_LOG_INFO("e_cp %u\n", dosHeader->e_cp);
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
-    LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
+    KMOD_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
     return NULL;
   }
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
-    LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
+    KMOD_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
     return NULL;
   }
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
   USHORT section = RvaToSection(ntHeaders, rva);
   if (section == (USHORT)PE_ERROR_VALUE)
   {
-    LOG_ERROR("Invalid section\n");
+    KMOD_LOG_ERROR("Invalid section\n");
     return NULL;
   }
   return (PVOID)((PBYTE)imageBase + sectionHeader[section].VirtualAddress);
@@ -287,13 +236,13 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
-    LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
+    KMOD_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
     return (ULONG)PE_ERROR_VALUE;
   }
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
-    LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
+    KMOD_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
     return (ULONG)PE_ERROR_VALUE;
   }
   PIMAGE_DATA_DIRECTORY dataDir;
@@ -310,7 +259,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   ULONG exportDirOffset = RvaToOffset(ntHeaders, &exportDirRva, fileSize);
   if (exportDirOffset == (ULONG)PE_ERROR_VALUE)
   {
-    LOG_ERROR("Invalid export directory\n");
+    KMOD_LOG_ERROR("Invalid export directory\n");
     return (ULONG)PE_ERROR_VALUE;
   }
   PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)imageBase + exportDirOffset);
@@ -320,7 +269,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
   if (addressOfFunctionsOffset == (ULONG)PE_ERROR_VALUE || addressOfNameOrdinalsOffset == (ULONG)PE_ERROR_VALUE || addressOfNamesOffset == (ULONG)PE_ERROR_VALUE)
   {
-    LOG_ERROR("Invalid export directory content\n");
+    KMOD_LOG_ERROR("Invalid export directory content\n");
     return (ULONG)PE_ERROR_VALUE;
   }
   PULONG addressOfFunctions = (PULONG)((PBYTE)imageBase + addressOfFunctionsOffset);
@@ -348,7 +297,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   }
   if (exportOffset == (ULONG)PE_ERROR_VALUE)
   {
-    LOG_ERROR("Export %s not found\n", exportName);
+    KMOD_LOG_ERROR("Export %s not found\n", exportName);
     return (ULONG)PE_ERROR_VALUE;
   }
   return exportOffset;
@@ -358,12 +307,12 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
-    LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
+    KMOD_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
   }
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
-    LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
+    KMOD_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
   }
   PIMAGE_DATA_DIRECTORY dataDir;
   if (ntHeaders->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
@@ -379,7 +328,7 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
   ULONG exportDirOffset = RvaToOffset(ntHeaders, &exportDirRva, fileSize);
   if (exportDirOffset == (ULONG)PE_ERROR_VALUE)
   {
-    LOG_ERROR("Invalid export directory\n");
+    KMOD_LOG_ERROR("Invalid export directory\n");
   }
   PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)imageBase + exportDirOffset);
   ULONG numOfNames = exportDir->NumberOfNames;
@@ -388,13 +337,13 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
   ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
   if (addressOfFunctionsOffset == (ULONG)PE_ERROR_VALUE || addressOfNameOrdinalsOffset == (ULONG)PE_ERROR_VALUE || addressOfNamesOffset == (ULONG)PE_ERROR_VALUE)
   {
-    LOG_ERROR("Invalid export directory content\n");
+    KMOD_LOG_ERROR("Invalid export directory content\n");
   }
   PULONG addressOfFunctions = (PULONG)((PBYTE)imageBase + addressOfFunctionsOffset);
   PUSHORT addressOfNameOrdinals = (PUSHORT)((PBYTE)imageBase + addressOfNameOrdinalsOffset);
   PULONG addressOfNames = (PULONG)((PBYTE)imageBase + addressOfNamesOffset);
   ULONG exportOffset = (ULONG)PE_ERROR_VALUE;
-  LOG_INFO("Exports:\n");
+  KMOD_LOG_INFO("Exports:\n");
   for (ULONG i = 0; i < numOfNames; i++)
   {
     ULONG currentNameOffset = RvaToOffset(ntHeaders, &addressOfNames[i], fileSize);
@@ -409,7 +358,7 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
       continue;
     }
     exportOffset = RvaToOffset(ntHeaders, &currentFunctionRva, fileSize);
-    LOG_INFO("\t%X %s\n", exportOffset, currentName);
+    KMOD_LOG_INFO("\t%X %s\n", exportOffset, currentName);
   }
 }
 
@@ -417,7 +366,7 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
 * Process utilities relative to kernel space.
 */
 
-NTSTATUS GetProcessImageBase(ULONG pid, PWCHAR name, PVOID& base)
+NTSTATUS GetProcessModules(ULONG pid, SIZE_T count, SIZE_T& size, PVOID& buffer)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -442,27 +391,73 @@ NTSTATUS GetProcessImageBase(ULONG pid, PWCHAR name, PVOID& base)
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           if (module && module->DllBase)
           {
-            LOG_INFO("Found base %p size %u name %wZ\n", module->DllBase, module->SizeOfImage, &module->BaseDllName);
-            //if (_wcsicmp(moduleName.Buffer, module->BaseDllName.Buffer) == 0)
+            //((PMODULE)buffer)[size++].Base = 666; //(ULONG64)module->DllBase;
+            //wcscpy(((PMODULE)buffer)[size++].Name, module->BaseDllName.Buffer);
+            //((PMODULE)buffer)[size++].Size = module->SizeOfImage;
+          }
+          moduleEntry = moduleEntry->Flink;
+          if (size >= count)
+          {
+            break;
+          }
+        }
+        status = STATUS_SUCCESS;
+      }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+      KMOD_LOG_ERROR("Something went wrong!\n");
+    }
+    KeUnstackDetachProcess(&apc);
+    ObDereferenceObject(process);
+  }
+  return status;
+}
+NTSTATUS GetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PEPROCESS process = NULL;
+  KAPC_STATE apc;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (NT_SUCCESS(status))
+  {
+    status = STATUS_UNSUCCESSFUL;
+    KeStackAttachProcess(process, &apc);
+    __try
+    {
+      PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
+      if (peb)
+      {
+        PVOID imageBase = peb->ImageBaseAddress;
+        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
+        PLDR_DATA_TABLE_ENTRY module = NULL;
+        PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
+        PLIST_ENTRY moduleEntry = moduleHead->Flink;
+        while (moduleEntry != moduleHead)
+        {
+          module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+          if (module && module->DllBase)
+          {
+            //if (_wcsicmp(name, module->BaseDllName.Buffer) == 0)
             //{
             //  break;
             //}
-            //if (RtlCompareUnicodeString(&moduleName, &module->BaseDllName, TRUE) == 0)
+            //if (RtlCompareUnicodeString(&requiredName, &currentName, TRUE) == 0)
             //{
             //  break;
             //}
           }
           moduleEntry = moduleEntry->Flink;
         }
-        module = CONTAINING_RECORD(moduleHead->Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+        //module = CONTAINING_RECORD(moduleHead->Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
         base = module->DllBase;
         status = STATUS_SUCCESS;
-        LOG_INFO("Selected base %p size %u name %wZ\n", module->DllBase, module->SizeOfImage, &module->BaseDllName);
+        KMOD_LOG_INFO("Selected module %wZ\n", &module->BaseDllName);
       }
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-      LOG_ERROR("Something went wrong!\n");
+      KMOD_LOG_ERROR("Something went wrong!\n");
     }
     KeUnstackDetachProcess(&apc);
     ObDereferenceObject(process);
@@ -493,12 +488,11 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
           if (mappedBuffer)
           {
             status = MmProtectMdlSystemAddress(mdl, PAGE_READONLY);
-            LOG_ERROR_IF_NOT_SUCCESS(status, "MmProtectMdlSystemAddress %X\n", status);
             if (NT_SUCCESS(status))
             {
               status = STATUS_UNSUCCESSFUL;
               memcpy(asyncBuffer, mappedBuffer, size);
-              LOG_INFO("Copy successfull\n");
+              KMOD_LOG_INFO("Copy successfull\n");
               status = STATUS_SUCCESS;
             }
             MmUnmapLockedPages(mappedBuffer, mdl);
@@ -508,7 +502,7 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-          LOG_ERROR("Something went wrong!\n");
+          KMOD_LOG_ERROR("Something went wrong!\n");
           status = STATUS_UNHANDLED_EXCEPTION;
         }
         KeUnstackDetachProcess(&apc);
@@ -536,16 +530,16 @@ VOID ScanContext(HANDLE tid, SIZE_T iterations)
   //PCONTEXT context = NULL;
   //SIZE_T contextSize = sizeof(CONTEXT);
   //status = PsLookupThreadByThreadId(tid, &thread);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
+  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
   //status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
+  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
   //RtlZeroMemory(context, contextSize);
   //LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
   //for (SIZE_T i = 0; i < iterations; ++i)
   //{
   //  context->ContextFlags = CONTEXT_ALL;
   //  status = PsGetContextThread(thread, context, UserMode);
-  //  LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
+  //  KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
   //  LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
   //}
   //if (context)
@@ -570,16 +564,16 @@ VOID ScanStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
   //KAPC_STATE apc;
   //// Get context infos
   //status = PsLookupProcessByProcessId(pid, &process);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
+  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
   //status = PsLookupThreadByThreadId(tid, &thread);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
+  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
   //status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  //LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
+  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
   //// Attach to process
   //KeStackAttachProcess(process, &apc);
   //// Get module base
   //peb = (PPEB64)PsGetProcessPeb(process);
-  //LOG_ERROR_IF_NOT(!peb, "PsGetProcessPeb\n");
+  //KMOD_LOG_ERROR_IF_NOT(!peb, "PsGetProcessPeb\n");
   //modules = CONTAINING_RECORD(peb->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
   //moduleList = modules->InLoadOrderLinks.Flink;
   //moduleEntry = moduleList->Flink;
@@ -592,7 +586,7 @@ VOID ScanStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
   //  }
   //  moduleEntry = moduleEntry->Flink;
   //}
-  //LOG_ERROR_IF_NOT(!module, "Module not found\n");
+  //KMOD_LOG_ERROR_IF_NOT(!module, "Module not found\n");
   //PVOID moduleBase = GetModuleBase((PBYTE)module->DllBase, *(PULONG)module->EntryPoint);
   //LOG_INFO("ModuleBase %p\n", moduleBase);
   ////ULONG moduleExportOffset = GetModuleExportOffset((PBYTE)module->DllBase, module->SizeOfImage, "");
@@ -606,7 +600,7 @@ VOID ScanStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
   //{
   //  // Get context
   //  status = PsGetContextThread(thread, context, UserMode);
-  //  LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
+  //  KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
   //  // Get stack frame
   //  stackFrame64.AddrOffset = context->Rip; // Instruction ptr
   //  stackFrame64.StackOffset = context->Rsp; // Stack ptr
@@ -635,29 +629,21 @@ PDEVICE_OBJECT Device = NULL;
 
 VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT* device, PCWCHAR deviceName, PCWCHAR symbolicName)
 {
-  NTSTATUS status = STATUS_SUCCESS;
   UNICODE_STRING deviceNameTmp;
   UNICODE_STRING symbolicNameTmp;
-  // Create I/O device
   RtlInitUnicodeString(&deviceNameTmp, deviceName);
   RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
-  status = IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, device);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "IoCreateDevice %X\n", status);
+  IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, device);
   (*device)->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
   (*device)->Flags &= ~DO_DEVICE_INITIALIZING;
-  // Create symbolic link
-  status = IoCreateSymbolicLink(&symbolicNameTmp, &deviceNameTmp);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "IoCreateSymbolicLink %X\n", status);
+  IoCreateSymbolicLink(&symbolicNameTmp, &deviceNameTmp);
 }
 VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
 {
   NTSTATUS status = STATUS_SUCCESS;
   UNICODE_STRING symbolicNameTmp;
-  // Delete symbolic link
   RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
   status = IoDeleteSymbolicLink(&symbolicNameTmp);
-  LOG_ERROR_IF_NOT_SUCCESS(status, "IoDeleteSymbolicLink %X\n", status);
-  // Delete I/O device
   IoDeleteDevice(device);
 }
 
@@ -668,9 +654,18 @@ VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
 NTSTATUS HandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
-  Pid = req->Pid;
-  LOG_INFO("Attached to process %u\n", Pid);
+  Pid = req->In.Pid;
+  KMOD_LOG_INFO("Attached to process %u\n", Pid);
   status = STATUS_SUCCESS;
+  return status;
+}
+NTSTATUS HandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  if (Pid)
+  {
+    status = GetProcessModules(Pid, req->In.Size, req->Out.Size, req->Out.Buffer);
+  }
   return status;
 }
 NTSTATUS HandleMemoryReadRequest(PREQ_MEMORY_READ req)
@@ -679,11 +674,11 @@ NTSTATUS HandleMemoryReadRequest(PREQ_MEMORY_READ req)
   PVOID base = NULL;
   if (Pid)
   {
-    LOG_INFO("Got module name %ls", req->Name);
-    status = GetProcessImageBase(Pid, req->Name, base);
+    status = GetProcessModuleBase(Pid, req->In.Name, base);
     if (NT_SUCCESS(status))
     {
-      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->Offset), req->Size, req->Buffer);
+      req->Out.Base = (ULONG64)base;
+      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
     }
   }
   return status;
@@ -694,10 +689,11 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
   PVOID base = NULL;
   if (Pid)
   {
-    status = GetProcessImageBase(Pid, req->Name, base);
+    status = GetProcessModuleBase(Pid, req->In.Name, base);
     if (NT_SUCCESS(status))
     {
-      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->Offset), req->Size, req->Buffer);
+      req->Out.Base = (ULONG64)base;
+      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
     }
   }
   return status;
@@ -718,7 +714,6 @@ NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
 NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
-  LOG_INFO("Received create request\n");
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
   IoCompleteRequest(irp, IO_NO_INCREMENT);
@@ -727,39 +722,54 @@ NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
 NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
-  LOG_INFO("Received ctrl request\n");
+  KMOD_LOG_INFO("========================================\n");
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
     case KMOD_REQ_PROCESS_ATTACH:
     {
+      KMOD_LOG_INFO("Begin process attach\n");
       PREQ_PROCESS_ATTACH req = (PREQ_PROCESS_ATTACH)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleProcessAttachRequest(req);
       irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_PROCESS_ATTACH) : 0;
+      KMOD_LOG_INFO("End process attach\n");
+      break;
+    }
+    case KMOD_REQ_PROCESS_MODULES:
+    {
+      KMOD_LOG_INFO("Begin process modules\n");
+      PREQ_PROCESS_MODULES req = (PREQ_PROCESS_MODULES)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = HandleProcessModulesRequest(req);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_PROCESS_MODULES) : 0;
+      KMOD_LOG_INFO("End process modules\n");
       break;
     }
     case KMOD_REQ_MEMORY_READ:
     {
+      KMOD_LOG_INFO("Begin memory read\n");
       PREQ_MEMORY_READ req = (PREQ_MEMORY_READ)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleMemoryReadRequest(req);
       irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_MEMORY_READ) : 0;
+      KMOD_LOG_INFO("End memory read\n");
       break;
     }
     case KMOD_REQ_MEMORY_WRITE:
     {
+      KMOD_LOG_INFO("Begin memory write\n");
       PREQ_MEMORY_WRITE req = (PREQ_MEMORY_WRITE)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleMemoryWriteRequest(req);
       irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_MEMORY_WRITE) : 0;
+      KMOD_LOG_INFO("End memory write\n");
       break;
     }
   }
   IoCompleteRequest(irp, IO_NO_INCREMENT);
+  KMOD_LOG_INFO("========================================\n");
   return irp->IoStatus.Status;
 }
 NTSTATUS OnIrpClose(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
-  LOG_INFO("Received close request\n");
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
   IoCompleteRequest(irp, IO_NO_INCREMENT);
@@ -774,25 +784,18 @@ VOID DriverUnload(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
-  // Delete devices
   DeleteDevice(Device, KMOD_DEVICE_SYMBOL_NAME);
-  LOG_INFO_IF_SUCCESS(status, "DeInitialized\n");
 }
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
-  // Register driver callbacks
   driver->DriverUnload = DriverUnload;
-  // Register default interrupt callbacks
   for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
     driver->MajorFunction[i] = OnIrpDflt;
-  // Register interrupt callbacks
   driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-  // Create devices
   CreateDevice(driver, &Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
-  LOG_INFO_IF_SUCCESS(status, "Initialized\n");
   return status;
 }

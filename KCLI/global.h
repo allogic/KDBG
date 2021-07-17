@@ -13,7 +13,12 @@ extern "C"
 }
 #endif
 
+/*
+* Standard library.
+*/
+
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <map>
@@ -21,13 +26,42 @@ extern "C"
 #include <thread>
 #include <chrono>
 
+/*
+* Disassembler library.
+*/
+
 #include <capstone/capstone.h>
 #include <capstone/platform.h>
 
-#define _STR(VAL) #VAL
-#define STR(VAL) _STR(VAL)
+/*
+* Linked list.
+*/
 
-#define LOG_INFO(MSG, ...) printf("[+] " MSG, __VA_ARGS__)
-#define LOG_ERROR(MSG, ...) printf("[-] " MSG, __VA_ARGS__)
+typedef struct _LIST_NODE
+{
+  PVOID Next = NULL;
+  PVOID Data = NULL;
+} LIST_NODE, * PLIST_NODE;
+
+/*
+* KCLI specific.
+*/
+
+enum RenderMode
+{
+  Idle,
+  Fetch,
+  Invalidate,
+};
+
+/*
+* Logging utilities.
+*/
+
+#define _KCLI_STR(VAL) #VAL
+#define KCLI_STR(VAL) _KCLI_STR(VAL)
+
+#define KCLI_LOG_INFO(FMT, ...) printf("[+] " FMT, __VA_ARGS__)
+#define KCLI_LOG_ERROR(FMT, ...) printf("[-] " FMT, __VA_ARGS__)
 
 #endif

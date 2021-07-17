@@ -4,34 +4,77 @@
 #include "global.h"
 
 /*
-* I/O communication.
+* I/O control codes.
 */
 
 #define KMOD_REQ_PROCESS_ATTACH  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0100, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
+#define KMOD_REQ_PROCESS_MODULES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0101, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
 
 #define KMOD_REQ_MEMORY_READ     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0200, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
 #define KMOD_REQ_MEMORY_WRITE    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x0201, METHOD_IN_DIRECT, FILE_SPECIAL_ACCESS)
 
+/*
+* Common request types.
+*/
+
+typedef struct _MODULE
+{
+  WCHAR Name[64] = {};
+  ULONG64 Base = 0;
+  SIZE_T Size = 0;
+} MODULE, * PMODULE;
+
+/*
+* I/O request types.
+*/
+
 typedef struct _REQ_PROCESS_ATTACH
 {
-  ULONG Pid{};
+  struct
+  {
+    ULONG Pid = 0;
+  } In;
 } REQ_PROCESS_ATTACH, * PREQ_PROCESS_ATTACH;
+typedef struct _REQ_PROCESS_MODULES
+{
+  struct
+  {
+    SIZE_T Size;
+  } In;
+  struct
+  {
+    PVOID Buffer = NULL;
+    SIZE_T Size = 0;
+  } Out;
+} REQ_PROCESS_MODULES, * PREQ_PROCESS_MODULES;
 
 typedef struct _REQ_MEMORY_READ
 {
-  ULONG64 Base{};
-  PWCHAR  Name{};
-  ULONG   Offset{};
-  SIZE_T  Size{};
-  PVOID   Buffer{};
+  struct
+  {
+    PWCHAR Name = NULL;
+    ULONG Offset = 0;
+    SIZE_T Size = 0;
+  } In;
+  struct
+  {
+    ULONG64 Base = 0;
+    PVOID Buffer = NULL;
+  } Out;
 } REQ_MEMORY_READ, * PREQ_MEMORY_READ;
 typedef struct _REQ_MEMORY_WRITE
 {
-  ULONG64 Base{};
-  PWCHAR  Name{};
-  ULONG   Offset{};
-  SIZE_T  Size{};
-  PVOID   Buffer{};
+  struct
+  {
+    PWCHAR Name = NULL;
+    ULONG Offset = 0;
+    SIZE_T Size = 0;
+  } In;
+  struct
+  {
+    ULONG64 Base = 0;
+    PVOID Buffer = NULL;
+  } Out;
 } REQ_MEMORY_WRITE, * PREQ_MEMORY_WRITE;
 
 #endif

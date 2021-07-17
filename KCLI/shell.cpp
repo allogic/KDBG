@@ -32,7 +32,7 @@ USHORT Shell::Height()
   return ScreenHeight;
 }
 
-VOID Shell::Poll()
+VOID Shell::Poll(RenderMode& mode)
 {
   DWORD read = 0;
   ReadConsoleInput(StdIn, &InputEvent, 1, &read);
@@ -46,6 +46,7 @@ VOID Shell::Poll()
         ScreenWidth = NormalizeMul2((USHORT)CsbInfo.srWindow.Right);
         ScreenHeight = NormalizeMul2((USHORT)CsbInfo.srWindow.Bottom);
         SetConsoleCursorInfo(StdOut, &CcInfoNew);
+        mode = Invalidate;
         break;
       }
       case KEY_EVENT:
@@ -117,21 +118,6 @@ VOID Shell::Frame(USHORT x, USHORT y, USHORT w, USHORT h)
   free(charInfos);
 }
 
-VOID Shell::Char(USHORT x, USHORT y, CHAR chr)
-{
-  CHAR_INFO charInfo;
-  charInfo.Char.AsciiChar = chr;
-  charInfo.Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-  SMALL_RECT rect{ (SHORT)x, (SHORT)y, (SHORT)x, (SHORT)y };
-  WriteConsoleOutput(
-    StdOut,
-    &charInfo,
-    COORD{ 1, 1 },
-    COORD{ 0, 0 },
-    &rect
-  );
-}
-
 VOID Shell::Text(USHORT x, USHORT y, PCHAR str)
 {
   SIZE_T strLen = strlen(str);
@@ -152,7 +138,7 @@ VOID Shell::Text(USHORT x, USHORT y, PCHAR str)
   );
   free(charInfos);
 }
-VOID Shell::TextW(USHORT x, USHORT y, PCWCHAR str)
+VOID Shell::TextW(USHORT x, USHORT y, PWCHAR str)
 {
   SIZE_T strLen = wcslen(str);
   PCHAR_INFO charInfos = (PCHAR_INFO)malloc(sizeof(CHAR_INFO) * strLen);

@@ -30,15 +30,13 @@ struct Shell
   USHORT Width();
   USHORT Height();
 
-  VOID Poll();
+  VOID Poll(RenderMode& mode);
 
   VOID Clear(USHORT x, USHORT y, USHORT w, USHORT h);
   VOID Frame(USHORT x, USHORT y, USHORT w, USHORT h);
 
-  VOID Char(USHORT x, USHORT y, CHAR chr);
-
   VOID Text(USHORT x, USHORT y, PCHAR str);
-  VOID TextW(USHORT x, USHORT y, PCWCHAR str);
+  VOID TextW(USHORT x, USHORT y, PWCHAR str);
 };
 
 #endif

@@ -1,6 +1,9 @@
 #include "view.h"
+#include "util.h"
 
-View::View(std::wstring const& legend)
+using namespace std;
+
+View::View(wstring const& legend)
 {
   Legend = legend;
 }
@@ -8,45 +11,93 @@ View::View(std::wstring const& legend)
 void View::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
 {
   shell->Frame(x, y, w, h);
-  shell->TextW(x + 1, y, Legend.c_str()); 
+  shell->TextW(x + 1, y, &Legend[0]); 
 }
 
-Memory::Memory(std::wstring const& legend)
+Module::Module(wstring const& legend)
   : View(legend)
 {
 
 }
-void Memory::Fetch(HANDLE device, std::wstring const& imageName, ULONG64 base, ULONG offset, SIZE_T size)
+void Module::Fetch(HANDLE device, SIZE_T size)
 {
-  Request.Base = base;
-  if (Request.Name)
+  Request.In.Size = size;
+  if (Request.Out.Buffer)
   {
-    std::free(Request.Name);
+    free(Request.Out.Buffer);
   }
-  Request.Name = (PWCHAR)std::malloc(sizeof(WCHAR) * imageName.size());
-  std::memcpy(Request.Name, imageName.c_str(), sizeof(WCHAR) * imageName.size());
-  Request.Offset = offset;
-  Request.Size = size;
-  if (Request.Buffer)
+  Request.Out.Buffer = malloc(sizeof(MODULE) * size);
+  for (SIZE_T i = 0; i < Request.In.Size; ++i)
   {
-    std::free(Request.Buffer);
+    ((PMODULE)Request.Out.Buffer)[i].Base = 666;
+    //_wcsset_s(((PMODULE)Request.Out.Buffer)[i].Name, 64, L'\0');
+    //wcscpy_s(((PMODULE)Request.Out.Buffer)[i].Name, 4, L"Dead");
+    ((PMODULE)Request.Out.Buffer)[i].Size = 333;
   }
-  Request.Buffer = std::malloc(sizeof(PBYTE) * size);
-  LOG_INFO("Sending request");
-  DeviceIoControl(device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), NULL, NULL);
-  LOG_INFO("Sent request");
+  DeviceIoControl(device, KMOD_REQ_PROCESS_MODULES, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
+}
+void Module::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
+{
+  View::Render(x, y, w, h, shell);
+  USHORT xOff = 1;
+  USHORT yOff = 1;
+  for (SIZE_T i = 0; i < Request.Out.Size; ++i)
+  {
+    shell->TextW(x + xOff, y + yOff, ((PMODULE)Request.Out.Buffer)[i].Name);
+    xOff = 1;
+    yOff += 1;
+  }
+}
+
+Memory::Memory(wstring const& legend)
+  : View(legend)
+{
+
+}
+void Memory::Fetch(HANDLE device, wstring const& imageName, ULONG offset, SIZE_T size)
+{
+  if (Request.In.Name)
+  {
+    free(Request.In.Name);
+  }
+  Request.In.Name = (PWCHAR)malloc(sizeof(WCHAR) * imageName.size() + 1);
+  wmemset(Request.In.Name, 0, imageName.size() + 1);
+  wmemcpy(Request.In.Name, imageName.c_str(), imageName.size());
+  Request.In.Offset = offset;
+  Request.In.Size = size;
+  if (Request.Out.Buffer)
+  {
+    free(Request.Out.Buffer);
+  }
+  Request.Out.Buffer = malloc(sizeof(PBYTE) * size);
+  DeviceIoControl(device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
 }
 void Memory::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
 {
   View::Render(x, y, w, h, shell);
-  for (USHORT i = 1; i < (w - 1); ++i)
+  USHORT xOff = 1;
+  USHORT yOff = 1;
+  shell->Text(x + xOff, y + yOff, &HexFrom(Request.Out.Base)[0]);
+  xOff += 19;
+  for (USHORT i = 0; i < Request.In.Size; ++i)
   {
-    // support multiple view modes
-    shell->Char(x + i, 0, ((PCHAR)Request.Buffer)[i]);
+    shell->Text(x + xOff, y + yOff, &HexFrom(((PBYTE)Request.Out.Buffer)[i])[0]);
+    xOff += 3;
+    if (xOff >= (w - 2))
+    {
+      yOff += 1;
+      if (yOff >= (h - 1))
+      {
+        break;
+      }
+      xOff = 1;
+      shell->Text(x + xOff, y + yOff, &HexFrom(Request.Out.Base + i)[0]);
+      xOff += 19;
+    }
   }
 }
 
-Scanner::Scanner(std::wstring const& legend)
+Scanner::Scanner(wstring const& legend)
   : View(legend)
 {
 
@@ -60,16 +111,64 @@ void Scanner::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
   View::Render(x, y, w, h, shell);
 }
 
-Debugger::Debugger(std::wstring const& legend)
+Debugger::Debugger(wstring const& legend)
   : View(legend)
 {
-
+  cs_open(CS_ARCH_X86, CS_MODE_64, &CsHandle);
 }
-void Debugger::Fetch(HANDLE device)
+Debugger::~Debugger()
 {
-
+  cs_close(&CsHandle);
+}
+void Debugger::Fetch(HANDLE device, wstring const& imageName, ULONG offset, SIZE_T size)
+{
+  if (Request.In.Name)
+  {
+    free(Request.In.Name);
+  }
+  Request.In.Name = (PWCHAR)malloc(sizeof(WCHAR) * imageName.size() + 1);
+  wmemset(Request.In.Name, 0, imageName.size() + 1);
+  wmemcpy(Request.In.Name, imageName.c_str(), imageName.size());
+  Request.In.Offset = offset;
+  Request.In.Size = size;
+  if (Request.Out.Buffer)
+  {
+    free(Request.Out.Buffer);
+  }
+  Request.Out.Buffer = malloc(sizeof(PBYTE) * size);
+  DeviceIoControl(device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
 }
 void Debugger::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
 {
   View::Render(x, y, w, h, shell);
+  cs_insn* instructions = nullptr;
+  SIZE_T numInstructions = cs_disasm(CsHandle, (PBYTE)Request.Out.Buffer, Request.In.Size, Request.Out.Base, 0, &instructions);
+  USHORT xOff = 1;
+  USHORT yOff = 1;
+  if (numInstructions)
+  {
+    for (SIZE_T i = 0; i < numInstructions; ++i)
+    {
+      shell->Text(x + xOff, y + yOff, &HexFrom(instructions[i].address)[0]);
+      xOff += 19;
+      for (BYTE j = 0; j < 10; ++j)
+      {
+        if (j < instructions[i].size)
+        {
+          shell->Text(x + xOff, y + yOff, &HexFrom(instructions[i].bytes[j])[0]);
+        }
+        else
+        {
+          shell->Text(x + xOff, y + yOff, "..");
+        }
+        xOff += 3;
+      }
+      shell->Text(x + xOff, y + yOff, instructions[i].mnemonic);
+      xOff += 5;
+      shell->Text(x + xOff, y + yOff, instructions[i].op_str);
+      xOff = 1;
+      yOff += 1;
+    }
+  }
+  cs_free(instructions, numInstructions);
 }
