@@ -22,16 +22,17 @@ Module::Module(wstring const& legend)
 void Module::Fetch(HANDLE device, SIZE_T size)
 {
   Request.In.Size = size;
+  Request.Out.Size = size;
   if (Request.Out.Buffer)
   {
     free(Request.Out.Buffer);
   }
   Request.Out.Buffer = malloc(sizeof(MODULE) * size);
+  memset(Request.Out.Buffer, 0, sizeof(MODULE) * size);
   for (SIZE_T i = 0; i < Request.In.Size; ++i)
   {
     ((PMODULE)Request.Out.Buffer)[i].Base = 666;
-    //_wcsset_s(((PMODULE)Request.Out.Buffer)[i].Name, 64, L'\0');
-    //wcscpy_s(((PMODULE)Request.Out.Buffer)[i].Name, 4, L"Dead");
+    wcscpy_s(((PMODULE)Request.Out.Buffer)[i].Name, sizeof(WCHAR) * 4, L"Dead");
     ((PMODULE)Request.Out.Buffer)[i].Size = 333;
   }
   DeviceIoControl(device, KMOD_REQ_PROCESS_MODULES, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
@@ -43,6 +44,10 @@ void Module::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
   USHORT yOff = 1;
   for (SIZE_T i = 0; i < Request.Out.Size; ++i)
   {
+    shell->TextW(x + xOff, y + yOff, &AddressToHexW(((PMODULE)Request.Out.Buffer)[i].Base)[0]);
+    xOff += 19;
+    shell->TextW(x + xOff, y + yOff, &ULongToDecW((ULONG)((PMODULE)Request.Out.Buffer)[i].Size)[0]);
+    xOff += 19;
     shell->TextW(x + xOff, y + yOff, ((PMODULE)Request.Out.Buffer)[i].Name);
     xOff = 1;
     yOff += 1;
@@ -77,11 +82,11 @@ void Memory::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
   View::Render(x, y, w, h, shell);
   USHORT xOff = 1;
   USHORT yOff = 1;
-  shell->Text(x + xOff, y + yOff, &HexFrom(Request.Out.Base)[0]);
+  shell->Text(x + xOff, y + yOff, &AddressToHex(Request.Out.Base)[0]);
   xOff += 19;
   for (USHORT i = 0; i < Request.In.Size; ++i)
   {
-    shell->Text(x + xOff, y + yOff, &HexFrom(((PBYTE)Request.Out.Buffer)[i])[0]);
+    shell->Text(x + xOff, y + yOff, &ByteToHex(((PBYTE)Request.Out.Buffer)[i])[0]);
     xOff += 3;
     if (xOff >= (w - 2))
     {
@@ -91,7 +96,7 @@ void Memory::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
         break;
       }
       xOff = 1;
-      shell->Text(x + xOff, y + yOff, &HexFrom(Request.Out.Base + i)[0]);
+      shell->Text(x + xOff, y + yOff, &AddressToHex(Request.Out.Base + i)[0]);
       xOff += 19;
     }
   }
@@ -149,13 +154,13 @@ void Debugger::Render(USHORT x, USHORT y, USHORT w, USHORT h, Shell* shell)
   {
     for (SIZE_T i = 0; i < numInstructions; ++i)
     {
-      shell->Text(x + xOff, y + yOff, &HexFrom(instructions[i].address)[0]);
+      shell->Text(x + xOff, y + yOff, &AddressToHex(instructions[i].address)[0]);
       xOff += 19;
       for (BYTE j = 0; j < 10; ++j)
       {
         if (j < instructions[i].size)
         {
-          shell->Text(x + xOff, y + yOff, &HexFrom(instructions[i].bytes[j])[0]);
+          shell->Text(x + xOff, y + yOff, &ByteToHex(instructions[i].bytes[j])[0]);
         }
         else
         {

@@ -1,10 +1,8 @@
-#pragma warning(disable : 4995)
-
 #include "global.h"
 #include "ioctrl.h"
 
 // TODO: fix wchar_t comparisons inhandled exception
-// TODO: Refactor ptr to stack objects
+// TODO: refactor ptr to stack objects
 
 /*
 * Global driver state.
@@ -366,7 +364,7 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
 * Process utilities relative to kernel space.
 */
 
-NTSTATUS GetProcessModules(ULONG pid, SIZE_T count, SIZE_T& size, PVOID& buffer)
+NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID& buffer)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -391,12 +389,14 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T count, SIZE_T& size, PVOID& buffer)
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           if (module && module->DllBase)
           {
-            //((PMODULE)buffer)[size++].Base = 666; //(ULONG64)module->DllBase;
+            KMOD_LOG_INFO("Copy from %p to %p\n", module->DllBase, &((PMODULE)buffer)[count].Base);
+            //((PMODULE)buffer)[count].Base = 666; //(ULONG64)module->DllBase;
             //wcscpy(((PMODULE)buffer)[size++].Name, module->BaseDllName.Buffer);
             //((PMODULE)buffer)[size++].Size = module->SizeOfImage;
           }
           moduleEntry = moduleEntry->Flink;
-          if (size >= count)
+          count++;
+          if (count >= size)
           {
             break;
           }
@@ -627,15 +627,15 @@ VOID ScanStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
 
 PDEVICE_OBJECT Device = NULL;
 
-VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT* device, PCWCHAR deviceName, PCWCHAR symbolicName)
+VOID CreateDevice(PDRIVER_OBJECT driver, PDEVICE_OBJECT& device, PCWCHAR deviceName, PCWCHAR symbolicName)
 {
   UNICODE_STRING deviceNameTmp;
   UNICODE_STRING symbolicNameTmp;
   RtlInitUnicodeString(&deviceNameTmp, deviceName);
   RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
-  IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, device);
-  (*device)->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
-  (*device)->Flags &= ~DO_DEVICE_INITIALIZING;
+  IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, &device);
+  device->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
+  device->Flags &= ~DO_DEVICE_INITIALIZING;
   IoCreateSymbolicLink(&symbolicNameTmp, &deviceNameTmp);
 }
 VOID DeleteDevice(PDEVICE_OBJECT device, PCWCHAR symbolicName)
@@ -796,6 +796,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
   driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-  CreateDevice(driver, &Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
+  CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
   return status;
 }

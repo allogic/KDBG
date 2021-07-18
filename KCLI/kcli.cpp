@@ -2,6 +2,12 @@
 #include "shell.h"
 #include "view.h"
 
+// TODO: create view serializer via JSON
+// TODO: finish event handling
+// TODO: create text input window
+// TODO: create MDL for copy module buffer
+// TODO: support buffer scrolling for selected window
+
 using namespace std;
 
 /*
@@ -50,30 +56,30 @@ int32_t wmain(int32_t argc, wchar_t* argv[])
           case Invalidate:
           {
             shell.Clear(0, 0, shell.Width() + 1, shell.Height() + 1);
-            USHORT thirdWidth = NormalizeMul2((USHORT)(shell.Width() / 3));
-            USHORT halfHeight = NormalizeMul2((USHORT)(shell.Height() / 2));
-            views["module"]->Render(0, 0, shell.Width(), shell.Height(), &shell);
-            //views["memory"]->Render(
-            //  thirdWidth,
-            //  halfHeight,
-            //  shell.Width() - thirdWidth,
-            //  halfHeight,
-            //  &shell
-            //);
-            //views["scanner"]->Render(
-            //  0,
-            //  0,
-            //  thirdWidth,
-            //  shell.Height(),
-            //  &shell
-            //);
-            //views["debugger"]->Render(
-            //  thirdWidth,
-            //  0,
-            //  shell.Width() - thirdWidth,
-            //  shell.Height() - halfHeight,
-            //  &shell
-            //);
+            USHORT thirdWidth = (USHORT)(shell.Width() / 3);
+            USHORT halfHeight = (USHORT)(shell.Height() / 2);
+            //views["module"]->Render(0, 0, shell.Width(), shell.Height(), &shell);
+            views["memory"]->Render(
+              thirdWidth,
+              halfHeight,
+              shell.Width() - thirdWidth,
+              halfHeight,
+              &shell
+            );
+            views["scanner"]->Render(
+              0,
+              0,
+              thirdWidth,
+              shell.Height(),
+              &shell
+            );
+            views["debugger"]->Render(
+              thirdWidth,
+              0,
+              shell.Width() - thirdWidth,
+              shell.Height() - halfHeight,
+              &shell
+            );
             mode = Idle;
             break;
           }
