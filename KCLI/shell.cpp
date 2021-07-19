@@ -1,5 +1,7 @@
 ﻿#include "shell.h"
 
+using namespace std;
+
 Shell::Shell()
 {
   StdOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -13,7 +15,7 @@ Shell::Shell()
   CcInfoNew.bVisible = 0;
   SetConsoleCursorInfo(StdOut, &CcInfoNew);
   GetConsoleMode(StdIn, &FdModeOld);
-  FdModeNew = FdModeOld & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+  FdModeNew = FdModeOld | (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
   SetConsoleMode(StdIn, FdModeNew);
 }
 Shell::~Shell()
@@ -32,7 +34,7 @@ USHORT Shell::Height()
   return ScreenHeight;
 }
 
-VOID Shell::Poll(RenderMode& mode)
+VOID Shell::Poll(State& state, SIZE_T& selectedView, SIZE_T numViews)
 {
   DWORD read = 0;
   ReadConsoleInput(StdIn, &InputEvent, 1, &read);
@@ -46,7 +48,7 @@ VOID Shell::Poll(RenderMode& mode)
         ScreenWidth = NormalizeMul2((USHORT)CsbInfo.srWindow.Right);
         ScreenHeight = NormalizeMul2((USHORT)CsbInfo.srWindow.Bottom);
         SetConsoleCursorInfo(StdOut, &CcInfoNew);
-        mode = Invalidate;
+        state = KCLI_INVALIDATE;
         break;
       }
       case KEY_EVENT:
@@ -55,16 +57,57 @@ VOID Shell::Poll(RenderMode& mode)
         {
           switch (InputEvent.Event.KeyEvent.wVirtualKeyCode)
           {
-            case VK_LEFT:  break;
-            case VK_RIGHT: break;
-            case VK_UP:    break;
-            case VK_DOWN:  break;
+            case VK_TAB:
+            {
+              state = KCLI_READ;
+              break;
+            }
+            case VK_LEFT:
+            {
+              selectedView--;
+              selectedView = selectedView % numViews;
+              break;
+            }
+            case VK_RIGHT:
+            {
+              selectedView++;
+              selectedView = selectedView % numViews;
+              break;
+            }
+            case VK_UP:
+            {
+              selectedView++;
+              selectedView = selectedView % numViews;
+              break;
+            }
+            case VK_DOWN:
+            {
+              selectedView--;
+              selectedView = selectedView % numViews;
+              break;
+            }
           }
         }
         break;
       }
     }
   }
+}
+VOID Shell::Read(State& state, View* view)
+{
+  CONSOLE_READCONSOLE_CONTROL ctrl;
+  ctrl.nLength = sizeof(CONSOLE_READCONSOLE_CONTROL);
+  ctrl.nInitialChars = 0;
+  ctrl.dwCtrlWakeupMask = 0x0A;
+  ctrl.dwControlKeyState = 0;
+  Clear(view->X + 1, view->Y + view->H - 2, view->W - 2, 1);
+  wstring xStr = to_wstring(1 + view->X + 1);
+  wstring yStr = to_wstring(1 + view->Y + view->H - 2);
+  wstring vtSetPos = L"\033[" + yStr + L";" + xStr + L"f>";
+  WriteConsole(StdOut, &vtSetPos[0], (ULONG)vtSetPos.size(), NULL, NULL);
+  ULONG read = 0;
+  ReadConsole(StdIn, InputBuffer, 1023, &read, NULL);
+  state = KCLI_IDLE;
 }
 
 VOID Shell::Clear(USHORT x, USHORT y, USHORT w, USHORT h)

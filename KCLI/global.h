@@ -47,11 +47,12 @@ typedef struct _LIST_NODE
 * KCLI specific.
 */
 
-enum RenderMode
+enum State
 {
-  Idle,
-  Fetch,
-  Invalidate,
+  KCLI_IDLE,
+  KCLI_FETCH,
+  KCLI_INVALIDATE,
+  KCLI_READ,
 };
 
 /*
