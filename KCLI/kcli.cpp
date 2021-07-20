@@ -8,6 +8,8 @@
 // TODO: create MDL for copy module buffer
 // TODO: support buffer scrolling for selected window
 // TODO: fix text input max length
+// TODO: start using custom primitive typedefs for std lib
+// TODO: implement PDB mapping
 
 using namespace std;
 
@@ -39,76 +41,73 @@ uint32_t NameToIndex(string name)
 }
 
 /*
+* Theeee driver.
+*/
+
+HANDLE Device = INVALID_HANDLE_VALUE;
+
+/*
 * Entry point.
 */
 
 int32_t wmain(int32_t argc, wchar_t* argv[])
 {
-  //HANDLE device = CreateFileA("\\\\.\\KMOD", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-  //if (device == INVALID_HANDLE_VALUE)
-  //{
-  //  KCLI_LOG_ERROR("Device connection cannot be established\n");
-  //}
-  //else
-  //{
-    //REQ_PROCESS_ATTACH reqest;
-    //reqest.In.Pid = wcstoul(argv[1], nullptr, 10);
-    //if (DeviceIoControl(device, KMOD_REQ_PROCESS_ATTACH, &reqest, sizeof(reqest), &reqest, sizeof(reqest), nullptr, nullptr))
-    //{
+  Device = CreateFileA("\\\\.\\KMOD", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  if (Device == INVALID_HANDLE_VALUE)
+  {
+    KCLI_LOG_ERROR("Device connection cannot be established\n");
+  }
+  else
+  {
+    REQ_PROCESS_ATTACH reqest;
+    reqest.In.Pid = wcstoul(argv[1], nullptr, 10);
+    if (DeviceIoControl(Device, KMOD_REQ_PROCESS_ATTACH, &reqest, sizeof(reqest), &reqest, sizeof(reqest), nullptr, nullptr))
+    {
       Shell shell;
       USHORT thirdWidth = (USHORT)(shell.Width() / 3);
       USHORT halfHeight = (USHORT)(shell.Height() / 2);
+      Module moduleView{ Device, &shell, 0, 0, 0, shell.Width(), shell.Height(), L"Module", 32u };
+      Memory memoryView{ Device, &shell, 0, thirdWidth, halfHeight, (USHORT)(shell.Width() - thirdWidth), halfHeight, L"Memory", 512u, 0u, L"deadspace3.exe" };
+      Scanner scannerView{ Device, &shell, 1, 0, 0, thirdWidth, shell.Height(), L"Scanner" };
+      Debugger debuggerView{ Device, &shell, 2, thirdWidth, 0, (USHORT)(shell.Width() - thirdWidth), (USHORT)(shell.Height() - halfHeight), L"Debugger", 512u, 0u, L"deadspace3.exe" };
       vector<View*> views
       {
-        //new Module{ &shell, 0, 0, 0, shell.Width(), shell.Height(), L"Module" },
-        new Memory{ &shell, 0, thirdWidth, halfHeight, (USHORT)(shell.Width() - thirdWidth), halfHeight, L"Memory" },
-        new Scanner{ &shell, 1, 0, 0, thirdWidth, shell.Height(), L"Scanner" },
-        new Debugger{ &shell, 2, thirdWidth, 0, (USHORT)(shell.Width() - thirdWidth), (USHORT)(shell.Height() - halfHeight), L"Debugger" },
+        &moduleView,
+        &memoryView,
+        &scannerView,
+        &debuggerView,
       };
       SIZE_T selectedView = NameToIndex("scanner");
-      State state = KCLI_FETCH;
+      State state = KCLI_CTRL_MODE;
       while (true)
       {
         switch (state)
         {
-          case KCLI_IDLE:
+          case KCLI_CTRL_MODE:
           {
-            break;
-          }
-          case KCLI_FETCH:
-          {
-            //((Module*)views["module"])->Fetch(device, 8);
-            //((Memory*)views["memory"])->Fetch(device, L"deadspace3.exe", 0, 512);
-            //((Scanner*)views["scanner"])->Fetch(device);
-            //((Debugger*)views["debugger"])->Fetch(device, L"deadspace3.exe", 0, 512);
-            state = KCLI_INVALIDATE;
-            break;
-          }
-          case KCLI_INVALIDATE:
-          {
-            shell.Clear(0, 0, shell.Width() + 1, shell.Height() + 1);
-            for (View* view : views)
+            shell.Poll(views, selectedView);
+            if (KeyDown(shell.InputEvent, VK_TAB))
             {
-              view->Update();
-              view->Render();
+              state = KCLI_CMD_MODE;
             }
-            state = KCLI_IDLE;
             break;
           }
-          case KCLI_READ:
+          case KCLI_CMD_MODE:
           {
-            views[selectedView]->Read(state);
+            shell.Read(views[selectedView]);
+            views[selectedView]->Command(shell.InputBuffer);
+            state = KCLI_CTRL_MODE;
             break;
           }
         }
-        shell.Poll(state, selectedView, views.size());
       };
       for (View*& view : views)
       {
         delete view;
         view = nullptr;
       }
-    //}
-  //}
+    }
+  }
+  CloseHandle(Device);
   return 0;
 }

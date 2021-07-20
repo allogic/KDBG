@@ -23,8 +23,6 @@ extern "C"
 #include <vector>
 #include <map>
 #include <cstdint>
-#include <thread>
-#include <chrono>
 
 /*
 * Disassembler library.
@@ -49,10 +47,8 @@ typedef struct _LIST_NODE
 
 enum State
 {
-  KCLI_IDLE,
-  KCLI_FETCH,
-  KCLI_INVALIDATE,
-  KCLI_READ,
+  KCLI_CTRL_MODE,
+  KCLI_CMD_MODE,
 };
 
 /*

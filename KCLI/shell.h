@@ -6,9 +6,20 @@
 
 static USHORT NormalizeMul2(USHORT value)
 {
-  return value & 1
-    ? value ^ 1
-    : value;
+  return value & 1 ? value ^ 1 : value; // make me branchless
+}
+
+static BOOL KeyDown(INPUT_RECORD& event, WORD keyCode)
+{
+  return event.EventType == KEY_EVENT
+    && event.Event.KeyEvent.bKeyDown
+    && event.Event.KeyEvent.wVirtualKeyCode == keyCode;
+}
+static BOOL KeyUp(INPUT_RECORD& event, WORD keyCode)
+{
+  return event.EventType == KEY_EVENT
+    && !event.Event.KeyEvent.bKeyDown
+    && event.Event.KeyEvent.wVirtualKeyCode == keyCode;
 }
 
 struct Shell
@@ -21,10 +32,12 @@ struct Shell
   CONSOLE_CURSOR_INFO        CcInfoOld = {};
   CONSOLE_CURSOR_INFO        CcInfoNew = {};
   WORD                       AttrOld = 0;
-  DWORD                      FdModeOld = 0;
-  DWORD                      FdModeNew = 0;
+  DWORD                      FdOutModeOld = 0;
+  DWORD                      FdOutModeNew = 0;
+  DWORD                      FdInModeOld = 0;
+  DWORD                      FdInModeNew = 0;
   INPUT_RECORD               InputEvent = {};
-  WCHAR                      InputBuffer[1024] = {};
+  std::wstring               InputBuffer = {};
 
   Shell();
   virtual ~Shell();
@@ -32,8 +45,8 @@ struct Shell
   USHORT Width();
   USHORT Height();
 
-  VOID Poll(State& state, SIZE_T& selectedView, SIZE_T numViews);
-  VOID Read(State& state, View* view);
+  VOID Poll(std::vector<View*>& views, SIZE_T& selectedView);
+  VOID Read(View* view);
 
   VOID Clear(USHORT x, USHORT y, USHORT w, USHORT h);
   VOID Frame(USHORT x, USHORT y, USHORT w, USHORT h);

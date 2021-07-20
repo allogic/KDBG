@@ -19,7 +19,7 @@
 
 typedef struct _MODULE
 {
-  WCHAR Name[64] = {};
+  WCHAR Name[256] = {};
   ULONG64 Base = 0;
   SIZE_T Size = 0;
 } MODULE, * PMODULE;
@@ -52,7 +52,7 @@ typedef struct _REQ_MEMORY_READ
 {
   struct
   {
-    PWCHAR Name = NULL;
+    WCHAR Name[256] = {};
     ULONG Offset = 0;
     SIZE_T Size = 0;
   } In;
@@ -66,7 +66,7 @@ typedef struct _REQ_MEMORY_WRITE
 {
   struct
   {
-    PWCHAR Name = NULL;
+    WCHAR Name[256] = {};
     ULONG Offset = 0;
     SIZE_T Size = 0;
   } In;

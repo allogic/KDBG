@@ -14,13 +14,17 @@ Shell::Shell()
   CcInfoNew = CcInfoOld;
   CcInfoNew.bVisible = 0;
   SetConsoleCursorInfo(StdOut, &CcInfoNew);
-  GetConsoleMode(StdIn, &FdModeOld);
-  FdModeNew = FdModeOld | (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-  SetConsoleMode(StdIn, FdModeNew);
+  GetConsoleMode(StdOut, &FdInModeOld);
+  FdOutModeNew = FdOutModeOld | (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  SetConsoleMode(StdOut, FdOutModeNew);
+  GetConsoleMode(StdIn, &FdInModeOld);
+  FdInModeNew = FdInModeOld | (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  SetConsoleMode(StdIn, FdInModeNew);
 }
 Shell::~Shell()
 {
-  SetConsoleMode(StdIn, FdModeOld);
+  SetConsoleMode(StdOut, FdOutModeOld);
+  SetConsoleMode(StdIn, FdInModeOld);
   GetConsoleCursorInfo(StdOut, &CcInfoOld);
   SetConsoleTextAttribute(StdOut, AttrOld);
 }
@@ -34,12 +38,26 @@ USHORT Shell::Height()
   return ScreenHeight;
 }
 
-VOID Shell::Poll(State& state, SIZE_T& selectedView, SIZE_T numViews)
+VOID Shell::Poll(vector<View*>& views, SIZE_T& selectedView)
 {
   DWORD read = 0;
   ReadConsoleInput(StdIn, &InputEvent, 1, &read);
   if (read)
   {
+    for (View* view : views)
+    {
+      view->Event(InputEvent);
+    }
+    if (KeyDown(InputEvent, VK_LEFT))
+    {
+      selectedView--;
+      selectedView = selectedView % views.size();
+    }
+    if (KeyDown(InputEvent, VK_RIGHT))
+    {
+      selectedView++;
+      selectedView = selectedView % views.size();
+    }
     switch (InputEvent.EventType)
     {
       case WINDOW_BUFFER_SIZE_EVENT:
@@ -48,66 +66,35 @@ VOID Shell::Poll(State& state, SIZE_T& selectedView, SIZE_T numViews)
         ScreenWidth = NormalizeMul2((USHORT)CsbInfo.srWindow.Right);
         ScreenHeight = NormalizeMul2((USHORT)CsbInfo.srWindow.Bottom);
         SetConsoleCursorInfo(StdOut, &CcInfoNew);
-        state = KCLI_INVALIDATE;
-        break;
-      }
-      case KEY_EVENT:
-      {
-        if (InputEvent.Event.KeyEvent.bKeyDown)
+        Clear(0, 0, ScreenWidth + 1, ScreenHeight + 1);
+        for (View* view : views)
         {
-          switch (InputEvent.Event.KeyEvent.wVirtualKeyCode)
-          {
-            case VK_TAB:
-            {
-              state = KCLI_READ;
-              break;
-            }
-            case VK_LEFT:
-            {
-              selectedView--;
-              selectedView = selectedView % numViews;
-              break;
-            }
-            case VK_RIGHT:
-            {
-              selectedView++;
-              selectedView = selectedView % numViews;
-              break;
-            }
-            case VK_UP:
-            {
-              selectedView++;
-              selectedView = selectedView % numViews;
-              break;
-            }
-            case VK_DOWN:
-            {
-              selectedView--;
-              selectedView = selectedView % numViews;
-              break;
-            }
-          }
+          view->UpdateLayout();
+          view->Render();
         }
         break;
       }
     }
   }
 }
-VOID Shell::Read(State& state, View* view)
+VOID Shell::Read(View* view)
 {
-  CONSOLE_READCONSOLE_CONTROL ctrl;
-  ctrl.nLength = sizeof(CONSOLE_READCONSOLE_CONTROL);
-  ctrl.nInitialChars = 0;
-  ctrl.dwCtrlWakeupMask = 0x0A;
-  ctrl.dwControlKeyState = 0;
   Clear(view->X + 1, view->Y + view->H - 2, view->W - 2, 1);
   wstring xStr = to_wstring(1 + view->X + 1);
   wstring yStr = to_wstring(1 + view->Y + view->H - 2);
   wstring vtSetPos = L"\033[" + yStr + L";" + xStr + L"f>";
   WriteConsole(StdOut, &vtSetPos[0], (ULONG)vtSetPos.size(), NULL, NULL);
   ULONG read = 0;
-  ReadConsole(StdIn, InputBuffer, 1023, &read, NULL);
-  state = KCLI_IDLE;
+  InputBuffer.clear();
+  InputBuffer.resize(1024);
+  ReadConsole(StdIn, InputBuffer.data(), 1024, &read, NULL);
+  for (SIZE_T i = 0; i < InputBuffer.size(); ++i)
+  {
+    if (InputBuffer[i] == L'\r' || InputBuffer[i] == L'\n')
+    {
+      InputBuffer[i] = L'\0';
+    }
+  }
 }
 
 VOID Shell::Clear(USHORT x, USHORT y, USHORT w, USHORT h)

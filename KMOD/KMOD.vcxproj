@@ -242,6 +242,7 @@
     <ClCompile Include="kmod.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="device.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
   </ItemGroup>

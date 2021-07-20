@@ -35,5 +35,8 @@
     <ClInclude Include="ioctrl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="device.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
