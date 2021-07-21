@@ -66,17 +66,25 @@ int32_t wmain(int32_t argc, wchar_t* argv[])
       Shell shell;
       USHORT thirdWidth = (USHORT)(shell.Width() / 3);
       USHORT halfHeight = (USHORT)(shell.Height() / 2);
-      Module moduleView{ Device, &shell, 0, 0, 0, shell.Width(), shell.Height(), L"Module", 32u };
-      Memory memoryView{ Device, &shell, 0, thirdWidth, halfHeight, (USHORT)(shell.Width() - thirdWidth), halfHeight, L"Memory", 512u, 0u, L"deadspace3.exe" };
-      Scanner scannerView{ Device, &shell, 1, 0, 0, thirdWidth, shell.Height(), L"Scanner" };
-      Debugger debuggerView{ Device, &shell, 2, thirdWidth, 0, (USHORT)(shell.Width() - thirdWidth), (USHORT)(shell.Height() - halfHeight), L"Debugger", 512u, 0u, L"deadspace3.exe" };
+      Module moduleView{ Device, &shell, 0, 0, 0, 0, 0, L"Modules", 32 };
+      Thread threadView{ Device, &shell, 1, 0, 0, 0, 0, L"Threads", 32 };
+      Memory memoryView{ Device, &shell, 2, 0, 0, 0, 0, L"Memory", 512, 0, L"kernel32.dll" };
+      Scanner scannerView{ Device, &shell, 3, 0, 0, 0, 0, L"Scanner" };
+      Debugger debuggerView{ Device, &shell, 4, 0, 0, 0, 0, L"Debugger", 512, 0, L"taskmgr.exe" };
       vector<View*> views
       {
         &moduleView,
+        &threadView,
         &memoryView,
         &scannerView,
         &debuggerView,
       };
+      for (View* view : views)
+      {
+        view->Fetch();
+        view->UpdateLayout();
+        view->Render();
+      }
       SIZE_T selectedView = NameToIndex("scanner");
       State state = KCLI_CTRL_MODE;
       while (true)

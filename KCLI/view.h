@@ -16,7 +16,6 @@ struct Shell;
 
 struct View
 {
-  HANDLE ScreenBuffer = INVALID_HANDLE_VALUE;
   HANDLE Device = INVALID_HANDLE_VALUE;
   Shell* Console = nullptr;
   ULONG Id = 0;
@@ -27,7 +26,7 @@ struct View
   std::wstring Legend = L"";
 
   View(HANDLE device, Shell* console, ULONG id, USHORT x, USHORT y, USHORT w, USHORT h, std::wstring const& legend);
-  virtual ~View() = default;
+  virtual ~View();
 
   virtual void UpdateLayout();
   virtual void Fetch();
@@ -42,8 +41,8 @@ struct View
 
 struct Module : View
 {
-  REQ_PROCESS_MODULES Request;
-  SIZE_T Size;
+  std::vector<MODULE> Modules = {};
+  SIZE_T Size = 0;
 
   Module(
     HANDLE device,
@@ -60,6 +59,30 @@ struct Module : View
   void UpdateLayout() override;
   void Fetch() override;
   void Render() override;
+};
+struct Thread : View
+{
+  std::vector<THREAD> Threads = {};
+  SIZE_T Size = 0;
+
+  Thread(
+    HANDLE device,
+    Shell* shell,
+    ULONG id,
+    USHORT x,
+    USHORT y,
+    USHORT w,
+    USHORT h,
+    std::wstring const& legend,
+    SIZE_T size
+  );
+
+  void UpdateLayout() override;
+  void Fetch() override;
+  void Render() override;
+
+  void Event(INPUT_RECORD& event) override;
+  void Command(std::wstring const& command) override;
 };
 struct Memory : View
 {
@@ -90,9 +113,6 @@ struct Memory : View
 };
 struct Scanner : View
 {
-  std::vector<std::uint8_t> currBytes;
-  std::vector<std::uint8_t> prevBytes;
-
   Scanner(
     HANDLE device,
     Shell* shell,
@@ -109,15 +129,15 @@ struct Scanner : View
   void Render() override;
 
   void Event(INPUT_RECORD& event) override;
-  void Scanner::Command(std::wstring const& command) override;
+  void Command(std::wstring const& command) override;
 };
 struct Debugger : View
 {
-  REQ_MEMORY_READ Request;
-  csh CsHandle;
-  SIZE_T Size;
-  ULONG Offset;
-  std::wstring ImageName;
+  std::vector<BYTE> Bytes = {};
+  csh CsHandle = 0;
+  SIZE_T Size = 0;
+  ULONG Offset = 0;
+  std::wstring ImageName = L"";
 
   Debugger(
     HANDLE device,

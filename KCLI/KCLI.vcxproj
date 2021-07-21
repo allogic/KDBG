@@ -161,7 +161,6 @@
   <ItemGroup>
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
-    <ClInclude Include="list.h" />
     <ClInclude Include="shell.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="view.h" />

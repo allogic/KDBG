@@ -2,7 +2,6 @@
 #include "ioctrl.h"
 #include "device.h"
 
-// TODO: fix wchar_t comparisons inhandled exception
 // TODO: refactor ptr to stack objects
 
 /*
@@ -10,6 +9,9 @@
 */
 
 ULONG Pid = 0;
+
+MODULE Modules[KMOD_MAX_MODULES] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
+THREAD Threads[KMOD_MAX_THREADS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
 
 /*
 * Stack frames.
@@ -44,9 +46,166 @@ FUNCTION GetSystemRoutine(PCWCHAR procName)
   return functionPointer;
 }
 
+typedef enum _SYSTEM_INFORMATION_CLASS
+{
+  SystemBasicInformation = 0,
+  SystemProcessorInformation = 1,             // obsolete...delete
+  SystemPerformanceInformation = 2,
+  SystemTimeOfDayInformation = 3,
+  SystemPathInformation = 4,
+  SystemProcessInformation = 5,
+  SystemCallCountInformation = 6,
+  SystemDeviceInformation = 7,
+  SystemProcessorPerformanceInformation = 8,
+  SystemFlagsInformation = 9,
+  SystemCallTimeInformation = 10,
+  SystemModuleInformation = 11,
+  SystemLocksInformation = 12,
+  SystemStackTraceInformation = 13,
+  SystemPagedPoolInformation = 14,
+  SystemNonPagedPoolInformation = 15,
+  SystemHandleInformation = 16,
+  SystemObjectInformation = 17,
+  SystemPageFileInformation = 18,
+  SystemVdmInstemulInformation = 19,
+  SystemVdmBopInformation = 20,
+  SystemFileCacheInformation = 21,
+  SystemPoolTagInformation = 22,
+  SystemInterruptInformation = 23,
+  SystemDpcBehaviorInformation = 24,
+  SystemFullMemoryInformation = 25,
+  SystemLoadGdiDriverInformation = 26,
+  SystemUnloadGdiDriverInformation = 27,
+  SystemTimeAdjustmentInformation = 28,
+  SystemSummaryMemoryInformation = 29,
+  SystemMirrorMemoryInformation = 30,
+  SystemPerformanceTraceInformation = 31,
+  SystemObsolete0 = 32,
+  SystemExceptionInformation = 33,
+  SystemCrashDumpStateInformation = 34,
+  SystemKernelDebuggerInformation = 35,
+  SystemContextSwitchInformation = 36,
+  SystemRegistryQuotaInformation = 37,
+  SystemExtendServiceTableInformation = 38,
+  SystemPrioritySeperation = 39,
+  SystemVerifierAddDriverInformation = 40,
+  SystemVerifierRemoveDriverInformation = 41,
+  SystemProcessorIdleInformation = 42,
+  SystemLegacyDriverInformation = 43,
+  SystemCurrentTimeZoneInformation = 44,
+  SystemLookasideInformation = 45,
+  SystemTimeSlipNotification = 46,
+  SystemSessionCreate = 47,
+  SystemSessionDetach = 48,
+  SystemSessionInformation = 49,
+  SystemRangeStartInformation = 50,
+  SystemVerifierInformation = 51,
+  SystemVerifierThunkExtend = 52,
+  SystemSessionProcessInformation = 53,
+  SystemLoadGdiDriverInSystemSpace = 54,
+  SystemNumaProcessorMap = 55,
+  SystemPrefetcherInformation = 56,
+  SystemExtendedProcessInformation = 57,
+  SystemRecommendedSharedDataAlignment = 58,
+  SystemComPlusPackage = 59,
+  SystemNumaAvailableMemory = 60,
+  SystemProcessorPowerInformation = 61,
+  SystemEmulationBasicInformation = 62,
+  SystemEmulationProcessorInformation = 63,
+  SystemExtendedHandleInformation = 64,
+  SystemLostDelayedWriteInformation = 65,
+  SystemBigPoolInformation = 66,
+  SystemSessionPoolTagInformation = 67,
+  SystemSessionMappedViewInformation = 68,
+  SystemHotpatchInformation = 69,
+  SystemObjectSecurityMode = 70,
+  SystemWatchdogTimerHandler = 71,
+  SystemWatchdogTimerInformation = 72,
+  SystemLogicalProcessorInformation = 73,
+  SystemWow64SharedInformation = 74,
+  SystemRegisterFirmwareTableInformationHandler = 75,
+  SystemFirmwareTableInformation = 76,
+  SystemModuleInformationEx = 77,
+  SystemVerifierTriageInformation = 78,
+  SystemSuperfetchInformation = 79,
+  SystemMemoryListInformation = 80,
+  SystemFileCacheInformationEx = 81,
+  MaxSystemInfoClass = 82  // MaxSystemInfoClass should always be the last enum
+} SYSTEM_INFORMATION_CLASS;
+
+typedef NTSTATUS(*ZWQUERYSYSTEMINFORMATION)(
+  SYSTEM_INFORMATION_CLASS SystemInformationClass,
+  PVOID SystemInformation,
+  ULONG SystemInformationLength,
+  ULONG* ReturnLength);
+
+NTSTATUS ZwQuerySystemInformation(
+  SYSTEM_INFORMATION_CLASS SystemInformationClass,
+  PVOID SystemInformation,
+  ULONG SystemInformationLength,
+  ULONG* ReturnLength)
+{
+  return GetSystemRoutine<ZWQUERYSYSTEMINFORMATION>(L"ZwQuerySystemInformation")(
+    SystemInformationClass,
+    SystemInformation,
+    SystemInformationLength,
+    ReturnLength);
+}
+
 /*
 * Thread utilities.
 */
+
+typedef struct _SYSTEM_PROCESS_INFORMATION
+{
+  ULONG NextEntryOffset;
+  ULONG NumberOfThreads;
+  LARGE_INTEGER SpareLi1;
+  LARGE_INTEGER SpareLi2;
+  LARGE_INTEGER SpareLi3;
+  LARGE_INTEGER CreateTime;
+  LARGE_INTEGER UserTime;
+  LARGE_INTEGER KernelTime;
+  UNICODE_STRING ImageName;
+  KPRIORITY BasePriority;
+  HANDLE UniqueProcessId;
+  HANDLE InheritedFromUniqueProcessId;
+  ULONG HandleCount;
+  ULONG SessionId;
+  ULONG_PTR PageDirectoryBase;
+  SIZE_T PeakVirtualSize;
+  SIZE_T VirtualSize;
+  ULONG PageFaultCount;
+  SIZE_T PeakWorkingSetSize;
+  SIZE_T WorkingSetSize;
+  SIZE_T QuotaPeakPagedPoolUsage;
+  SIZE_T QuotaPagedPoolUsage;
+  SIZE_T QuotaPeakNonPagedPoolUsage;
+  SIZE_T QuotaNonPagedPoolUsage;
+  SIZE_T PagefileUsage;
+  SIZE_T PeakPagefileUsage;
+  SIZE_T PrivatePageCount;
+  LARGE_INTEGER ReadOperationCount;
+  LARGE_INTEGER WriteOperationCount;
+  LARGE_INTEGER OtherOperationCount;
+  LARGE_INTEGER ReadTransferCount;
+  LARGE_INTEGER WriteTransferCount;
+  LARGE_INTEGER OtherTransferCount;
+} SYSTEM_PROCESS_INFORMATION, * PSYSTEM_PROCESS_INFORMATION;
+typedef struct _SYSTEM_THREAD_INFORMATION
+{
+  LARGE_INTEGER KernelTime;
+  LARGE_INTEGER UserTime;
+  LARGE_INTEGER CreateTime;
+  ULONG WaitTime;
+  PVOID StartAddress;
+  CLIENT_ID ClientId;
+  LONG Priority;
+  LONG BasePriority;
+  ULONG ContextSwitches;
+  ULONG ThreadState;
+  ULONG WaitReason;
+} SYSTEM_THREAD_INFORMATION, * PSYSTEM_THREAD_INFORMATION;
 
 typedef NTSTATUS(*PSGETCONTEXTTHREAD)(
   PETHREAD Thread,
@@ -198,7 +357,7 @@ ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize)
       }
   return (ULONG)PE_ERROR_VALUE;
 }
-PVOID GetVirtualBase(PVOID imageBase, PVOID virtualBase)
+PVOID GetImageBase(PVOID imageBase, PVOID virtualBase)
 {
   if ((ULONG64)virtualBase < (ULONG64)imageBase)
   {
@@ -365,12 +524,43 @@ VOID DumpModuleExports(PVOID imageBase, ULONG fileSize)
 * Process utilities relative to kernel space.
 */
 
-NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID& buffer)
+NTSTATUS CopyUserSpaceMemorySafe(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mode)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PMDL mdl = IoAllocateMdl(src, size, FALSE, FALSE, NULL);
+  if (mdl)
+  {
+    MmProbeAndLockPages(mdl, mode, IoReadAccess);
+    PVOID mappedSrc = MmMapLockedPagesSpecifyCache(mdl, mode, MmNonCached, NULL, FALSE, HighPagePriority);
+    if (mappedSrc)
+    {
+      status = MmProtectMdlSystemAddress(mdl, PAGE_READONLY);
+      if (NT_SUCCESS(status))
+      {
+        __try
+        {
+          memcpy(dst, mappedSrc, size);
+          status = STATUS_SUCCESS;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+          KMOD_LOG_INFO("Something went wrong\n");
+        }
+      }
+      MmUnmapLockedPages(mappedSrc, mdl);
+    }
+    MmUnlockPages(mdl);
+  }
+  IoFreeMdl(mdl);
+  return status;
+}
+
+NTSTATUS FetchProcessModules()
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
   KAPC_STATE apc;
-  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  status = PsLookupProcessByProcessId((HANDLE)Pid, &process);
   if (NT_SUCCESS(status))
   {
     status = STATUS_UNSUCCESSFUL;
@@ -380,6 +570,96 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID& buffer)
       PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
       if (peb)
       {
+        memset(Modules, 0, sizeof(MODULE) * KMOD_MAX_MODULES);
+        PVOID imageBase = peb->ImageBaseAddress;
+        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
+        PLDR_DATA_TABLE_ENTRY module = NULL;
+        PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
+        PLIST_ENTRY moduleEntry = moduleHead->Flink;
+        ULONG count = 0;
+        while (moduleEntry != moduleHead)
+        {
+          module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+          if (module && module->DllBase)
+          {
+            CopyUserSpaceMemorySafe(&Modules[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
+            CopyUserSpaceMemorySafe(&Modules[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
+            CopyUserSpaceMemorySafe(&Modules[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
+            count++;
+            if (count >= KMOD_MAX_MODULES)
+            {
+              break;
+            }
+          }
+          moduleEntry = moduleEntry->Flink;
+        }
+        KMOD_LOG_INFO("Fetched modules\n");
+        status = STATUS_SUCCESS;
+      }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+      KMOD_LOG_ERROR("Something went wrong!\n");
+    }
+    KeUnstackDetachProcess(&apc);
+    ObDereferenceObject(process);
+  }
+  return status;
+}
+NTSTATUS FetchProcessThreads()
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  ULONG read = 0;
+  PBYTE buffer = (PBYTE)RtlAllocateMemory(TRUE, 1024 * 1024);
+  status = ZwQuerySystemInformation(SystemProcessInformation, buffer, read, &read);
+  ULONG processAcc = 0;
+  while (1)
+  {
+    KMOD_LOG_INFO("Thread count %u\n", ((PSYSTEM_PROCESS_INFORMATION)buffer)->NumberOfThreads);
+    //KMOD_LOG_INFO("Tid %u Pid %u\n", (ULONG)threads[i].ClientId.UniqueThread, (ULONG)threads[i].ClientId.UniqueProcess);
+    //KMOD_LOG_INFO("Copy from %p to %p\n", &threads[i].ClientId.UniqueThread, &Threads[i].Tid);
+    //for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
+    //{
+    //  PSYSTEM_THREAD_INFORMATION thread = (PSYSTEM_THREAD_INFORMATION)(((PBYTE)processInfo) + sizeof(SYSTEM_PROCESS_INFORMATION) + sizeof(SYSTEM_THREAD_INFORMATION) * i);
+    //  if (verbose)
+    //  {
+    //    LOG_INFO("\tTid: %u\n", *(PULONG)thread->ClientId.UniqueThread);
+    //    LOG_INFO("\tBase: %p\n", thread->StartAddress);
+    //    LOG_INFO("\n");
+    //  }
+    //  //request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
+    //  //request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
+    //  //request->Processes[processAcc].Threads[i].State = thread->ThreadState;
+    //}
+    if (!((PSYSTEM_PROCESS_INFORMATION)buffer)->NextEntryOffset)
+    {
+      KMOD_LOG_INFO("Fetched threads\n");
+      status = STATUS_SUCCESS;
+      break;
+    }
+    buffer += ((PSYSTEM_PROCESS_INFORMATION)buffer)->NextEntryOffset;
+    processAcc++;
+  }
+  RtlFreeMemory(buffer);
+  return status;
+}
+NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PEPROCESS process = NULL;
+  KAPC_STATE apc;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (NT_SUCCESS(status))
+  {
+    status = STATUS_UNSUCCESSFUL;
+    KeStackAttachProcess(process, &apc);
+    KMOD_LOG_INFO("Attached\n");
+    __try
+    {
+      PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
+      if (peb)
+      {
+        KMOD_LOG_INFO("Found PEB\n");
         PVOID imageBase = peb->ImageBaseAddress;
         PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
         PLDR_DATA_TABLE_ENTRY module = NULL;
@@ -388,19 +668,24 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID& buffer)
         while (moduleEntry != moduleHead)
         {
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+          KMOD_LOG_INFO("%ls\n", module->BaseDllName.Buffer);
           if (module && module->DllBase)
           {
-            KMOD_LOG_INFO("Copy from %p to %p\n", module->DllBase, &((PMODULE)buffer)[count].Base);
-            //((PMODULE)buffer)[count].Base = 666; //(ULONG64)module->DllBase;
-            //wcscpy(((PMODULE)buffer)[size++].Name, module->BaseDllName.Buffer);
-            //((PMODULE)buffer)[size++].Size = module->SizeOfImage;
+            //KMOD_LOG_INFO("Copy from %p to %p\n", &module->DllBase, &((PMODULE)buffer)[count].Base);
+            //((PMODULE)buffer)[count].Base = (ULONG64)module->DllBase;
+            //wcscpy(((PMODULE)buffer)[count].Name, module->BaseDllName.Buffer);
+            //((PMODULE)buffer)[count].Size = module->SizeOfImage;
+            CopyUserSpaceMemorySafe(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
+            CopyUserSpaceMemorySafe(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
+            count++;
+            KMOD_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
+            KMOD_LOG_INFO("value is %p\n");
+            if (count >= size)
+            {
+              break;
+            }
           }
           moduleEntry = moduleEntry->Flink;
-          count++;
-          if (count >= size)
-          {
-            break;
-          }
         }
         status = STATUS_SUCCESS;
       }
@@ -439,21 +724,16 @@ NTSTATUS GetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           if (module && module->DllBase)
           {
-            //if (_wcsicmp(name, module->BaseDllName.Buffer) == 0)
-            //{
-            //  break;
-            //}
-            //if (RtlCompareUnicodeString(&requiredName, &currentName, TRUE) == 0)
-            //{
-            //  break;
-            //}
+            if (_wcsicmp(name, module->BaseDllName.Buffer) == 0)
+            {
+              break;
+            }
           }
           moduleEntry = moduleEntry->Flink;
         }
-        //module = CONTAINING_RECORD(moduleHead->Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
         base = module->DllBase;
         status = STATUS_SUCCESS;
-        KMOD_LOG_INFO("Selected module %wZ\n", &module->BaseDllName);
+        KMOD_LOG_INFO("Selected module %ls\n", module->BaseDllName.Buffer);
       }
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
@@ -499,7 +779,6 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
             MmUnmapLockedPages(mappedBuffer, mdl);
           }
           MmUnlockPages(mdl);
-          IoFreeMdl(mdl);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
@@ -507,6 +786,7 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
           status = STATUS_UNHANDLED_EXCEPTION;
         }
         KeUnstackDetachProcess(&apc);
+        IoFreeMdl(mdl);
       }
       memcpy(buffer, asyncBuffer, size);
       RtlFreeMemory(asyncBuffer);
@@ -645,7 +925,24 @@ NTSTATUS HandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   if (Pid)
   {
-    status = GetProcessModules(Pid, req->In.Size, req->Out.Size, req->Out.Buffer);
+    status = FetchProcessModules();
+    if (NT_SUCCESS(status))
+    {
+      memcpy(req->Out.Buffer, Modules, sizeof(MODULE) * KMOD_MAX_MODULES);
+    }
+  }
+  return status;
+}
+NTSTATUS HandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  if (Pid)
+  {
+    status = FetchProcessThreads();
+    if (NT_SUCCESS(status))
+    {
+      memcpy(req->Out.Buffer, Threads, sizeof(THREAD) * KMOD_MAX_THREADS);
+    }
   }
   return status;
 }
@@ -712,7 +1009,7 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       KMOD_LOG_INFO("Begin process attach\n");
       PREQ_PROCESS_ATTACH req = (PREQ_PROCESS_ATTACH)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleProcessAttachRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_PROCESS_ATTACH) : 0;
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_PROCESS_ATTACH) : 0;
       KMOD_LOG_INFO("End process attach\n");
       break;
     }
@@ -721,8 +1018,17 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       KMOD_LOG_INFO("Begin process modules\n");
       PREQ_PROCESS_MODULES req = (PREQ_PROCESS_MODULES)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleProcessModulesRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_PROCESS_MODULES) : 0;
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_PROCESS_MODULES) : 0;
       KMOD_LOG_INFO("End process modules\n");
+      break;
+    }
+    case KMOD_REQ_PROCESS_THREADS:
+    {
+      KMOD_LOG_INFO("Begin process threads\n");
+      PREQ_PROCESS_THREADS req = (PREQ_PROCESS_THREADS)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = HandleProcessThreadsRequest(req);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_PROCESS_THREADS) : 0;
+      KMOD_LOG_INFO("End process threads\n");
       break;
     }
     case KMOD_REQ_MEMORY_READ:
@@ -730,7 +1036,7 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       KMOD_LOG_INFO("Begin memory read\n");
       PREQ_MEMORY_READ req = (PREQ_MEMORY_READ)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleMemoryReadRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_MEMORY_READ) : 0;
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_MEMORY_READ) : 0;
       KMOD_LOG_INFO("End memory read\n");
       break;
     }
@@ -739,7 +1045,7 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       KMOD_LOG_INFO("Begin memory write\n");
       PREQ_MEMORY_WRITE req = (PREQ_MEMORY_WRITE)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = HandleMemoryWriteRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(PREQ_MEMORY_WRITE) : 0;
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_MEMORY_WRITE) : 0;
       KMOD_LOG_INFO("End memory write\n");
       break;
     }

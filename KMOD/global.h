@@ -78,43 +78,6 @@ VOID RtlFreeMemory(PVOID ptr)
 }
 
 /*
-* Linked list.
-*/
-
-typedef struct _LIST_NODE
-{
-  PVOID Next = NULL;
-  PVOID Data = NULL;
-} LIST_NODE, * PLIST_NODE;
-
-template<typename TYPE>
-static void ListInsert(PLIST_NODE& head, TYPE& data)
-{
-  if (!head)
-  {
-    head = (PLIST_NODE)RtlAllocateMemory(TRUE, sizeof(LIST_NODE));
-  }
-  if (!head->Next)
-  {
-    head->Next = (PLIST_NODE)RtlAllocateMemory(TRUE, sizeof(LIST_NODE));
-  }
-  head->Data = (TYPE*)RtlAllocateMemory(TRUE, sizeof(TYPE));
-  memcpy(head->Data, &data, sizeof(TYPE));
-  head = head->Next;
-}
-static void ListDelete(PLIST_NODE head)
-{
-  RtlFreeMemory(head->Data);
-  while (head->Next)
-  {
-    PLIST_NODE next = (PLIST_NODE)head->Next;
-    RtlFreeMemory(head);
-    head = next;
-    RtlFreeMemory(head->Data);
-  }
-}
-
-/*
 * Logging utilities.
 */
 

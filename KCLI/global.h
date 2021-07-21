@@ -32,16 +32,6 @@ extern "C"
 #include <capstone/platform.h>
 
 /*
-* Linked list.
-*/
-
-typedef struct _LIST_NODE
-{
-  PVOID Next = NULL;
-  PVOID Data = NULL;
-} LIST_NODE, * PLIST_NODE;
-
-/*
 * KCLI specific.
 */
 

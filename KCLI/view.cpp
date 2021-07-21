@@ -2,7 +2,6 @@
 #include "shell.h"
 #include "util.h"
 
-// TODO: refactor I/O request tmp copy
 // TODO: remove request references outside Fetch() function
 
 using namespace std;
@@ -17,7 +16,11 @@ View::View(HANDLE device, Shell* console, ULONG id, USHORT x, USHORT y, USHORT w
   , H{ h }
   , Legend{ legend }
 {
-  ScreenBuffer = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+
+}
+View::~View()
+{
+
 }
 
 void View::UpdateLayout()
@@ -60,43 +63,116 @@ Module::Module(
 }
 void Module::UpdateLayout()
 {
-  X = 0;
+  USHORT w4th = (USHORT)(Console->Width() / 4);
+  USHORT hHalf = (USHORT)(Console->Height() / 2);
+  X = (USHORT)(Console->Width() - w4th);
   Y = 0;
-  W = Console->Width();
-  H = Console->Height();
+  W = w4th;
+  H = hHalf;
 }
 void Module::Fetch()
 {
-  Request.In.Size = Size;
-  Request.Out.Size = Size;
-  if (Request.Out.Buffer)
+  REQ_PROCESS_MODULES request;
+  request.In.Size = Size;
+  if (request.Out.Buffer)
   {
-    free(Request.Out.Buffer);
+    free(request.Out.Buffer);
   }
-  Request.Out.Buffer = malloc(sizeof(MODULE) * Size);
-  memset(Request.Out.Buffer, 0, sizeof(MODULE) * Size);
-  for (SIZE_T i = 0; i < Request.In.Size; ++i)
-  {
-    ((PMODULE)Request.Out.Buffer)[i].Base = 666;
-    wcscpy_s(((PMODULE)Request.Out.Buffer)[i].Name, sizeof(WCHAR) * 4, L"Dead");
-    ((PMODULE)Request.Out.Buffer)[i].Size = 333;
-  }
-  DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
+  request.Out.Buffer = malloc(sizeof(MODULE) * KMOD_MAX_MODULES);
+  memset(request.Out.Buffer, 0, sizeof(MODULE) * KMOD_MAX_MODULES);
+  DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  Modules.clear();
+  Modules.resize(KMOD_MAX_MODULES);
+  memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KMOD_MAX_MODULES);
 }
 void Module::Render()
 {
   View::Render();
   USHORT xOff = 1;
   USHORT yOff = 1;
-  for (SIZE_T i = 0; i < Request.Out.Size; ++i)
+  for (MODULE& module : Modules)
   {
-    Console->TextW(X + xOff, Y + yOff, &AddressToHexW(((PMODULE)Request.Out.Buffer)[i].Base)[0]);
+    Console->TextW(X + xOff, Y + yOff, &AddressToHexW(module.Base)[0]);
     xOff += 19;
-    Console->TextW(X + xOff, Y + yOff, &ULongToDecW((ULONG)((PMODULE)Request.Out.Buffer)[i].Size)[0]);
+    Console->TextW(X + xOff, Y + yOff, &ULongToDecW((ULONG)module.Size)[0]);
     xOff += 19;
-    Console->TextW(X + xOff, Y + yOff, ((PMODULE)Request.Out.Buffer)[i].Name);
+    Console->TextW(X + xOff, Y + yOff, module.Name);
     xOff = 1;
     yOff += 1;
+    if (yOff >= (H - 1))
+    {
+      break;
+    }
+  }
+}
+
+Thread::Thread(
+  HANDLE device,
+  Shell* console,
+  ULONG id,
+  USHORT x,
+  USHORT y,
+  USHORT w,
+  USHORT h,
+  wstring const& legend,
+  SIZE_T size
+)
+  : Size{ size }
+  , View(device, console, id, x, y, w, h, legend)
+{
+
+}
+void Thread::UpdateLayout()
+{
+  USHORT w4th = (USHORT)(Console->Width() / 4);
+  USHORT hHalf = (USHORT)(Console->Height() / 2);
+  X = (USHORT)(Console->Width() - w4th);
+  Y = hHalf;
+  W = w4th;
+  H = hHalf;
+}
+void Thread::Fetch()
+{
+  REQ_PROCESS_THREADS request;
+  request.In.Size = Size;
+  if (request.Out.Buffer)
+  {
+    free(request.Out.Buffer);
+  }
+  request.Out.Buffer = malloc(sizeof(THREAD) * KMOD_MAX_THREADS);
+  memset(request.Out.Buffer, 0, sizeof(THREAD) * KMOD_MAX_THREADS);
+  DeviceIoControl(Device, KMOD_REQ_PROCESS_THREADS, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  Threads.clear();
+  Threads.resize(KMOD_MAX_THREADS);
+  memcpy(&Threads[0], request.Out.Buffer, sizeof(THREAD) * KMOD_MAX_THREADS);
+}
+void Thread::Render()
+{
+  View::Render();
+  USHORT xOff = 1;
+  USHORT yOff = 1;
+  for (THREAD& thread : Threads)
+  {
+    Console->TextW(X + xOff, Y + yOff, &ULongToDecW(thread.Tid)[0]);
+    xOff += 19;
+    Console->TextW(X + xOff, Y + yOff, &ULongToDecW(thread.Pid)[0]);
+    xOff += 19;
+    yOff += 1;
+    if (yOff >= (H - 1))
+    {
+      break;
+    }
+  }
+}
+void Thread::Event(INPUT_RECORD& event)
+{
+
+}
+void Thread::Command(wstring const& command)
+{
+  if (wcscmp(L"f", command.data()) == 0)
+  {
+    Fetch();
   }
 }
 
@@ -122,12 +198,12 @@ Memory::Memory(
 }
 void Memory::UpdateLayout()
 {
-  USHORT thirdWidth = (USHORT)(Console->Width() / 3);
-  USHORT halfHeight = (USHORT)(Console->Height() / 2);
-  X = thirdWidth;
-  Y = halfHeight;
-  W = (USHORT)(Console->Width() - thirdWidth);
-  H = halfHeight;
+  USHORT w4th = (USHORT)(Console->Width() / 4);
+  USHORT hHalf = (USHORT)(Console->Height() / 2);
+  X = w4th;
+  Y = hHalf;
+  W = (USHORT)(Console->Width() - (w4th * 2));
+  H = hHalf;
 }
 void Memory::Fetch()
 {
@@ -195,6 +271,7 @@ void Memory::Command(wstring const& command)
   if (wcscmp(L"f", command.data()) == 0)
   {
     Fetch();
+    Render();
   }
 }
 
@@ -214,11 +291,11 @@ Scanner::Scanner(
 }
 void Scanner::UpdateLayout()
 {
-  USHORT thirdWidth = (USHORT)(Console->Width() / 3);
-  USHORT halfHeight = (USHORT)(Console->Height() / 2);
+  USHORT w4th = (USHORT)(Console->Width() / 4);
+  USHORT hHalf = (USHORT)(Console->Height() / 2);
   X = 0;
   Y = 0;
-  W = thirdWidth;
+  W = w4th;
   H = Console->Height();
 }
 void Scanner::Fetch()
@@ -267,32 +344,36 @@ Debugger::~Debugger()
 }
 void Debugger::UpdateLayout()
 {
-  USHORT thirdWidth = (USHORT)(Console->Width() / 3);
-  USHORT halfHeight = (USHORT)(Console->Height() / 2);
-  X = thirdWidth;
+  USHORT w4th = (USHORT)(Console->Width() / 4);
+  USHORT hHalf = (USHORT)(Console->Height() / 2);
+  X = w4th;
   Y = 0;
-  W = (USHORT)(Console->Width() - thirdWidth);
-  H = (USHORT)(Console->Height() - halfHeight);
+  W = (USHORT)(Console->Width() - (w4th * 2));
+  H = hHalf;
 }
 void Debugger::Fetch()
 {
-  wmemset(Request.In.Name, 0, ImageName.size());
-  wmemcpy(Request.In.Name, ImageName.c_str(), ImageName.size());
-  Request.In.Offset = Offset;
-  Request.In.Size = Size;
-  if (Request.Out.Buffer)
+  REQ_MEMORY_READ request;
+  wmemset(request.In.Name, 0, ImageName.size());
+  wmemcpy(request.In.Name, ImageName.c_str(), ImageName.size());
+  request.In.Offset = Offset;
+  request.In.Size = Size;
+  if (request.Out.Buffer)
   {
-    free(Request.Out.Buffer);
+    free(request.Out.Buffer);
   }
-  Request.Out.Buffer = malloc(Size);
-  memset(Request.Out.Buffer, 0, Size);
-  DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
+  request.Out.Buffer = malloc(Size);
+  memset(request.Out.Buffer, 0, Size);
+  DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  Bytes.clear();
+  Bytes.resize(Size);
+  memcpy(Bytes.data(), request.Out.Buffer, Size);
 }
 void Debugger::Render()
 {
   View::Render();
   cs_insn* instructions = nullptr;
-  SIZE_T numInstructions = cs_disasm(CsHandle, (PBYTE)Request.Out.Buffer, Request.In.Size, Request.Out.Base, 0, &instructions);
+  SIZE_T numInstructions = cs_disasm(CsHandle, Bytes.data(), Bytes.size(), 0, 0, &instructions);
   USHORT xOff = 1;
   USHORT yOff = 1;
   if (numInstructions)
@@ -324,12 +405,32 @@ void Debugger::Render()
 }
 void Debugger::Event(INPUT_RECORD& event)
 {
-
+  if (KeyDown(event, VK_UP))
+  {
+    Offset--;
+    if (Offset < 0)
+    {
+      Offset = 0;
+    }
+    Fetch();
+    Render();
+  }
+  if (KeyDown(event, VK_DOWN))
+  {
+    Offset++;
+    if (Offset >= Bytes.size())
+    {
+      Offset = (ULONG)Bytes.size();
+    }
+    Fetch();
+    Render();
+  }
 }
 void Debugger::Command(wstring const& command)
 {
   if (wcscmp(L"f", command.data()) == 0)
   {
     Fetch();
+    Render();
   }
 }
