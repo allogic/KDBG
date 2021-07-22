@@ -239,12 +239,20 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="device.cpp" />
     <ClCompile Include="kmod.cpp" />
+    <ClCompile Include="krnl.cpp" />
+    <ClCompile Include="pe.cpp" />
+    <ClCompile Include="thread.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common.h" />
     <ClInclude Include="device.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
+    <ClInclude Include="krnl.h" />
+    <ClInclude Include="pe.h" />
+    <ClInclude Include="thread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

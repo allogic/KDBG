@@ -2,6 +2,7 @@
 #define _VIEW_H
 
 #include "global.h"
+#include "common.h"
 #include "ioctrl.h"
 
 /*

@@ -28,13 +28,13 @@ extern "C"
 
 static ULONG Seed = 0;
 
-ULONG RtlNextRandom(ULONG min, ULONG max)
+static ULONG RtlNextRandom(ULONG min, ULONG max)
 {
   Seed = (ULONG)__rdtsc();
   const ULONG scale = (ULONG)MAXINT32 / (max - min);
   return RtlRandomEx(&Seed) / scale + min;
 }
-ULONG GetNextPoolTag()
+static ULONG GetNextPoolTag()
 {
   constexpr ULONG poolTags[] =
   {
@@ -65,14 +65,14 @@ ULONG GetNextPoolTag()
   return index;
 }
 
-PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size)
+static PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size)
 {
   PVOID ptr = ExAllocatePoolWithTag(NonPagedPool, size, GetNextPoolTag());
   if (zeroMemory && ptr)
     RtlZeroMemory(ptr, size);
   return ptr;
 }
-VOID RtlFreeMemory(PVOID ptr)
+static VOID RtlFreeMemory(PVOID ptr)
 {
   ExFreePool(ptr);
 }
