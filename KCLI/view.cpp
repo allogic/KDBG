@@ -78,12 +78,12 @@ void Module::Fetch()
   {
     free(request.Out.Buffer);
   }
-  request.Out.Buffer = malloc(sizeof(MODULE) * KMOD_MAX_MODULES);
-  memset(request.Out.Buffer, 0, sizeof(MODULE) * KMOD_MAX_MODULES);
+  request.Out.Buffer = malloc(sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
+  memset(request.Out.Buffer, 0, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
   DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
   Modules.clear();
-  Modules.resize(KMOD_MAX_MODULES);
-  memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KMOD_MAX_MODULES);
+  Modules.resize(KMOD_MAX_MODULES_PROCESS);
+  memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
 }
 void Module::Render()
 {

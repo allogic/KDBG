@@ -154,11 +154,28 @@ typedef NTSTATUS(*ZWQUERYSYSTEMINFORMATION)(
   PVOID SystemInformation,
   ULONG SystemInformationLength,
   ULONG* ReturnLength);
+typedef NTSTATUS(*PSGETTHREADCONTEXT)(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
+typedef NTSTATUS(*PSSETTHREADCONTEXT)(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
 
 NTSTATUS ZwQuerySystemInformation(
   SYSTEM_INFORMATION_CLASS SystemInformationClass,
   PVOID SystemInformation,
   ULONG SystemInformationLength,
   ULONG* ReturnLength);
+
+NTSTATUS PsGetContextThread(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
+NTSTATUS PsSetContextThread(
+  PETHREAD Thread,
+  PCONTEXT ThreadContext,
+  KPROCESSOR_MODE Mode);
 
 #endif

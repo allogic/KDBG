@@ -5,6 +5,7 @@
 #include "krnl.h"
 #include "pe.h"
 #include "thread.h"
+#include "trace.h"
 
 // TODO: refactor ptr to stack objects
 
@@ -14,19 +15,9 @@
 
 ULONG Pid = 0;
 
-MODULE Modules[KMOD_MAX_MODULES] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
+MODULE ModulesKernel[KMOD_MAX_MODULES_KERNEL] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
+MODULE ModulesProcess[KMOD_MAX_MODULES_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
 THREAD Threads[KMOD_MAX_THREADS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
-
-/*
-* Stack frames.
-*/
-
-typedef struct _STACK_FRAME_X64
-{
-  ULONG64 AddrOffset;
-  ULONG64 StackOffset;
-  ULONG64 FrameOffset;
-} STACK_FRAME_X64, * PSTACK_FRAME_X64;
 
 /*
 * Process utilities relative to kernel space.
@@ -63,6 +54,11 @@ NTSTATUS CopyUserSpaceMemorySafe(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_M
   return status;
 }
 
+NTSTATUS FetchKernelModules()
+{
+
+}
+
 NTSTATUS FetchProcessModules()
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -78,7 +74,7 @@ NTSTATUS FetchProcessModules()
       PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
       if (peb)
       {
-        memset(Modules, 0, sizeof(MODULE) * KMOD_MAX_MODULES);
+        memset(ModulesProcess, 0, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
         PVOID imageBase = peb->ImageBaseAddress;
         PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
         PLDR_DATA_TABLE_ENTRY module = NULL;
@@ -90,11 +86,11 @@ NTSTATUS FetchProcessModules()
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           if (module && module->DllBase)
           {
-            CopyUserSpaceMemorySafe(&Modules[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
-            CopyUserSpaceMemorySafe(&Modules[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
-            CopyUserSpaceMemorySafe(&Modules[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
+            CopyUserSpaceMemorySafe(&ModulesProcess[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
+            CopyUserSpaceMemorySafe(&ModulesProcess[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
+            CopyUserSpaceMemorySafe(&ModulesProcess[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
             count++;
-            if (count >= KMOD_MAX_MODULES)
+            if (count >= KMOD_MAX_MODULES_PROCESS)
             {
               break;
             }
@@ -151,6 +147,7 @@ NTSTATUS FetchProcessThreads()
   RtlFreeMemory(buffer);
   return status;
 }
+
 NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -309,105 +306,6 @@ NTSTATUS WriteVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buf
 }
 
 /*
-* Scanning utilities.
-*/
-
-VOID ScanContext(HANDLE tid, SIZE_T iterations)
-{
-  //NTSTATUS status = STATUS_SUCCESS;
-  //PETHREAD thread = NULL;
-  //PCONTEXT context = NULL;
-  //SIZE_T contextSize = sizeof(CONTEXT);
-  //status = PsLookupThreadByThreadId(tid, &thread);
-  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
-  //status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
-  //RtlZeroMemory(context, contextSize);
-  //LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
-  //for (SIZE_T i = 0; i < iterations; ++i)
-  //{
-  //  context->ContextFlags = CONTEXT_ALL;
-  //  status = PsGetContextThread(thread, context, UserMode);
-  //  KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
-  //  LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
-  //}
-  //if (context)
-  //{
-  //  ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)context, &contextSize, MEM_RELEASE);
-  //}
-  //ObDereferenceObject(thread);
-}
-VOID ScanStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
-{
-  //NTSTATUS status = STATUS_SUCCESS;
-  //PEPROCESS process = NULL;
-  //PETHREAD thread = NULL;
-  //PCONTEXT context = NULL;
-  //SIZE_T contextSize = sizeof(CONTEXT);
-  //PLDR_DATA_TABLE_ENTRY modules = NULL;
-  //PLDR_DATA_TABLE_ENTRY module = NULL;
-  //PLIST_ENTRY moduleList = NULL;
-  //PLIST_ENTRY moduleEntry = NULL;
-  //STACK_FRAME_X64 stackFrame64;
-  //PPEB64 peb = NULL;
-  //KAPC_STATE apc;
-  //// Get context infos
-  //status = PsLookupProcessByProcessId(pid, &process);
-  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupProcessByProcessId %X", status);
-  //status = PsLookupThreadByThreadId(tid, &thread);
-  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsLookupThreadByThreadId %X\n", status);
-  //status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  //KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "ZwAllocateVirtualMemory %X\n", status);
-  //// Attach to process
-  //KeStackAttachProcess(process, &apc);
-  //// Get module base
-  //peb = (PPEB64)PsGetProcessPeb(process);
-  //KMOD_LOG_ERROR_IF_NOT(!peb, "PsGetProcessPeb\n");
-  //modules = CONTAINING_RECORD(peb->Ldr->InLoadOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-  //moduleList = modules->InLoadOrderLinks.Flink;
-  //moduleEntry = moduleList->Flink;
-  //while (moduleEntry != moduleList)
-  //{
-  //  module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-  //  if (wcscmp(moduleName, module->BaseDllName.Buffer) == 0)
-  //  {
-  //    break;
-  //  }
-  //  moduleEntry = moduleEntry->Flink;
-  //}
-  //KMOD_LOG_ERROR_IF_NOT(!module, "Module not found\n");
-  //PVOID moduleBase = GetModuleBase((PBYTE)module->DllBase, *(PULONG)module->EntryPoint);
-  //LOG_INFO("ModuleBase %p\n", moduleBase);
-  ////ULONG moduleExportOffset = GetModuleExportOffset((PBYTE)module->DllBase, module->SizeOfImage, "");
-  ////LOG_INFO("moduleExportOffset %p\n", moduleExportOffset);
-  //// Dump exports
-  //DumpModuleExports((PBYTE)module->DllBase, module->SizeOfImage);
-  //// Dump stack frames
-  //LOG_INFO("\n");
-  //LOG_INFO("Stack Frames:\n");
-  //for (SIZE_T i = 0; i < iterations; ++i)
-  //{
-  //  // Get context
-  //  status = PsGetContextThread(thread, context, UserMode);
-  //  KMOD_LOG_ERROR_IF_NOT_SUCCESS(status, "PsGetContextThread %X\n", status);
-  //  // Get stack frame
-  //  stackFrame64.AddrOffset = context->Rip; // Instruction ptr
-  //  stackFrame64.StackOffset = context->Rsp; // Stack ptr
-  //  stackFrame64.FrameOffset = context->Rbp; // Stack base ptr
-  //  LOG_INFO("%4X %llu %llu %llu\n", i, stackFrame64.AddrOffset, stackFrame64.StackOffset, stackFrame64.FrameOffset);
-  //}
-  //// Detach from process
-  //KeUnstackDetachProcess(&apc);
-  //// Cleanup
-  //if (context)
-  //{
-  //  ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)context, &contextSize, MEM_RELEASE);
-  //}
-  //ObDereferenceObject(thread);
-  //ObDereferenceObject(process);
-}
-
-/*
 * Communication device.
 */
 
@@ -436,7 +334,7 @@ NTSTATUS HandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
     status = FetchProcessModules();
     if (NT_SUCCESS(status))
     {
-      memcpy(req->Out.Buffer, Modules, sizeof(MODULE) * KMOD_MAX_MODULES);
+      memcpy(req->Out.Buffer, ModulesProcess, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
     }
   }
   return status;
@@ -508,7 +406,6 @@ NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
 NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
-  KMOD_LOG_INFO("========================================\n");
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {

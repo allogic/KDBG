@@ -4,9 +4,6 @@
 
 // TODO: create view serializer via JSON
 // TODO: finish event handling
-// TODO: create text input window
-// TODO: create MDL for copy module buffer
-// TODO: support buffer scrolling for selected window
 // TODO: fix text input max length
 // TODO: start using custom primitive typedefs for std lib
 // TODO: implement PDB mapping
