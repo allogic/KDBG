@@ -12,24 +12,3 @@ NTSTATUS ZwQuerySystemInformation(
     SystemInformationLength,
     ReturnLength);
 }
-
-NTSTATUS PsGetContextThread(
-  PETHREAD Thread,
-  PCONTEXT ThreadContext,
-  KPROCESSOR_MODE Mode)
-{
-  return GetSystemRoutine<PSGETTHREADCONTEXT>(L"PsGetContextThread")(
-    Thread,
-    ThreadContext,
-    Mode);
-}
-NTSTATUS PsSetContextThread(
-  PETHREAD Thread,
-  PCONTEXT ThreadContext,
-  KPROCESSOR_MODE Mode)
-{
-  return GetSystemRoutine<PSSETTHREADCONTEXT>(L"PsSetContextThread")(
-    Thread,
-    ThreadContext,
-    Mode);
-}

@@ -13,6 +13,8 @@ extern "C"
 #include <ntddk.h>
 #include <ntimage.h>
 
+#include <wsk.h>
+
 #include <windef.h>
 
 #ifdef __cplusplus

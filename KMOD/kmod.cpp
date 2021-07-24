@@ -56,7 +56,7 @@ NTSTATUS CopyUserSpaceMemorySafe(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_M
 
 NTSTATUS FetchKernelModules()
 {
-
+  return STATUS_UNSUCCESSFUL;
 }
 
 NTSTATUS FetchProcessModules()
