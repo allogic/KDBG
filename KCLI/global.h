@@ -1,17 +1,12 @@
 #ifndef _GLOBAL_H
 #define _GLOBAL_H
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <tlhelp32.h>
 
-#ifdef __cplusplus
-}
-#endif
+#include <tlhelp32.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 
 /*
 * Standard library.
@@ -23,6 +18,7 @@ extern "C"
 #include <vector>
 #include <map>
 #include <cstdint>
+#include <codecvt>
 
 /*
 * Disassembler library.

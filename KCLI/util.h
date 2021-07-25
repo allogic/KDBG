@@ -12,4 +12,7 @@ std::wstring ULongToDecW(ULONG value);
 std::string AddressToHex(ULONG64 value);
 std::wstring AddressToHexW(ULONG64 value);
 
+std::wstring Utf8ToUtf16(std::string const& utf8Str);
+std::string Utf16ToUtf8(const std::wstring& utf16Str);
+
 #endif

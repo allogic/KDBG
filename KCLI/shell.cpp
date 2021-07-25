@@ -87,7 +87,7 @@ VOID Shell::Read(View* view)
   ULONG read = 0;
   InputBuffer.clear();
   InputBuffer.resize(1024);
-  ReadConsole(StdIn, InputBuffer.data(), 1024, &read, NULL);
+  ReadConsole(StdIn, &InputBuffer[0], 1024, &read, NULL);
   for (SIZE_T i = 0; i < InputBuffer.size(); ++i)
   {
     if (InputBuffer[i] == L'\r' || InputBuffer[i] == L'\n')

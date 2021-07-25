@@ -80,7 +80,7 @@ void Module::Fetch()
   }
   request.Out.Buffer = malloc(sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
   memset(request.Out.Buffer, 0, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
-  DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  //DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
   Modules.clear();
   Modules.resize(KMOD_MAX_MODULES_PROCESS);
   memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
@@ -141,7 +141,7 @@ void Thread::Fetch()
   }
   request.Out.Buffer = malloc(sizeof(THREAD) * KMOD_MAX_THREADS);
   memset(request.Out.Buffer, 0, sizeof(THREAD) * KMOD_MAX_THREADS);
-  DeviceIoControl(Device, KMOD_REQ_PROCESS_THREADS, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  //DeviceIoControl(Device, KMOD_REQ_PROCESS_THREADS, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
   Threads.clear();
   Threads.resize(KMOD_MAX_THREADS);
   memcpy(&Threads[0], request.Out.Buffer, sizeof(THREAD) * KMOD_MAX_THREADS);
@@ -217,7 +217,7 @@ void Memory::Fetch()
   }
   Request.Out.Buffer = malloc(Size);
   memset(Request.Out.Buffer, 0, Size);
-  DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
+  //DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
 }
 void Memory::Render()
 {
@@ -364,7 +364,7 @@ void Debugger::Fetch()
   }
   request.Out.Buffer = malloc(Size);
   memset(request.Out.Buffer, 0, Size);
-  DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  //DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
   Bytes.clear();
   Bytes.resize(Size);
   memcpy(Bytes.data(), request.Out.Buffer, Size);

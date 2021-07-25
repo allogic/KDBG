@@ -46,3 +46,12 @@ wstring AddressToHexW(ULONG64 value)
   wsprintf(&str[0], L"0x%p", (PVOID)value);
   return str;
 }
+
+wstring Utf8ToUtf16(std::string const& utf8Str)
+{
+  return wstring_convert<codecvt_utf8_utf16<wchar_t>>{}.from_bytes(utf8Str);
+}
+string Utf16ToUtf8(const wstring& utf16Str)
+{
+  return wstring_convert<codecvt_utf8_utf16<wchar_t>>{}.to_bytes(utf16Str);
+}

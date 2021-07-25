@@ -1,7 +1,6 @@
 #include "global.h"
 #include "common.h"
 #include "ioctrl.h"
-#include "device.h"
 #include "krnl.h"
 #include "pe.h"
 #include "thread.h"
@@ -384,89 +383,10 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 }
 
 /*
-* I/O callbacks.
+* Communication socket.
 */
 
-NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(device);
-  irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
-  irp->IoStatus.Information = 0;
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  return irp->IoStatus.Status;
-}
-NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(device);
-  irp->IoStatus.Status = STATUS_SUCCESS;
-  irp->IoStatus.Information = 0;
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  return irp->IoStatus.Status;
-}
-NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(device);
-  PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
-  switch (stack->Parameters.DeviceIoControl.IoControlCode)
-  {
-    case KMOD_REQ_PROCESS_ATTACH:
-    {
-      KMOD_LOG_INFO("Begin process attach\n");
-      PREQ_PROCESS_ATTACH req = (PREQ_PROCESS_ATTACH)irp->AssociatedIrp.SystemBuffer;
-      irp->IoStatus.Status = HandleProcessAttachRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_PROCESS_ATTACH) : 0;
-      KMOD_LOG_INFO("End process attach\n");
-      break;
-    }
-    case KMOD_REQ_PROCESS_MODULES:
-    {
-      KMOD_LOG_INFO("Begin process modules\n");
-      PREQ_PROCESS_MODULES req = (PREQ_PROCESS_MODULES)irp->AssociatedIrp.SystemBuffer;
-      irp->IoStatus.Status = HandleProcessModulesRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_PROCESS_MODULES) : 0;
-      KMOD_LOG_INFO("End process modules\n");
-      break;
-    }
-    case KMOD_REQ_PROCESS_THREADS:
-    {
-      KMOD_LOG_INFO("Begin process threads\n");
-      PREQ_PROCESS_THREADS req = (PREQ_PROCESS_THREADS)irp->AssociatedIrp.SystemBuffer;
-      irp->IoStatus.Status = HandleProcessThreadsRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_PROCESS_THREADS) : 0;
-      KMOD_LOG_INFO("End process threads\n");
-      break;
-    }
-    case KMOD_REQ_MEMORY_READ:
-    {
-      KMOD_LOG_INFO("Begin memory read\n");
-      PREQ_MEMORY_READ req = (PREQ_MEMORY_READ)irp->AssociatedIrp.SystemBuffer;
-      irp->IoStatus.Status = HandleMemoryReadRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_MEMORY_READ) : 0;
-      KMOD_LOG_INFO("End memory read\n");
-      break;
-    }
-    case KMOD_REQ_MEMORY_WRITE:
-    {
-      KMOD_LOG_INFO("Begin memory write\n");
-      PREQ_MEMORY_WRITE req = (PREQ_MEMORY_WRITE)irp->AssociatedIrp.SystemBuffer;
-      irp->IoStatus.Status = HandleMemoryWriteRequest(req);
-      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(REQ_MEMORY_WRITE) : 0;
-      KMOD_LOG_INFO("End memory write\n");
-      break;
-    }
-  }
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  KMOD_LOG_INFO("========================================\n");
-  return irp->IoStatus.Status;
-}
-NTSTATUS OnIrpClose(PDEVICE_OBJECT device, PIRP irp)
-{
-  UNREFERENCED_PARAMETER(device);
-  irp->IoStatus.Status = STATUS_SUCCESS;
-  irp->IoStatus.Information = 0;
-  IoCompleteRequest(irp, IO_NO_INCREMENT);
-  return irp->IoStatus.Status;
-}
+
 
 /*
 * Entry point.
@@ -475,19 +395,42 @@ NTSTATUS OnIrpClose(PDEVICE_OBJECT device, PIRP irp)
 VOID DriverUnload(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
-  NTSTATUS status = STATUS_SUCCESS;
-  DeleteDevice(Device, KMOD_DEVICE_SYMBOL_NAME);
 }
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
   driver->DriverUnload = DriverUnload;
-  for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
-    driver->MajorFunction[i] = OnIrpDflt;
-  driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
-  driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
-  driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-  CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
+  status = KsInitialize();
+  {
+    int result;
+
+    char send_buffer[] = "Hello from WSK!";
+    char recv_buffer[1024] = { 0 };
+
+    int server_sockfd = socket_listen(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(9095);
+
+    result = bind(server_sockfd, (struct sockaddr*)&addr, sizeof(addr));
+    result = listen(server_sockfd, 1);
+
+    socklen_t addrlen = sizeof(addr);
+    int client_sockfd = accept(server_sockfd, (struct sockaddr*)&addr, &addrlen);
+
+    result = recv(client_sockfd, recv_buffer, sizeof(recv_buffer) - 1, 0);
+    recv_buffer[sizeof(recv_buffer) - 1] = '\0';
+
+    KMOD_LOG_INFO("TCP server:\n%s\n", recv_buffer);
+
+    result = send(client_sockfd, send_buffer, sizeof(send_buffer), 0);
+
+    closesocket(client_sockfd);
+    closesocket(server_sockfd);
+  }
+  KsDestroy();
   return status;
 }

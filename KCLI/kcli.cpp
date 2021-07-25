@@ -1,11 +1,12 @@
 #include "global.h"
 #include "shell.h"
 #include "view.h"
+#include "util.h"
 
 // TODO: create view serializer via JSON
 // TODO: finish event handling
 // TODO: fix text input max length
-// TODO: start using custom primitive typedefs for std lib
+// TODO: start using windows primitive typedefs for everything
 // TODO: implement PDB mapping
 
 using namespace std;
@@ -38,10 +39,11 @@ uint32_t NameToIndex(string name)
 }
 
 /*
-* Theeee driver.
+* Communication socket.
 */
 
-HANDLE Device = INVALID_HANDLE_VALUE;
+PADDRINFOA AddressInfo = NULL;
+SOCKET Socket = INVALID_SOCKET;
 
 /*
 * Entry point.
@@ -49,70 +51,56 @@ HANDLE Device = INVALID_HANDLE_VALUE;
 
 int32_t wmain(int32_t argc, wchar_t* argv[])
 {
-  Device = CreateFileA("\\\\.\\KMOD", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-  if (Device == INVALID_HANDLE_VALUE)
+  Shell shell;
+  USHORT thirdWidth = (USHORT)(shell.Width() / 3);
+  USHORT halfHeight = (USHORT)(shell.Height() / 2);
+  Module moduleView{ NULL, &shell, 0, 0, 0, 0, 0, L"Modules", 32 };
+  Thread threadView{ NULL, &shell, 1, 0, 0, 0, 0, L"Threads", 32 };
+  Memory memoryView{ NULL, &shell, 2, 0, 0, 0, 0, L"Memory", 512, 0, L"kernel32.dll" };
+  Scanner scannerView{ NULL, &shell, 3, 0, 0, 0, 0, L"Scanner" };
+  Debugger debuggerView{ NULL, &shell, 4, 0, 0, 0, 0, L"Debugger", 512, 0, L"taskmgr.exe" };
+  vector<View*> views
   {
-    KCLI_LOG_ERROR("Device connection cannot be established\n");
+    &moduleView,
+    &threadView,
+    &memoryView,
+    &scannerView,
+    &debuggerView,
+  };
+  for (View* view : views)
+  {
+    //view->Fetch();
+    view->UpdateLayout();
+    view->Render();
   }
-  else
+  SIZE_T selectedView = NameToIndex("scanner");
+  State state = KCLI_CTRL_MODE;
+  while (true)
   {
-    REQ_PROCESS_ATTACH reqest;
-    reqest.In.Pid = wcstoul(argv[1], nullptr, 10);
-    if (DeviceIoControl(Device, KMOD_REQ_PROCESS_ATTACH, &reqest, sizeof(reqest), &reqest, sizeof(reqest), nullptr, nullptr))
+    switch (state)
     {
-      Shell shell;
-      USHORT thirdWidth = (USHORT)(shell.Width() / 3);
-      USHORT halfHeight = (USHORT)(shell.Height() / 2);
-      Module moduleView{ Device, &shell, 0, 0, 0, 0, 0, L"Modules", 32 };
-      Thread threadView{ Device, &shell, 1, 0, 0, 0, 0, L"Threads", 32 };
-      Memory memoryView{ Device, &shell, 2, 0, 0, 0, 0, L"Memory", 512, 0, L"kernel32.dll" };
-      Scanner scannerView{ Device, &shell, 3, 0, 0, 0, 0, L"Scanner" };
-      Debugger debuggerView{ Device, &shell, 4, 0, 0, 0, 0, L"Debugger", 512, 0, L"taskmgr.exe" };
-      vector<View*> views
+      case KCLI_CTRL_MODE:
       {
-        &moduleView,
-        &threadView,
-        &memoryView,
-        &scannerView,
-        &debuggerView,
-      };
-      for (View* view : views)
-      {
-        view->Fetch();
-        view->UpdateLayout();
-        view->Render();
-      }
-      SIZE_T selectedView = NameToIndex("scanner");
-      State state = KCLI_CTRL_MODE;
-      while (true)
-      {
-        switch (state)
+        shell.Poll(views, selectedView);
+        if (KeyDown(shell.InputEvent, VK_TAB))
         {
-          case KCLI_CTRL_MODE:
-          {
-            shell.Poll(views, selectedView);
-            if (KeyDown(shell.InputEvent, VK_TAB))
-            {
-              state = KCLI_CMD_MODE;
-            }
-            break;
-          }
-          case KCLI_CMD_MODE:
-          {
-            shell.Read(views[selectedView]);
-            views[selectedView]->Command(shell.InputBuffer);
-            state = KCLI_CTRL_MODE;
-            break;
-          }
+          state = KCLI_CMD_MODE;
         }
-      };
-      for (View*& view : views)
+        break;
+      }
+      case KCLI_CMD_MODE:
       {
-        delete view;
-        view = nullptr;
+        shell.Read(views[selectedView]);
+        views[selectedView]->Command(shell.InputBuffer);
+        state = KCLI_CTRL_MODE;
+        break;
       }
     }
+  };
+  for (View*& view : views)
+  {
+    delete view;
+    view = nullptr;
   }
-  CloseHandle(Device);
   return 0;
 }

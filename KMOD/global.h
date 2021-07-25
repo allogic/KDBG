@@ -1,25 +1,18 @@
 #ifndef _GLOBAL_H
 #define _GLOBAL_H
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-#include <stddef.h>
-
 #include <ntdef.h>
 #include <ntifs.h>
 #include <ntddk.h>
 #include <ntimage.h>
 
-#include <wsk.h>
-
+#include <stddef.h>
 #include <windef.h>
 
-#ifdef __cplusplus
-}
-#endif
+#include <wsk.h>
+
+#include "ksocket.h"
+#include "berkeley.h"
 
 #define _KMOD_STR(VAL) #VAL
 #define KMOD_STR(VAL) _KMOD_STR(VAL)
