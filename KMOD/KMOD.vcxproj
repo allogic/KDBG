@@ -203,7 +203,7 @@
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
-      <AdditionalDependencies>KSOC.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>KSOC.lib;Netio.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
@@ -252,7 +252,6 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="device.cpp" />
     <ClCompile Include="kmod.cpp" />
     <ClCompile Include="krnl.cpp" />
     <ClCompile Include="pe.cpp" />
@@ -262,7 +261,6 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="dbg.h" />
-    <ClInclude Include="device.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
     <ClInclude Include="krnl.h" />

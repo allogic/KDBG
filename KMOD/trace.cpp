@@ -9,12 +9,12 @@ VOID TraceContext(HANDLE tid, SIZE_T iterations)
   status = PsLookupThreadByThreadId(tid, &thread);
   status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&context, 0, &contextSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   RtlZeroMemory(context, contextSize);
-  KMOD_LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
+  KM_LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
   for (SIZE_T i = 0; i < iterations; ++i)
   {
     context->ContextFlags = CONTEXT_ALL;
     status = PsGetContextThread(thread, context, UserMode);
-    KMOD_LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
+    KM_LOG_INFO("%llu %llu %llu %llu %llu %llu %llu %llu\n", context->Rax, context->Rcx, context->Rdx, context->Rbx, context->Rsp, context->Rbp, context->Rsi, context->Rdi);
   }
   if (context)
   {

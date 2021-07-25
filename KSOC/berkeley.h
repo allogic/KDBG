@@ -9,7 +9,7 @@ extern "C" {
 typedef int       socklen_t;
 typedef intptr_t  ssize_t;
 
-int unsigned htonl(int unsigned hostlong);
+int unsigned   htonl(int unsigned hostlong);
 short unsigned htons(short unsigned hostshort);
 int unsigned   ntohl(int unsigned netlong);
 short unsigned ntohs(short unsigned netshort);

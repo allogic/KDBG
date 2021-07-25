@@ -14,8 +14,8 @@
 #include "ksocket.h"
 #include "berkeley.h"
 
-#define _KMOD_STR(VAL) #VAL
-#define KMOD_STR(VAL) _KMOD_STR(VAL)
+#define _KM_STR(VAL) #VAL
+#define KM_STR(VAL) _KM_STR(VAL)
 
 /*
 * Standard library.
@@ -23,13 +23,13 @@
 
 static ULONG Seed = 0;
 
-static ULONG RtlNextRandom(ULONG min, ULONG max)
+static ULONG KmNextRandom(ULONG min, ULONG max)
 {
   Seed = (ULONG)__rdtsc();
   const ULONG scale = (ULONG)MAXINT32 / (max - min);
   return RtlRandomEx(&Seed) / scale + min;
 }
-static ULONG GetNextPoolTag()
+static ULONG KmNextPoolTag()
 {
   constexpr ULONG poolTags[] =
   {
@@ -55,31 +55,42 @@ static ULONG GetNextPoolTag()
     'KgxD', // Vista display driver support
   };
   constexpr ULONG numPoolTags = ARRAYSIZE(poolTags);
-  const ULONG index = RtlNextRandom(0, numPoolTags);
+  const ULONG index = KmNextRandom(0, numPoolTags);
   NT_ASSERT(index <= numPoolTags - 1);
   return index;
 }
 
-static PVOID RtlAllocateMemory(BOOL zeroMemory, SIZE_T size)
+static PVOID KmAllocateMemory(BOOL zeroMemory, SIZE_T size)
 {
-  PVOID ptr = ExAllocatePoolWithTag(NonPagedPool, size, GetNextPoolTag());
+  PVOID ptr = ExAllocatePoolWithTag(NonPagedPool, size, KmNextPoolTag());
   if (zeroMemory && ptr)
     RtlZeroMemory(ptr, size);
   return ptr;
 }
-static VOID RtlFreeMemory(PVOID ptr)
+static VOID KmFreeMemory(PVOID ptr)
 {
   ExFreePool(ptr);
+}
+
+#define DELAY_ONE_MICROSECOND 	(-10)
+#define DELAY_ONE_MILLISECOND	(DELAY_ONE_MICROSECOND*1000)
+
+static VOID KmSleep(LONG ms)
+{
+  LARGE_INTEGER interval;
+  interval.QuadPart = DELAY_ONE_MILLISECOND;
+  interval.QuadPart *= ms;
+  KeDelayExecutionThread(KernelMode, 0, &interval);
 }
 
 /*
 * Logging utilities.
 */
 
-#define KMOD_LOG_INFO(FMT, ...) DbgPrintEx(0, 0, "[+] " FMT, __VA_ARGS__)
-#define KMOD_LOG_ERROR(FMT, ...) DbgPrintEx(0, 0, "[-] " FMT, __VA_ARGS__)
+#define KM_LOG_INFO(FMT, ...) DbgPrintEx(0, 0, "[+] " FMT, __VA_ARGS__)
+#define KM_LOG_ERROR(FMT, ...) DbgPrintEx(0, 0, "[-] " FMT, __VA_ARGS__)
 
-#define KMOD_LOG_ENTER_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[>] " KMOD_STR(CLASS) "::" KMOD_STR(FUNCTION) "\n")
-#define KMOD_LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " KMOD_STR(CLASS) "::" KMOD_STR(FUNCTION) "\n")
+#define KM_LOG_ENTER_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[>] " KM_STR(CLASS) "::" KM_STR(FUNCTION) "\n")
+#define KM_LOG_EXIT_FUNCTION(CLASS, FUNCTION) DbgPrintEx(0, 0, "[<] " KM_STR(CLASS) "::" KM_STR(FUNCTION) "\n")
 
 #endif

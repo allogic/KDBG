@@ -42,7 +42,7 @@ NTSTATUS CopyUserSpaceMemorySafe(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_M
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-          KMOD_LOG_INFO("Something went wrong\n");
+          KM_LOG_INFO("Something went wrong\n");
         }
       }
       MmUnmapLockedPages(mappedSrc, mdl);
@@ -96,13 +96,13 @@ NTSTATUS FetchProcessModules()
           }
           moduleEntry = moduleEntry->Flink;
         }
-        KMOD_LOG_INFO("Fetched modules\n");
+        KM_LOG_INFO("Fetched modules\n");
         status = STATUS_SUCCESS;
       }
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-      KMOD_LOG_ERROR("Something went wrong!\n");
+      KM_LOG_ERROR("Something went wrong!\n");
     }
     KeUnstackDetachProcess(&apc);
     ObDereferenceObject(process);
@@ -113,14 +113,14 @@ NTSTATUS FetchProcessThreads()
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   ULONG read = 0;
-  PBYTE buffer = (PBYTE)RtlAllocateMemory(TRUE, 1024 * 1024);
+  PBYTE buffer = (PBYTE)KmAllocateMemory(TRUE, 1024 * 1024);
   status = ZwQuerySystemInformation(SystemProcessInformation, buffer, read, &read);
   ULONG processAcc = 0;
   while (1)
   {
-    KMOD_LOG_INFO("Thread count %u\n", ((PSYSTEM_PROCESS_INFORMATION)buffer)->NumberOfThreads);
-    //KMOD_LOG_INFO("Tid %u Pid %u\n", (ULONG)threads[i].ClientId.UniqueThread, (ULONG)threads[i].ClientId.UniqueProcess);
-    //KMOD_LOG_INFO("Copy from %p to %p\n", &threads[i].ClientId.UniqueThread, &Threads[i].Tid);
+    KM_LOG_INFO("Thread count %u\n", ((PSYSTEM_PROCESS_INFORMATION)buffer)->NumberOfThreads);
+    //KM_LOG_INFO("Tid %u Pid %u\n", (ULONG)threads[i].ClientId.UniqueThread, (ULONG)threads[i].ClientId.UniqueProcess);
+    //KM_LOG_INFO("Copy from %p to %p\n", &threads[i].ClientId.UniqueThread, &Threads[i].Tid);
     //for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
     //{
     //  PSYSTEM_THREAD_INFORMATION thread = (PSYSTEM_THREAD_INFORMATION)(((PBYTE)processInfo) + sizeof(SYSTEM_PROCESS_INFORMATION) + sizeof(SYSTEM_THREAD_INFORMATION) * i);
@@ -136,14 +136,14 @@ NTSTATUS FetchProcessThreads()
     //}
     if (!((PSYSTEM_PROCESS_INFORMATION)buffer)->NextEntryOffset)
     {
-      KMOD_LOG_INFO("Fetched threads\n");
+      KM_LOG_INFO("Fetched threads\n");
       status = STATUS_SUCCESS;
       break;
     }
     buffer += ((PSYSTEM_PROCESS_INFORMATION)buffer)->NextEntryOffset;
     processAcc++;
   }
-  RtlFreeMemory(buffer);
+  KmFreeMemory(buffer);
   return status;
 }
 
@@ -157,13 +157,13 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
   {
     status = STATUS_UNSUCCESSFUL;
     KeStackAttachProcess(process, &apc);
-    KMOD_LOG_INFO("Attached\n");
+    KM_LOG_INFO("Attached\n");
     __try
     {
       PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
       if (peb)
       {
-        KMOD_LOG_INFO("Found PEB\n");
+        KM_LOG_INFO("Found PEB\n");
         PVOID imageBase = peb->ImageBaseAddress;
         PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
         PLDR_DATA_TABLE_ENTRY module = NULL;
@@ -172,18 +172,18 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
         while (moduleEntry != moduleHead)
         {
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-          KMOD_LOG_INFO("%ls\n", module->BaseDllName.Buffer);
+          KM_LOG_INFO("%ls\n", module->BaseDllName.Buffer);
           if (module && module->DllBase)
           {
-            //KMOD_LOG_INFO("Copy from %p to %p\n", &module->DllBase, &((PMODULE)buffer)[count].Base);
+            //KM_LOG_INFO("Copy from %p to %p\n", &module->DllBase, &((PMODULE)buffer)[count].Base);
             //((PMODULE)buffer)[count].Base = (ULONG64)module->DllBase;
             //wcscpy(((PMODULE)buffer)[count].Name, module->BaseDllName.Buffer);
             //((PMODULE)buffer)[count].Size = module->SizeOfImage;
             CopyUserSpaceMemorySafe(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
             CopyUserSpaceMemorySafe(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
             count++;
-            KMOD_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
-            KMOD_LOG_INFO("value is %p\n");
+            KM_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
+            KM_LOG_INFO("value is %p\n");
             if (count >= size)
             {
               break;
@@ -196,7 +196,7 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-      KMOD_LOG_ERROR("Something went wrong!\n");
+      KM_LOG_ERROR("Something went wrong!\n");
     }
     KeUnstackDetachProcess(&apc);
     ObDereferenceObject(process);
@@ -237,12 +237,12 @@ NTSTATUS GetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
         }
         base = module->DllBase;
         status = STATUS_SUCCESS;
-        KMOD_LOG_INFO("Selected module %ls\n", module->BaseDllName.Buffer);
+        KM_LOG_INFO("Selected module %ls\n", module->BaseDllName.Buffer);
       }
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-      KMOD_LOG_ERROR("Something went wrong!\n");
+      KM_LOG_ERROR("Something went wrong!\n");
     }
     KeUnstackDetachProcess(&apc);
     ObDereferenceObject(process);
@@ -259,7 +259,7 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
   if (NT_SUCCESS(status))
   {
     status = STATUS_UNSUCCESSFUL;
-    PBYTE asyncBuffer = (PBYTE)RtlAllocateMemory(TRUE, size);
+    PBYTE asyncBuffer = (PBYTE)KmAllocateMemory(TRUE, size);
     if (asyncBuffer)
     {
       PMDL mdl = IoAllocateMdl(base, size, FALSE, FALSE, NULL);
@@ -277,7 +277,7 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
             {
               status = STATUS_UNSUCCESSFUL;
               memcpy(asyncBuffer, mappedBuffer, size);
-              KMOD_LOG_INFO("Copy successfull\n");
+              KM_LOG_INFO("Copy successfull\n");
               status = STATUS_SUCCESS;
             }
             MmUnmapLockedPages(mappedBuffer, mdl);
@@ -286,14 +286,14 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-          KMOD_LOG_ERROR("Something went wrong!\n");
+          KM_LOG_ERROR("Something went wrong!\n");
           status = STATUS_UNHANDLED_EXCEPTION;
         }
         KeUnstackDetachProcess(&apc);
         IoFreeMdl(mdl);
       }
       memcpy(buffer, asyncBuffer, size);
-      RtlFreeMemory(asyncBuffer);
+      KmFreeMemory(asyncBuffer);
     }
     ObDereferenceObject(process);
   }
@@ -321,7 +321,7 @@ NTSTATUS HandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   Pid = req->In.Pid;
-  KMOD_LOG_INFO("Attached to process %u\n", Pid);
+  KM_LOG_INFO("Attached to process %u\n", Pid);
   status = STATUS_SUCCESS;
   return status;
 }
@@ -386,7 +386,62 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 * Communication socket.
 */
 
+#define MAX_TCP_SESSIONS 64
 
+KMUTEX ShutdownMutex = {};
+
+HANDLE ListenThreadHandle = NULL;
+HANDLE SessionThreadHandles[MAX_TCP_SESSIONS] = {};
+
+INT ServerFd = 0;
+INT ClientFds[MAX_TCP_SESSIONS] = {};
+
+VOID SessionThread(PVOID context)
+{
+  INT clientFd = *(PINT)context;
+  char buffer[1024] = {};
+  KM_LOG_INFO("New session in receive state\n");
+  while (1)
+  {
+    recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+    buffer[sizeof(buffer) - 1] = '\0';
+    KM_LOG_INFO("Received %s\n", buffer);
+    send(clientFd, buffer, sizeof(buffer), 0);
+  }
+  KM_LOG_INFO("New session receive state ended\n");
+}
+VOID ListenThread(PVOID context)
+{
+  ServerFd = socket_listen(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(9095);
+  ULONG sessionId = 0;
+  while (KeReadStateMutex(&ShutdownMutex) == 0)
+  {
+    if (bind(ServerFd, (struct sockaddr*)&addr, sizeof(addr)) == 0)
+    {
+      socklen_t addrlen = sizeof(addr);
+      ClientFds[sessionId] = accept(ServerFd, (struct sockaddr*)&addr, &addrlen);
+      KM_LOG_INFO("Opened new pipe %u\n", ClientFds[sessionId]);
+      NTSTATUS status = PsCreateSystemThread(&SessionThreadHandles[sessionId], STANDARD_RIGHTS_ALL, NULL, NULL, NULL, SessionThread, &ClientFds[sessionId]);
+      {
+        KM_LOG_INFO("Opened new session for %u\n", ClientFds[sessionId]);
+      }
+      sessionId++;
+    }
+    KmSleep(1000);
+  }
+  KM_LOG_INFO("Mutex signaled closing sessions now\n");
+  for (SIZE_T i = 0; i < sessionId; ++i)
+  {
+    closesocket(ClientFds[i]);
+    ZwClose(SessionThreadHandles[i]);
+  }
+  KM_LOG_INFO("Closing listening thread\n");
+}
 
 /*
 * Entry point.
@@ -395,42 +450,38 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 VOID DriverUnload(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
+  NTSTATUS status = STATUS_SUCCESS;
+  KM_LOG_INFO("Mutex signaled now\n");
+  KeReleaseMutex(&ShutdownMutex, TRUE);
+  KM_LOG_INFO("Closing listening thread\n");
+  status = ZwClose(ListenThreadHandle);
+  if (NT_SUCCESS(status))
+  {
+    KM_LOG_INFO("Listening thread closed\n");
+  }
+  else
+  {
+    KM_LOG_ERROR("Failed closing listening thread\n");
+  }
+  closesocket(ServerFd);
+  KsDestroy();
+  KM_LOG_INFO("KMOD deinitialized\n");
 }
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
   driver->DriverUnload = DriverUnload;
+  KeInitializeMutex(&ShutdownMutex, 0);
   status = KsInitialize();
+  if (NT_SUCCESS(status))
   {
-    int result;
-
-    char send_buffer[] = "Hello from WSK!";
-    char recv_buffer[1024] = { 0 };
-
-    int server_sockfd = socket_listen(AF_INET, SOCK_STREAM, 0);
-
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(9095);
-
-    result = bind(server_sockfd, (struct sockaddr*)&addr, sizeof(addr));
-    result = listen(server_sockfd, 1);
-
-    socklen_t addrlen = sizeof(addr);
-    int client_sockfd = accept(server_sockfd, (struct sockaddr*)&addr, &addrlen);
-
-    result = recv(client_sockfd, recv_buffer, sizeof(recv_buffer) - 1, 0);
-    recv_buffer[sizeof(recv_buffer) - 1] = '\0';
-
-    KMOD_LOG_INFO("TCP server:\n%s\n", recv_buffer);
-
-    result = send(client_sockfd, send_buffer, sizeof(send_buffer), 0);
-
-    closesocket(client_sockfd);
-    closesocket(server_sockfd);
-  }
-  KsDestroy();
+    status = PsCreateSystemThread(&ListenThreadHandle, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, ListenThread, NULL);
+    if (NT_SUCCESS(status))
+    {
+      KM_LOG_INFO("Starting TCP thread\n");
+      KM_LOG_INFO("KMOD initialized\n");
+    }
+  }  
   return status;
 }

@@ -18,7 +18,7 @@ static FUNCTION GetSystemRoutine(PCWCHAR procName)
     functionPointer = (FUNCTION)MmGetSystemRoutineAddress(&functionName);
     if (!functionPointer)
     {
-      KMOD_LOG_ERROR("MmGetSystemRoutineAddress\n");
+      KM_LOG_ERROR("MmGetSystemRoutineAddress\n");
       return NULL;
     }
   }

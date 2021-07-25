@@ -40,25 +40,25 @@ PVOID GetImageBase(PVOID imageBase, PVOID virtualBase)
   }
   PVOID rva = (PVOID)((ULONG64)virtualBase - (ULONG64)imageBase);
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
-  KMOD_LOG_INFO("e_magic %u\n", dosHeader->e_magic);
-  KMOD_LOG_INFO("e_lfanew %p\n", (PULONG)dosHeader->e_lfanew);
-  KMOD_LOG_INFO("e_cp %u\n", dosHeader->e_cp);
+  KM_LOG_INFO("e_magic %u\n", dosHeader->e_magic);
+  KM_LOG_INFO("e_lfanew %p\n", (PULONG)dosHeader->e_lfanew);
+  KM_LOG_INFO("e_cp %u\n", dosHeader->e_cp);
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
-    KMOD_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
+    KM_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
     return NULL;
   }
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
-    KMOD_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
+    KM_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
     return NULL;
   }
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
   USHORT section = RvaToSection(ntHeaders, rva);
   if (section == (USHORT)KMOD_PE_ERROR_VALUE)
   {
-    KMOD_LOG_ERROR("Invalid section\n");
+    KM_LOG_ERROR("Invalid section\n");
     return NULL;
   }
   return (PVOID)((PBYTE)imageBase + sectionHeader[section].VirtualAddress);
@@ -68,13 +68,13 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
   {
-    KMOD_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
+    KM_LOG_ERROR("Invalid IMAGE_DOS_SIGNATURE\n");
     return (ULONG)KMOD_PE_ERROR_VALUE;
   }
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((PBYTE)imageBase + dosHeader->e_lfanew);
   if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
   {
-    KMOD_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
+    KM_LOG_ERROR("Invalid IMAGE_NT_SIGNATURE\n");
     return (ULONG)KMOD_PE_ERROR_VALUE;
   }
   PIMAGE_DATA_DIRECTORY dataDir;
@@ -91,7 +91,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   ULONG exportDirOffset = RvaToOffset(ntHeaders, &exportDirRva, fileSize);
   if (exportDirOffset == (ULONG)KMOD_PE_ERROR_VALUE)
   {
-    KMOD_LOG_ERROR("Invalid export directory\n");
+    KM_LOG_ERROR("Invalid export directory\n");
     return (ULONG)KMOD_PE_ERROR_VALUE;
   }
   PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)imageBase + exportDirOffset);
@@ -101,7 +101,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
   if (addressOfFunctionsOffset == (ULONG)KMOD_PE_ERROR_VALUE || addressOfNameOrdinalsOffset == (ULONG)KMOD_PE_ERROR_VALUE || addressOfNamesOffset == (ULONG)KMOD_PE_ERROR_VALUE)
   {
-    KMOD_LOG_ERROR("Invalid export directory content\n");
+    KM_LOG_ERROR("Invalid export directory content\n");
     return (ULONG)KMOD_PE_ERROR_VALUE;
   }
   PULONG addressOfFunctions = (PULONG)((PBYTE)imageBase + addressOfFunctionsOffset);
@@ -129,7 +129,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   }
   if (exportOffset == (ULONG)KMOD_PE_ERROR_VALUE)
   {
-    KMOD_LOG_ERROR("Export %s not found\n", exportName);
+    KM_LOG_ERROR("Export %s not found\n", exportName);
     return (ULONG)KMOD_PE_ERROR_VALUE;
   }
   return exportOffset;

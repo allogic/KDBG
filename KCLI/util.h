@@ -13,6 +13,6 @@ std::string AddressToHex(ULONG64 value);
 std::wstring AddressToHexW(ULONG64 value);
 
 std::wstring Utf8ToUtf16(std::string const& utf8Str);
-std::string Utf16ToUtf8(const std::wstring& utf16Str);
+std::string Utf16ToUtf8(std::wstring const& utf16Str);
 
 #endif
