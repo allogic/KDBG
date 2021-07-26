@@ -5,6 +5,7 @@
 #include "pe.h"
 #include "thread.h"
 #include "trace.h"
+#include "socket.h"
 
 // TODO: refactor ptr to stack objects
 
@@ -386,61 +387,88 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 * Communication socket.
 */
 
-#define MAX_TCP_SESSIONS 64
+#define MAX_CLIENTS 128
 
-KMUTEX ShutdownMutex = {};
+BOOL Shutdown = FALSE;
 
-HANDLE ListenThreadHandle = NULL;
-HANDLE SessionThreadHandles[MAX_TCP_SESSIONS] = {};
+PKEVENT ShutdownEvent = NULL;
+PKEVENT SessionShutdownEvents[MAX_CLIENTS] = {};
+KWAIT_BLOCK SessionShutdownWaitBlocks[MAX_CLIENTS] = {};
 
-INT ServerFd = 0;
-INT ClientFds[MAX_TCP_SESSIONS] = {};
+typedef struct _TCP_CONTEXT
+{
+  PKSOCKET Socket = NULL;
+  HANDLE Thread = NULL;
+} TCP_CONTEXT, * PTCP_CONTEXT;
+
+TCP_CONTEXT Server = {};
+TCP_CONTEXT Clients[MAX_CLIENTS] = {};
 
 VOID SessionThread(PVOID context)
 {
-  INT clientFd = *(PINT)context;
+  KM_LOG_INFO("Session thread begin\n");
+  ULONG clientId = *(PULONG)context;
   char buffer[1024] = {};
   KM_LOG_INFO("New session in receive state\n");
-  while (1)
+  while (!Shutdown)
   {
-    recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-    buffer[sizeof(buffer) - 1] = '\0';
-    KM_LOG_INFO("Received %s\n", buffer);
-    send(clientFd, buffer, sizeof(buffer), 0);
+    //recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+    //buffer[sizeof(buffer) - 1] = '\0';
+    //KM_LOG_INFO("Received %s\n", buffer);
+    //send(clientFd, buffer, sizeof(buffer), 0);
   }
-  KM_LOG_INFO("New session receive state ended\n");
+  KM_LOG_INFO("Closing client socket\n");
+  KsCloseSocket(Clients[clientId].Socket);
+  KM_LOG_INFO("KeSetEvent\n");
+  KeSetEvent(ShutdownEvent, 1, FALSE);
+  KM_LOG_INFO("Session thread end\n");
 }
 VOID ListenThread(PVOID context)
 {
-  ServerFd = socket_listen(AF_INET, SOCK_STREAM, 0);
-  sockaddr_in addr{};
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = INADDR_ANY;
-  addr.sin_port = htons(9095);
-  ULONG sessionId = 0;
-  while (KeReadStateMutex(&ShutdownMutex) == 0)
+  KM_LOG_INFO("Listening thread begin\n");
+  for (ULONG i = 0; i < MAX_CLIENTS; ++i)
   {
-    if (bind(ServerFd, (struct sockaddr*)&addr, sizeof(addr)) == 0)
+    KeInitializeEvent(SessionShutdownEvents[i], SynchronizationEvent, 0);
+  }
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  SOCKADDR_IN address = {};
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = INADDR_ANY;
+  address.sin_port = RtlUshortByteSwap(9095);
+  ULONG clientId = 0;
+  while (!Shutdown)
+  {
+    status = KsBind(Server.Socket, (PSOCKADDR)&address);
+    if (NT_SUCCESS(status))
     {
-      socklen_t addrlen = sizeof(addr);
-      ClientFds[sessionId] = accept(ServerFd, (struct sockaddr*)&addr, &addrlen);
-      KM_LOG_INFO("Opened new pipe %u\n", ClientFds[sessionId]);
-      NTSTATUS status = PsCreateSystemThread(&SessionThreadHandles[sessionId], STANDARD_RIGHTS_ALL, NULL, NULL, NULL, SessionThread, &ClientFds[sessionId]);
+      status = KsAccept(Server.Socket, &Clients[clientId].Socket, NULL, (PSOCKADDR)&address);
+      if (NT_SUCCESS(status))
       {
-        KM_LOG_INFO("Opened new session for %u\n", ClientFds[sessionId]);
+        status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, SessionThread, &clientId);
+        if (NT_SUCCESS(status))
+        {
+          KM_LOG_INFO("Starting session thread\n");
+        }
+        else
+        {
+          KsCloseSocket(Clients[clientId].Socket);
+        }
+        clientId++;
       }
-      sessionId++;
     }
     KmSleep(1000);
   }
-  KM_LOG_INFO("Mutex signaled closing sessions now\n");
-  for (SIZE_T i = 0; i < sessionId; ++i)
+  KeWaitForMultipleObjects(clientId, (PVOID*)&SessionShutdownEvents[0], WaitAll, Executive, KernelMode, FALSE, NULL, SessionShutdownWaitBlocks);
+  for (ULONG i = 0; i < clientId; ++i)
   {
-    closesocket(ClientFds[i]);
-    ZwClose(SessionThreadHandles[i]);
+    KM_LOG_INFO("ZwClose client thread\n");
+    ZwClose(Clients[i].Thread);
   }
-  KM_LOG_INFO("Closing listening thread\n");
+  KM_LOG_INFO("Closing listening socket\n");
+  KsCloseSocket(Server.Socket);
+  KM_LOG_INFO("KeSetEvent\n");
+  KeSetEvent(ShutdownEvent, 1, FALSE);
+  KM_LOG_INFO("Listening thread end\n");
 }
 
 /*
@@ -450,37 +478,37 @@ VOID ListenThread(PVOID context)
 VOID DriverUnload(PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
-  NTSTATUS status = STATUS_SUCCESS;
-  KM_LOG_INFO("Mutex signaled now\n");
-  KeReleaseMutex(&ShutdownMutex, TRUE);
-  KM_LOG_INFO("Closing listening thread\n");
-  status = ZwClose(ListenThreadHandle);
-  if (NT_SUCCESS(status))
-  {
-    KM_LOG_INFO("Listening thread closed\n");
-  }
-  else
-  {
-    KM_LOG_ERROR("Failed closing listening thread\n");
-  }
-  closesocket(ServerFd);
+  Shutdown = TRUE;
+  KM_LOG_INFO("KeWaitForSingleObject\n");
+  KeWaitForSingleObject(ShutdownEvent, Executive, KernelMode, FALSE, NULL);
+  KM_LOG_INFO("ZwClose listening thread\n");
+  ZwClose(Server.Thread);
+  KM_LOG_INFO("Listening thread closed\n");
   KsDestroy();
   KM_LOG_INFO("KMOD deinitialized\n");
 }
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
-  NTSTATUS status = STATUS_SUCCESS;
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
   driver->DriverUnload = DriverUnload;
-  KeInitializeMutex(&ShutdownMutex, 0);
+  KeInitializeEvent(ShutdownEvent, SynchronizationEvent, 0);
   status = KsInitialize();
   if (NT_SUCCESS(status))
   {
-    status = PsCreateSystemThread(&ListenThreadHandle, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, ListenThread, NULL);
+    status = KsCreateListenSocket(&Server.Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (NT_SUCCESS(status))
     {
-      KM_LOG_INFO("Starting TCP thread\n");
-      KM_LOG_INFO("KMOD initialized\n");
+      status = PsCreateSystemThread(&Server.Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, ListenThread, NULL);
+      if (NT_SUCCESS(status))
+      {
+        KM_LOG_INFO("Starting listening thread\n");
+        KM_LOG_INFO("KMOD initialized\n");
+      }
+      else
+      {
+        KsCloseSocket(Server.Socket);
+      }
     }
   }  
   return status;

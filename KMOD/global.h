@@ -11,9 +11,6 @@
 
 #include <wsk.h>
 
-#include "ksocket.h"
-#include "berkeley.h"
-
 #define _KM_STR(VAL) #VAL
 #define KM_STR(VAL) _KM_STR(VAL)
 

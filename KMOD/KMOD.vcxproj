@@ -255,6 +255,7 @@
     <ClCompile Include="kmod.cpp" />
     <ClCompile Include="krnl.cpp" />
     <ClCompile Include="pe.cpp" />
+    <ClCompile Include="socket.c" />
     <ClCompile Include="thread.cpp" />
     <ClCompile Include="trace.cpp" />
   </ItemGroup>
@@ -265,6 +266,7 @@
     <ClInclude Include="ioctrl.h" />
     <ClInclude Include="krnl.h" />
     <ClInclude Include="pe.h" />
+    <ClInclude Include="socket.h" />
     <ClInclude Include="thread.h" />
     <ClInclude Include="trace.h" />
   </ItemGroup>
