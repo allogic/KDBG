@@ -391,9 +391,8 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 
 BOOL Shutdown = FALSE;
 
-PKEVENT ShutdownEvent = NULL;
-PKEVENT SessionShutdownEvents[MAX_CLIENTS] = {};
-KWAIT_BLOCK SessionShutdownWaitBlocks[MAX_CLIENTS] = {};
+KEVENT ShutdownEvent = {};
+KSEMAPHORE SessionSemaphore = {};
 
 typedef struct _TCP_CONTEXT
 {
@@ -406,10 +405,9 @@ TCP_CONTEXT Clients[MAX_CLIENTS] = {};
 
 VOID SessionThread(PVOID context)
 {
-  KM_LOG_INFO("Session thread begin\n");
   ULONG clientId = *(PULONG)context;
+  KM_LOG_INFO("Session thread begin %u\n", clientId);
   char buffer[1024] = {};
-  KM_LOG_INFO("New session in receive state\n");
   while (!Shutdown)
   {
     //recv(clientFd, buffer, sizeof(buffer) - 1, 0);
@@ -417,37 +415,33 @@ VOID SessionThread(PVOID context)
     //KM_LOG_INFO("Received %s\n", buffer);
     //send(clientFd, buffer, sizeof(buffer), 0);
   }
-  KM_LOG_INFO("Closing client socket\n");
-  KsCloseSocket(Clients[clientId].Socket);
-  KM_LOG_INFO("KeSetEvent\n");
-  KeSetEvent(ShutdownEvent, 1, FALSE);
-  KM_LOG_INFO("Session thread end\n");
+  KM_LOG_INFO("Session thread end %u\n", clientId);
 }
 VOID ListenThread(PVOID context)
 {
   KM_LOG_INFO("Listening thread begin\n");
-  for (ULONG i = 0; i < MAX_CLIENTS; ++i)
-  {
-    KeInitializeEvent(SessionShutdownEvents[i], SynchronizationEvent, 0);
-  }
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   SOCKADDR_IN address = {};
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = RtlUshortByteSwap(9095);
   ULONG clientId = 0;
-  while (!Shutdown)
+  status = KsBind(Server.Socket, (PSOCKADDR)&address);
+  if (NT_SUCCESS(status))
   {
-    status = KsBind(Server.Socket, (PSOCKADDR)&address);
-    if (NT_SUCCESS(status))
+    KM_LOG_INFO("Listening..\n");
+    while (!Shutdown)
     {
+      KM_LOG_INFO("Waiting..\n");
       status = KsAccept(Server.Socket, &Clients[clientId].Socket, NULL, (PSOCKADDR)&address);
       if (NT_SUCCESS(status))
       {
         status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, SessionThread, &clientId);
         if (NT_SUCCESS(status))
         {
-          KM_LOG_INFO("Starting session thread\n");
+          KeReleaseSemaphore(&SessionSemaphore, 0, 1, FALSE);
+          KM_LOG_INFO("Starting session thread %u\n", clientId);
+          KM_LOG_INFO("Semaphore count %d\n", KeReadStateSemaphore(&SessionSemaphore));
         }
         else
         {
@@ -456,18 +450,22 @@ VOID ListenThread(PVOID context)
         clientId++;
       }
     }
-    KmSleep(1000);
   }
-  KeWaitForMultipleObjects(clientId, (PVOID*)&SessionShutdownEvents[0], WaitAll, Executive, KernelMode, FALSE, NULL, SessionShutdownWaitBlocks);
-  for (ULONG i = 0; i < clientId; ++i)
+  KM_LOG_INFO("Shutting down\n");
+  if (KeReadStateSemaphore(&SessionSemaphore) != 0)
   {
-    KM_LOG_INFO("ZwClose client thread\n");
-    ZwClose(Clients[i].Thread);
+    KM_LOG_INFO("Waiting for %u sessions to shutdown\n", KeReadStateSemaphore(&SessionSemaphore));
+    KeWaitForSingleObject(&SessionSemaphore, Executive, KernelMode, FALSE, NULL);
+    for (ULONG i = 0; i < clientId; ++i)
+    {
+      KM_LOG_INFO("Closing session socket %u\n", i);
+      KsCloseSocket(Clients[i].Socket);
+      KM_LOG_INFO("ZwClose client thread %u\n", i);
+      ZwClose(Clients[i].Thread);
+    }
   }
-  KM_LOG_INFO("Closing listening socket\n");
-  KsCloseSocket(Server.Socket);
   KM_LOG_INFO("KeSetEvent\n");
-  KeSetEvent(ShutdownEvent, 1, FALSE);
+  KeSetEvent(&ShutdownEvent, 1, FALSE);
   KM_LOG_INFO("Listening thread end\n");
 }
 
@@ -480,7 +478,9 @@ VOID DriverUnload(PDRIVER_OBJECT driver)
   UNREFERENCED_PARAMETER(driver);
   Shutdown = TRUE;
   KM_LOG_INFO("KeWaitForSingleObject\n");
-  KeWaitForSingleObject(ShutdownEvent, Executive, KernelMode, FALSE, NULL);
+  KeWaitForSingleObject(&ShutdownEvent, Executive, KernelMode, FALSE, NULL);
+  KM_LOG_INFO("Closing listening socket\n");
+  KsCloseSocket(Server.Socket);
   KM_LOG_INFO("ZwClose listening thread\n");
   ZwClose(Server.Thread);
   KM_LOG_INFO("Listening thread closed\n");
@@ -492,7 +492,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   driver->DriverUnload = DriverUnload;
-  KeInitializeEvent(ShutdownEvent, SynchronizationEvent, 0);
+  KeInitializeEvent(&ShutdownEvent, SynchronizationEvent, 0);
+  KeInitializeSemaphore(&SessionSemaphore, 0, MAXLONG);
   status = KsInitialize();
   if (NT_SUCCESS(status))
   {
