@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClCompile Include="kcli.cpp" />
     <ClCompile Include="shell.cpp" />
+    <ClCompile Include="socket.cpp" />
     <ClCompile Include="util.cpp" />
     <ClCompile Include="view.cpp" />
   </ItemGroup>
@@ -165,6 +166,7 @@
     <ClInclude Include="global.h" />
     <ClInclude Include="ioctrl.h" />
     <ClInclude Include="shell.h" />
+    <ClInclude Include="socket.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="view.h" />
   </ItemGroup>

@@ -1,5 +1,6 @@
 #include "global.h"
 #include "shell.h"
+#include "socket.h"
 #include "view.h"
 #include "util.h"
 
@@ -42,8 +43,9 @@ uint32_t NameToIndex(string name)
 * Communication socket.
 */
 
-PADDRINFOA AddressInfo = NULL;
+WSADATA WsaData = {};
 SOCKET Socket = INVALID_SOCKET;
+PADDRINFOA Address = NULL;
 
 /*
 * Entry point.
@@ -51,6 +53,53 @@ SOCKET Socket = INVALID_SOCKET;
 
 int32_t wmain(int32_t argc, wchar_t* argv[])
 {
+  WSAStartup(MAKEWORD(2, 2), &WsaData);
+  ADDRINFOA hints = {};
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  if (getaddrinfo(&Utf16ToUtf8(argv[1])[0], "9095", &hints, &Address) == 0)
+  {
+    Socket = socket(Address->ai_family, Address->ai_socktype, Address->ai_protocol);
+    if (Socket != INVALID_SOCKET)
+    {
+      KC_LOG_INFO("Socket found\n");
+      if (connect(Socket, Address->ai_addr, (INT)Address->ai_addrlen) == 0)
+      {
+        KC_LOG_INFO("Connected\n");
+        ULONG size = 1024;
+        CHAR buffer[1024] = {};
+        if (send(Socket, buffer, size, 0) == 0)
+        {
+          KC_LOG_INFO("Sent %u bytes\n", size);
+        }
+
+        //INT result = 0;
+        //do
+        //{
+        //  KC_LOG_INFO("Receiving..\n");
+        //  result = recv(Socket, buffer, sizeof(buffer), 0);
+        //  KC_LOG_INFO("Received\n");
+        //  if (result > 0)
+        //  {
+        //    KC_LOG_INFO("Received %llu bytes\n", sizeof(buffer));
+        //  }
+        //  else if (result == 0)
+        //  {
+        //    KC_LOG_INFO("Connection closed\n");
+        //  }
+        //  else
+        //  {
+        //    KC_LOG_INFO("Receive failed with error %d\n", WSAGetLastError());
+        //  }
+        //}
+        //while (result > 0);
+      }
+      closesocket(Socket);
+    }
+  }
+  WSACleanup();
+  return 0;
   Shell shell;
   USHORT thirdWidth = (USHORT)(shell.Width() / 3);
   USHORT halfHeight = (USHORT)(shell.Height() / 2);

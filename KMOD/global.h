@@ -28,7 +28,7 @@ static ULONG KmNextRandom(ULONG min, ULONG max)
 }
 static ULONG KmNextPoolTag()
 {
-  constexpr ULONG poolTags[] =
+  static ULONG poolTags[] =
   {
     ' prI', // Allocated IRP packets
     '+prI', // I/O verifier allocated IRP packets
@@ -51,7 +51,7 @@ static ULONG KmNextPoolTag()
     'cScC', // Cache Manager Shared Cache Map
     'KgxD', // Vista display driver support
   };
-  constexpr ULONG numPoolTags = ARRAYSIZE(poolTags);
+  static ULONG numPoolTags = ARRAYSIZE(poolTags);
   const ULONG index = KmNextRandom(0, numPoolTags);
   NT_ASSERT(index <= numPoolTags - 1);
   return index;

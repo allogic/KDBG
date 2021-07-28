@@ -1,6 +1,7 @@
-#pragma once
-#include <ntddk.h>
-#include <wsk.h>
+#ifndef _SOCKET_H
+#define _SOCKET_H
+
+#include "global.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -162,4 +163,6 @@ KsRecvFrom(
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

@@ -44,7 +44,7 @@ enum State
 #define _KCLI_STR(VAL) #VAL
 #define KCLI_STR(VAL) _KCLI_STR(VAL)
 
-#define KCLI_LOG_INFO(FMT, ...) printf("[+] " FMT, __VA_ARGS__)
-#define KCLI_LOG_ERROR(FMT, ...) printf("[-] " FMT, __VA_ARGS__)
+#define KC_LOG_INFO(FMT, ...) printf("[+] " FMT, __VA_ARGS__)
+#define KC_LOG_ERROR(FMT, ...) printf("[-] " FMT, __VA_ARGS__)
 
 #endif
