@@ -28,7 +28,7 @@ int32_t wmain(int32_t argc, wchar_t* argv[])
 {
   WSAStartup(MAKEWORD(2, 2), &WsaData);
   ADDRINFOA hints = {};
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
   if (getaddrinfo(&Utf16ToUtf8(argv[1])[0], "9095", &hints, &Address) == 0)
@@ -40,13 +40,21 @@ int32_t wmain(int32_t argc, wchar_t* argv[])
       if (connect(Socket, Address->ai_addr, (INT)Address->ai_addrlen) == 0)
       {
         KC_LOG_INFO("Connected\n");
-        ULONG size = 1024;
-        CHAR buffer[1024] = {};
-        if (send(Socket, buffer, size, 0) == 0)
+        ULONG size = 16;
+        CHAR buffer[16] = {};
+        memcpy(buffer, "Foo", 3);
+        if (send(Socket, buffer, size, 0) > 0)
         {
-          KC_LOG_INFO("Sent %u bytes\n", size);
+          KC_LOG_INFO("Sent %s bytes\n", buffer);
         }
+        else
+        {
+          KC_LOG_INFO("Failed %d\n", WSAGetLastError());
+        }
+        while (1)
+        {
 
+        }
         //INT result = 0;
         //do
         //{

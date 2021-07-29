@@ -239,7 +239,8 @@ KspAsyncContextWaitForCompletionNonBlocking(
     LARGE_INTEGER interval;
     interval.QuadPart = KM_DELAY_ONE_MILLISECOND;
     interval.QuadPart *= Ms;
-    KeWaitForSingleObject(
+
+    *Status = KeWaitForSingleObject(
       &AsyncContext->CompletionEvent,
       Executive,
       KernelMode,
@@ -247,7 +248,10 @@ KspAsyncContextWaitForCompletionNonBlocking(
       &interval
     );
 
-    *Status = AsyncContext->Irp->IoStatus.Status;
+    if (NT_SUCCESS(*Status))
+    {
+      *Status = AsyncContext->Irp->IoStatus.Status;
+    }
   }
 
   return *Status;
@@ -437,6 +441,41 @@ KsCreateSocket(
     NewSocket->WskDispatch = (PVOID)NewSocket->WskSocket->Dispatch;
 
     *Socket = NewSocket;
+
+    //
+    // Reset the async context.
+    //
+
+    //KspAsyncContextReset(&NewSocket->AsyncContext);
+    //
+    //KM_LOG_INFO("Setting conditional mode\n");
+    //
+    //ULONG newConditionalMode = 1;
+    //NewSocket->WskListenDispatch->WskControlSocket(
+    //  NewSocket->WskSocket,
+    //  WskSetOption,
+    //  SO_CONDITIONAL_ACCEPT,
+    //  SOL_SOCKET,
+    //  sizeof(ULONG),
+    //  &newConditionalMode,
+    //  0,
+    //  NULL,
+    //  NULL,
+    //  NewSocket->AsyncContext.Irp
+    //);
+    //
+    //KM_LOG_INFO("Set conditional mode %X\n", Status);
+    //
+    //KM_LOG_INFO("Zzzzz...\n");
+    //KspAsyncContextWaitForCompletion(&NewSocket->AsyncContext, &Status);
+    //KM_LOG_INFO("Subsystem completed WskSetOption\n");
+    //
+    //if (NT_SUCCESS(Status))
+    //{
+    //  KM_LOG_INFO("Great success\n");
+    //
+    //  *Socket = NewSocket;
+    //}
   }
 
   return Status;
@@ -580,7 +619,7 @@ KsAccept(
     Socket->AsyncContext.Irp    // Irp
     );
 
-  KspAsyncContextWaitForCompletionNonBlocking(&Socket->AsyncContext, &Status, 1000);
+  KspAsyncContextWaitForCompletion(&Socket->AsyncContext, &Status);
 
   //
   // Save the socket instance and the socket dispatch table.
@@ -600,6 +639,24 @@ KsAccept(
     KspAsyncContextAllocate(&KNewSocket->AsyncContext);
 
     *NewSocket = KNewSocket;
+  }
+  else
+  {
+    //
+    // Reset the async context.
+    //
+
+    KspAsyncContextReset(&Socket->AsyncContext);
+
+    WSK_INSPECT_ID inspectId;
+    Status = Socket->WskListenDispatch->WskInspectComplete(
+      Socket->WskSocket,
+      &inspectId,
+      WskInspectReject,
+      Socket->AsyncContext.Irp
+    );
+
+    KspAsyncContextWaitForCompletion(&Socket->AsyncContext, &Status);
   }
 
   return Status;
