@@ -503,27 +503,19 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
   status = KsInitialize();
   if (NT_SUCCESS(status))
   {
-    __try
+    status = KsCreateListenSocket(&Server.Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (NT_SUCCESS(status))
     {
-      KM_LOG_INFO("I tried..\n");
-      status = KsCreateListenSocket(&Server.Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP);
+      status = PsCreateSystemThread(&Server.Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, ListenThread, NULL);
       if (NT_SUCCESS(status))
       {
-        status = PsCreateSystemThread(&Server.Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, ListenThread, NULL);
-        if (NT_SUCCESS(status))
-        {
-          KM_LOG_INFO("Starting listening thread\n");
-          KM_LOG_INFO("KMOD initialized\n");
-        }
-        else
-        {
-          KsCloseSocket(Server.Socket);
-        }
+        KM_LOG_INFO("Starting listening thread\n");
+        KM_LOG_INFO("KMOD initialized\n");
       }
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-      KM_LOG_INFO("Something went wrong\n");
+      else
+      {
+        KsCloseSocket(Server.Socket);
+      }
     }
   }
   return status;
