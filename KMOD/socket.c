@@ -226,6 +226,33 @@ KspAsyncContextWaitForCompletion(
   return *Status;
 }
 
+NTSTATUS
+NTAPI
+KspAsyncContextWaitForCompletionNonBlocking(
+  _In_ PKSOCKET_ASYNC_CONTEXT AsyncContext,
+  _Inout_ PNTSTATUS Status,
+  _In_ ULONG Ms
+)
+{
+  if (*Status == STATUS_PENDING)
+  {
+    LARGE_INTEGER interval;
+    interval.QuadPart = DELAY_ONE_MILLISECOND;
+    interval.QuadPart *= Ms;
+    KeWaitForSingleObject(
+      &AsyncContext->CompletionEvent,
+      Executive,
+      KernelMode,
+      FALSE,
+      &interval
+    );
+
+    *Status = AsyncContext->Irp->IoStatus.Status;
+  }
+
+  return *Status;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Public functions.
 //////////////////////////////////////////////////////////////////////////
@@ -409,48 +436,7 @@ KsCreateSocket(
     NewSocket->WskSocket = (PWSK_SOCKET)NewSocket->AsyncContext.Irp->IoStatus.Information;
     NewSocket->WskDispatch = (PVOID)NewSocket->WskSocket->Dispatch;
 
-    //
-    // Reset the async context.
-    //
-
-    KspAsyncContextReset(&NewSocket->AsyncContext);
-
-    KM_LOG_INFO("Some foo\n");
-
-    //WSK_EVENT_CALLBACK_CONTROL eventControl;
-    //memset(&eventControl, 0, sizeof(eventControl));
-    //eventControl.NpiId = NULL;
-    //eventControl.EventMask |= 0;
-
-    // STATUS_INVALID_DEVICE_REQUEST
-    // PFN_WSK_INSPECT_COMPLETE
-
-    ULONG newConditionalMode = 1;
-    Status = ((PWSK_PROVIDER_BASIC_DISPATCH)NewSocket->WskDispatch)->WskControlSocket(
-      NewSocket->WskSocket,
-      WskSetOption,
-      SO_CONDITIONAL_ACCEPT,
-      SOL_SOCKET,
-      sizeof(ULONG),
-      &newConditionalMode,
-      0,
-      NULL,
-      NULL,
-      NewSocket->AsyncContext.Irp
-      );
-
-    KM_LOG_INFO("Some bar %X\n", Status);
-
-    KspAsyncContextWaitForCompletion(&NewSocket->AsyncContext, &Status);
-
-    KM_LOG_INFO("Zzzzz...\n");
-
-    if (NT_SUCCESS(Status))
-    {
-      KM_LOG_INFO("Great success\n");
-
-      *Socket = NewSocket;
-    }
+    *Socket = NewSocket;
   }
 
   return Status;
@@ -499,30 +485,6 @@ KsCloseSocket(
   )
 {
   NTSTATUS Status;
-
-  //
-  // Reset the async context.
-  //
-
-  KspAsyncContextReset(&Socket->AsyncContext);
-
-  //
-  // Complete pending accept
-  //
-
-  WSK_INSPECT_ID wskInspectId;
-  memset(&wskInspectId, 0, sizeof(wskInspectId));
-  wskInspectId.Key = 0;
-  wskInspectId.SerialNumber = 0;
-
-  Status = Socket->WskListenDispatch->WskInspectComplete(
-    Socket,
-    &wskInspectId,
-    WskInspectReject,
-    Socket->AsyncContext.Irp
-    );
-
-  KspAsyncContextWaitForCompletion(&Socket->AsyncContext, &Status);
 
   //
   // Reset the async context.
@@ -618,7 +580,7 @@ KsAccept(
     Socket->AsyncContext.Irp    // Irp
     );
 
-  KspAsyncContextWaitForCompletion(&Socket->AsyncContext, &Status);
+  KspAsyncContextWaitForCompletionNonBlocking(&Socket->AsyncContext, &Status, 1000);
 
   //
   // Save the socket instance and the socket dispatch table.
