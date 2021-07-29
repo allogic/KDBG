@@ -20,7 +20,7 @@ typedef struct _STACK_FRAME_X64
 * Tracing utilities.
 */
 
-VOID TraceContext(HANDLE tid, SIZE_T iterations);
-VOID TraceStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations);
+VOID KmTraceContext(HANDLE tid, SIZE_T iterations);
+VOID KmTraceStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations);
 
 #endif

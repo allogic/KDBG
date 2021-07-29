@@ -6,7 +6,7 @@ NTSTATUS ZwQuerySystemInformation(
   ULONG SystemInformationLength,
   ULONG* ReturnLength)
 {
-  return GetSystemRoutine<ZWQUERYSYSTEMINFORMATION>(L"ZwQuerySystemInformation")(
+  return KmGetSystemRoutine<ZWQUERYSYSTEMINFORMATION>(L"ZwQuerySystemInformation")(
     SystemInformationClass,
     SystemInformation,
     SystemInformationLength,

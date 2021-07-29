@@ -13,33 +13,6 @@
 using namespace std;
 
 /*
-* View utilities.
-*/
-
-string IndexToName(uint32_t index)
-{
-  static map<uint32_t, string> map
-  {
-    { 0, "module" },
-    { 1, "memory" },
-    { 2, "scanner" },
-    { 3, "debugger" },
-  };
-  return map[index];
-}
-uint32_t NameToIndex(string name)
-{
-  static map<string, uint32_t> map
-  {
-    { "module", 0 },
-    { "memory", 1 },
-    { "scanner", 2 },
-    { "debugger", 3 },
-  };
-  return map[name];
-}
-
-/*
 * Communication socket.
 */
 
@@ -122,7 +95,7 @@ int32_t wmain(int32_t argc, wchar_t* argv[])
     view->UpdateLayout();
     view->Render();
   }
-  SIZE_T selectedView = NameToIndex("scanner");
+  SIZE_T selectedView = 0;
   State state = KCLI_CTRL_MODE;
   while (true)
   {

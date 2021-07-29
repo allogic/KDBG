@@ -43,10 +43,10 @@ typedef struct _PEB64 {
   PPEB_LDR_DATA Ldr;
 } PEB64, * PPEB64;
 
-USHORT RvaToSection(PIMAGE_NT_HEADERS ntHeaders, PVOID rva);
-ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize);
+USHORT KmRvaToSection(PIMAGE_NT_HEADERS ntHeaders, PVOID rva);
+ULONG KmRvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize);
 
-PVOID GetImageBase(PVOID imageBase, PVOID virtualBase);
-ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName);
+PVOID KmGetImageBase(PVOID imageBase, PVOID virtualBase);
+ULONG KmGetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName);
 
 #endif

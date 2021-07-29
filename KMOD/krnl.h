@@ -8,7 +8,7 @@
 */
 
 template<typename FUNCTION>
-static FUNCTION GetSystemRoutine(PCWCHAR procName)
+static FUNCTION KmGetSystemRoutine(PCWCHAR procName)
 {
   static FUNCTION functionPointer = NULL;
   if (!functionPointer)

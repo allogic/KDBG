@@ -69,13 +69,13 @@ static VOID KmFreeMemory(PVOID ptr)
   ExFreePool(ptr);
 }
 
-#define DELAY_ONE_MICROSECOND 	(-10)
-#define DELAY_ONE_MILLISECOND	(DELAY_ONE_MICROSECOND*1000)
+#define KM_DELAY_ONE_MICROSECOND 	(-10)
+#define KM_DELAY_ONE_MILLISECOND	(KM_DELAY_ONE_MICROSECOND*1000)
 
 static VOID KmSleep(LONG ms)
 {
   LARGE_INTEGER interval;
-  interval.QuadPart = DELAY_ONE_MILLISECOND;
+  interval.QuadPart = KM_DELAY_ONE_MILLISECOND;
   interval.QuadPart *= ms;
   KeDelayExecutionThread(KernelMode, 0, &interval);
 }

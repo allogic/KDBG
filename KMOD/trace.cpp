@@ -1,6 +1,6 @@
 #include "trace.h"
 
-VOID TraceContext(HANDLE tid, SIZE_T iterations)
+VOID KmTraceContext(HANDLE tid, SIZE_T iterations)
 {
   NTSTATUS status = STATUS_SUCCESS;
   PETHREAD thread = NULL;
@@ -22,7 +22,7 @@ VOID TraceContext(HANDLE tid, SIZE_T iterations)
   }
   ObDereferenceObject(thread);
 }
-VOID TraceStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
+VOID KmTraceStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations)
 {
   //NTSTATUS status = STATUS_SUCCESS;
   //PEPROCESS process = NULL;

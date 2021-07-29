@@ -5,7 +5,7 @@ NTSTATUS PsGetContextThread(
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode)
 {
-  return GetSystemRoutine<PSGETCONTEXTTHREAD>(L"PsGetContextThread")(
+  return KmGetSystemRoutine<PSGETCONTEXTTHREAD>(L"PsGetContextThread")(
     Thread,
     ThreadContext,
     Mode);
@@ -15,13 +15,13 @@ NTSTATUS PsSetContextThread(
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode)
 {
-  return GetSystemRoutine<PSSETCONTEXTTHREAD>(L"PsSetContextThread")(
+  return KmGetSystemRoutine<PSSETCONTEXTTHREAD>(L"PsSetContextThread")(
     Thread,
     ThreadContext,
     Mode);
 }
 
-VOID DumpContext(PCONTEXT context)
+VOID KmDumpContext(PCONTEXT context)
 {
   KM_LOG_ERROR("Control flags\n");
   KM_LOG_ERROR("ContextFlags: %u\n", context->ContextFlags);

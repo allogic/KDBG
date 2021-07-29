@@ -15,15 +15,15 @@
 
 ULONG Pid = 0;
 
-MODULE ModulesKernel[KMOD_MAX_MODULES_KERNEL] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
-MODULE ModulesProcess[KMOD_MAX_MODULES_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
-THREAD Threads[KMOD_MAX_THREADS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
+MODULE ModulesKernel[KM_MAX_MODULES_KERNEL] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
+MODULE ModulesProcess[KM_MAX_MODULES_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
+THREAD ThreadsProcess[KM_MAX_THREADS_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
 
 /*
 * Process utilities relative to kernel space.
 */
 
-NTSTATUS CopyUserSpaceMemorySafe(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mode)
+NTSTATUS InterlockedMemcpy(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mode)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PMDL mdl = IoAllocateMdl(src, size, FALSE, FALSE, NULL);
@@ -74,7 +74,7 @@ NTSTATUS FetchProcessModules()
       PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
       if (peb)
       {
-        memset(ModulesProcess, 0, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
+        memset(ModulesProcess, 0, sizeof(MODULE) * KM_MAX_MODULES_PROCESS);
         PVOID imageBase = peb->ImageBaseAddress;
         PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
         PLDR_DATA_TABLE_ENTRY module = NULL;
@@ -86,11 +86,11 @@ NTSTATUS FetchProcessModules()
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           if (module && module->DllBase)
           {
-            CopyUserSpaceMemorySafe(&ModulesProcess[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
-            CopyUserSpaceMemorySafe(&ModulesProcess[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
-            CopyUserSpaceMemorySafe(&ModulesProcess[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
+            InterlockedMemcpy(&ModulesProcess[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
+            InterlockedMemcpy(&ModulesProcess[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
+            InterlockedMemcpy(&ModulesProcess[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
             count++;
-            if (count >= KMOD_MAX_MODULES_PROCESS)
+            if (count >= KM_MAX_MODULES_PROCESS)
             {
               break;
             }
@@ -180,8 +180,8 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
             //((PMODULE)buffer)[count].Base = (ULONG64)module->DllBase;
             //wcscpy(((PMODULE)buffer)[count].Name, module->BaseDllName.Buffer);
             //((PMODULE)buffer)[count].Size = module->SizeOfImage;
-            CopyUserSpaceMemorySafe(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
-            CopyUserSpaceMemorySafe(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
+            InterlockedMemcpy(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
+            InterlockedMemcpy(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
             count++;
             KM_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
             KM_LOG_INFO("value is %p\n");
@@ -334,7 +334,7 @@ NTSTATUS HandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
     status = FetchProcessModules();
     if (NT_SUCCESS(status))
     {
-      memcpy(req->Out.Buffer, ModulesProcess, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
+      memcpy(req->Out.Buffer, ModulesProcess, sizeof(MODULE) * KM_MAX_MODULES_PROCESS);
     }
   }
   return status;
@@ -347,7 +347,7 @@ NTSTATUS HandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
     status = FetchProcessThreads();
     if (NT_SUCCESS(status))
     {
-      memcpy(req->Out.Buffer, Threads, sizeof(THREAD) * KMOD_MAX_THREADS);
+      memcpy(req->Out.Buffer, ThreadsProcess, sizeof(THREAD) * KM_MAX_THREADS_PROCESS);
     }
   }
   return status;
@@ -387,7 +387,7 @@ NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 * Communication socket.
 */
 
-#define MAX_CLIENTS 128
+#define KM_MAX_TCP_SESSIONS 128
 
 BOOL Shutdown = FALSE;
 LONG AtomicSessionCount = 0;
@@ -399,7 +399,7 @@ typedef struct _TCP_CONTEXT
 } TCP_CONTEXT, * PTCP_CONTEXT;
 
 TCP_CONTEXT Server = {};
-TCP_CONTEXT Clients[MAX_CLIENTS] = {};
+TCP_CONTEXT Clients[KM_MAX_TCP_SESSIONS] = {};
 
 VOID SessionThread(PVOID context)
 {

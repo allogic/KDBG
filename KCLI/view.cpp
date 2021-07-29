@@ -78,12 +78,12 @@ void Module::Fetch()
   {
     free(request.Out.Buffer);
   }
-  request.Out.Buffer = malloc(sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
-  memset(request.Out.Buffer, 0, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
+  request.Out.Buffer = malloc(sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
+  memset(request.Out.Buffer, 0, sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
   //DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
   Modules.clear();
-  Modules.resize(KMOD_MAX_MODULES_PROCESS);
-  memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KMOD_MAX_MODULES_PROCESS);
+  Modules.resize(KC_MAX_MODULES_PROCESS);
+  memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
 }
 void Module::Render()
 {
@@ -139,12 +139,12 @@ void Thread::Fetch()
   {
     free(request.Out.Buffer);
   }
-  request.Out.Buffer = malloc(sizeof(THREAD) * KMOD_MAX_THREADS);
-  memset(request.Out.Buffer, 0, sizeof(THREAD) * KMOD_MAX_THREADS);
+  request.Out.Buffer = malloc(sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
+  memset(request.Out.Buffer, 0, sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
   //DeviceIoControl(Device, KMOD_REQ_PROCESS_THREADS, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
   Threads.clear();
-  Threads.resize(KMOD_MAX_THREADS);
-  memcpy(&Threads[0], request.Out.Buffer, sizeof(THREAD) * KMOD_MAX_THREADS);
+  Threads.resize(KC_MAX_THREADS_PROCESS);
+  memcpy(&Threads[0], request.Out.Buffer, sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
 }
 void Thread::Render()
 {

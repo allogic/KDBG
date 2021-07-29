@@ -7,9 +7,9 @@
 * Common request types.
 */
 
-#define KMOD_MAX_MODULES_KERNEL 128
-#define KMOD_MAX_MODULES_PROCESS 128
-#define KMOD_MAX_THREADS 128
+#define KM_MAX_MODULES_KERNEL 128
+#define KM_MAX_MODULES_PROCESS 128
+#define KM_MAX_THREADS_PROCESS 128
 
 typedef struct _MODULE
 {

@@ -237,7 +237,7 @@ KspAsyncContextWaitForCompletionNonBlocking(
   if (*Status == STATUS_PENDING)
   {
     LARGE_INTEGER interval;
-    interval.QuadPart = DELAY_ONE_MILLISECOND;
+    interval.QuadPart = KM_DELAY_ONE_MILLISECOND;
     interval.QuadPart *= Ms;
     KeWaitForSingleObject(
       &AsyncContext->CompletionEvent,

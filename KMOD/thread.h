@@ -99,6 +99,6 @@ NTSTATUS PsSetContextThread(
 //  return PreviousCount;
 //}
 
-VOID DumpContext(PCONTEXT context);
+VOID KmDumpContext(PCONTEXT context);
 
 #endif

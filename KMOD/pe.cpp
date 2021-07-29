@@ -3,11 +3,11 @@
 PPEB PsGetProcessPeb(
   PEPROCESS process)
 {
-  return GetSystemRoutine<PSGETPROCESSPEB>(L"PsGetProcessPeb")(
+  return KmGetSystemRoutine<PSGETPROCESSPEB>(L"PsGetProcessPeb")(
     process);
 }
 
-USHORT RvaToSection(PIMAGE_NT_HEADERS ntHeaders, PVOID rva)
+USHORT KmRvaToSection(PIMAGE_NT_HEADERS ntHeaders, PVOID rva)
 {
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
   USHORT numSections = ntHeaders->FileHeader.NumberOfSections;
@@ -17,7 +17,7 @@ USHORT RvaToSection(PIMAGE_NT_HEADERS ntHeaders, PVOID rva)
         return i;
   return (USHORT)KMOD_PE_ERROR_VALUE;
 }
-ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize)
+ULONG KmRvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize)
 {
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
   USHORT numSections = ntHeaders->FileHeader.NumberOfSections;
@@ -32,7 +32,7 @@ ULONG RvaToOffset(PIMAGE_NT_HEADERS ntHeaders, PVOID rva, ULONG imageSize)
   return (ULONG)KMOD_PE_ERROR_VALUE;
 }
 
-PVOID GetImageBase(PVOID imageBase, PVOID virtualBase)
+PVOID KmGetImageBase(PVOID imageBase, PVOID virtualBase)
 {
   if ((ULONG64)virtualBase < (ULONG64)imageBase)
   {
@@ -55,7 +55,7 @@ PVOID GetImageBase(PVOID imageBase, PVOID virtualBase)
     return NULL;
   }
   PIMAGE_SECTION_HEADER sectionHeader = IMAGE_FIRST_SECTION(ntHeaders);
-  USHORT section = RvaToSection(ntHeaders, rva);
+  USHORT section = KmRvaToSection(ntHeaders, rva);
   if (section == (USHORT)KMOD_PE_ERROR_VALUE)
   {
     KM_LOG_ERROR("Invalid section\n");
@@ -63,7 +63,7 @@ PVOID GetImageBase(PVOID imageBase, PVOID virtualBase)
   }
   return (PVOID)((PBYTE)imageBase + sectionHeader[section].VirtualAddress);
 }
-ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
+ULONG KmGetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
 {
   PIMAGE_DOS_HEADER dosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
@@ -88,7 +88,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   }
   ULONG exportDirRva = dataDir[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
   ULONG exportDirSize = dataDir[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
-  ULONG exportDirOffset = RvaToOffset(ntHeaders, &exportDirRva, fileSize);
+  ULONG exportDirOffset = KmRvaToOffset(ntHeaders, &exportDirRva, fileSize);
   if (exportDirOffset == (ULONG)KMOD_PE_ERROR_VALUE)
   {
     KM_LOG_ERROR("Invalid export directory\n");
@@ -96,9 +96,9 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   }
   PIMAGE_EXPORT_DIRECTORY exportDir = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)imageBase + exportDirOffset);
   ULONG numOfNames = exportDir->NumberOfNames;
-  ULONG addressOfFunctionsOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfFunctions, fileSize);
-  ULONG addressOfNameOrdinalsOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNameOrdinals, fileSize);
-  ULONG addressOfNamesOffset = RvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
+  ULONG addressOfFunctionsOffset = KmRvaToOffset(ntHeaders, &exportDir->AddressOfFunctions, fileSize);
+  ULONG addressOfNameOrdinalsOffset = KmRvaToOffset(ntHeaders, &exportDir->AddressOfNameOrdinals, fileSize);
+  ULONG addressOfNamesOffset = KmRvaToOffset(ntHeaders, &exportDir->AddressOfNames, fileSize);
   if (addressOfFunctionsOffset == (ULONG)KMOD_PE_ERROR_VALUE || addressOfNameOrdinalsOffset == (ULONG)KMOD_PE_ERROR_VALUE || addressOfNamesOffset == (ULONG)KMOD_PE_ERROR_VALUE)
   {
     KM_LOG_ERROR("Invalid export directory content\n");
@@ -110,7 +110,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
   ULONG exportOffset = (ULONG)KMOD_PE_ERROR_VALUE;
   for (ULONG i = 0; i < numOfNames; i++)
   {
-    ULONG currentNameOffset = RvaToOffset(ntHeaders, &addressOfNames[i], fileSize);
+    ULONG currentNameOffset = KmRvaToOffset(ntHeaders, &addressOfNames[i], fileSize);
     if (currentNameOffset == (ULONG)KMOD_PE_ERROR_VALUE)
     {
       continue;
@@ -123,7 +123,7 @@ ULONG GetModuleExportOffset(PVOID imageBase, ULONG fileSize, PCCHAR exportName)
     }
     if (strcmp(currentName, exportName) == 0)
     {
-      exportOffset = RvaToOffset(ntHeaders, &currentFunctionRva, fileSize);
+      exportOffset = KmRvaToOffset(ntHeaders, &currentFunctionRva, fileSize);
       break;
     }
   }
