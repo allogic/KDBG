@@ -7,8 +7,6 @@
 #include "trace.h"
 #include "socket.h"
 
-// TODO: refactor ptr to stack objects
-
 /*
 * Global driver state.
 */
@@ -23,7 +21,7 @@ THREAD ThreadsProcess[KM_MAX_THREADS_PROCESS] = {}; // Buffer is required in ord
 * Process utilities relative to kernel space.
 */
 
-NTSTATUS InterlockedMemcpy(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mode)
+NTSTATUS KmInterlockedMemcpy(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mode)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PMDL mdl = IoAllocateMdl(src, size, FALSE, FALSE, NULL);
@@ -54,12 +52,12 @@ NTSTATUS InterlockedMemcpy(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mo
   return status;
 }
 
-NTSTATUS FetchKernelModules()
+NTSTATUS KmFetchKernelModules()
 {
   return STATUS_UNSUCCESSFUL;
 }
 
-NTSTATUS FetchProcessModules()
+NTSTATUS KmFetchProcessModules()
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -86,9 +84,9 @@ NTSTATUS FetchProcessModules()
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           if (module && module->DllBase)
           {
-            InterlockedMemcpy(&ModulesProcess[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
-            InterlockedMemcpy(&ModulesProcess[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
-            InterlockedMemcpy(&ModulesProcess[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
+            KmInterlockedMemcpy(&ModulesProcess[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
+            KmInterlockedMemcpy(&ModulesProcess[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
+            KmInterlockedMemcpy(&ModulesProcess[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
             count++;
             if (count >= KM_MAX_MODULES_PROCESS)
             {
@@ -110,7 +108,7 @@ NTSTATUS FetchProcessModules()
   }
   return status;
 }
-NTSTATUS FetchProcessThreads()
+NTSTATUS KmFetchProcessThreads()
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   ULONG read = 0;
@@ -148,7 +146,7 @@ NTSTATUS FetchProcessThreads()
   return status;
 }
 
-NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
+NTSTATUS KmGetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -176,12 +174,8 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
           KM_LOG_INFO("%ls\n", module->BaseDllName.Buffer);
           if (module && module->DllBase)
           {
-            //KM_LOG_INFO("Copy from %p to %p\n", &module->DllBase, &((PMODULE)buffer)[count].Base);
-            //((PMODULE)buffer)[count].Base = (ULONG64)module->DllBase;
-            //wcscpy(((PMODULE)buffer)[count].Name, module->BaseDllName.Buffer);
-            //((PMODULE)buffer)[count].Size = module->SizeOfImage;
-            InterlockedMemcpy(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
-            InterlockedMemcpy(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
+            KmInterlockedMemcpy(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
+            KmInterlockedMemcpy(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
             count++;
             KM_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
             KM_LOG_INFO("value is %p\n");
@@ -204,7 +198,7 @@ NTSTATUS GetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
   }
   return status;
 }
-NTSTATUS GetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
+NTSTATUS KmGetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -251,7 +245,7 @@ NTSTATUS GetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
   return status;
 }
 
-NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
+NTSTATUS KmReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -300,7 +294,7 @@ NTSTATUS ReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buff
   }
   return status;
 }
-NTSTATUS WriteVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
+NTSTATUS KmWriteVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
 {
   return STATUS_UNSUCCESSFUL;
 }
@@ -318,7 +312,7 @@ PDEVICE_OBJECT Device = NULL;
 * Request/Response handlers.
 */
 
-NTSTATUS HandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
+NTSTATUS KmHandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   Pid = req->In.Pid;
@@ -326,12 +320,12 @@ NTSTATUS HandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
   status = STATUS_SUCCESS;
   return status;
 }
-NTSTATUS HandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
+NTSTATUS KmHandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   if (Pid)
   {
-    status = FetchProcessModules();
+    status = KmFetchProcessModules();
     if (NT_SUCCESS(status))
     {
       memcpy(req->Out.Buffer, ModulesProcess, sizeof(MODULE) * KM_MAX_MODULES_PROCESS);
@@ -339,12 +333,12 @@ NTSTATUS HandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
   }
   return status;
 }
-NTSTATUS HandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
+NTSTATUS KmHandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   if (Pid)
   {
-    status = FetchProcessThreads();
+    status = KmFetchProcessThreads();
     if (NT_SUCCESS(status))
     {
       memcpy(req->Out.Buffer, ThreadsProcess, sizeof(THREAD) * KM_MAX_THREADS_PROCESS);
@@ -352,32 +346,32 @@ NTSTATUS HandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
   }
   return status;
 }
-NTSTATUS HandleMemoryReadRequest(PREQ_MEMORY_READ req)
+NTSTATUS KmHandleMemoryReadRequest(PREQ_MEMORY_READ req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PVOID base = NULL;
   if (Pid)
   {
-    status = GetProcessModuleBase(Pid, req->In.Name, base);
+    status = KmGetProcessModuleBase(Pid, req->In.Name, base);
     if (NT_SUCCESS(status))
     {
       req->Out.Base = (ULONG64)base;
-      status = ReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
+      status = KmReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
     }
   }
   return status;
 }
-NTSTATUS HandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
+NTSTATUS KmHandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PVOID base = NULL;
   if (Pid)
   {
-    status = GetProcessModuleBase(Pid, req->In.Name, base);
+    status = KmGetProcessModuleBase(Pid, req->In.Name, base);
     if (NT_SUCCESS(status))
     {
       req->Out.Base = (ULONG64)base;
-      status = WriteVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
+      status = KmWriteVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
     }
   }
   return status;
@@ -401,7 +395,7 @@ typedef struct _TCP_CONTEXT
 TCP_CONTEXT Server = {};
 TCP_CONTEXT Clients[KM_MAX_TCP_SESSIONS] = {};
 
-VOID SessionThread(PVOID context)
+VOID KmSessionThread(PVOID context)
 {
   ULONG clientId = *(PULONG)context;
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -426,7 +420,7 @@ VOID SessionThread(PVOID context)
   KM_LOG_INFO("Session count %d\n", AtomicSessionCount);
   KM_LOG_INFO("Session thread end %u\n", clientId);
 }
-VOID ListenThread(PVOID context)
+VOID KmListenThread(PVOID context)
 {
   KM_LOG_INFO("Listening thread begin\n");
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -445,7 +439,7 @@ VOID ListenThread(PVOID context)
       status = KsAccept(Server.Socket, &Clients[clientId].Socket, NULL, (PSOCKADDR)&hints);
       if (NT_SUCCESS(status))
       {
-        status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, SessionThread, &clientId);
+        status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmSessionThread, &clientId);
         if (NT_SUCCESS(status))
         {
           InterlockedIncrement(&AtomicSessionCount);
@@ -506,7 +500,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
     status = KsCreateListenSocket(&Server.Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (NT_SUCCESS(status))
     {
-      status = PsCreateSystemThread(&Server.Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, ListenThread, NULL);
+      status = PsCreateSystemThread(&Server.Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmListenThread, NULL);
       if (NT_SUCCESS(status))
       {
         KM_LOG_INFO("Starting listening thread\n");
