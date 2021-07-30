@@ -13,6 +13,45 @@
 using namespace std;
 
 /*
+* Request/Response handlers.
+*/
+
+VOID KcReadMemoryProcess(SOCKET socket, ULONG pid, PWCHAR imageName, ULONG offset, ULONG size)
+{
+  CHAR ctrl = (CHAR)KM_READ_MEMORY_PROCESS;
+  if (send(socket, &ctrl, sizeof(CHAR), 0) > 0)
+  {
+    READ_MEMORY_PROCESS request = {};
+    request.Pid = pid;
+    memcpy(request.ImageName, imageName, wcslen(imageName));
+    request.Offset = offset;
+    request.Size = size;
+    if (send(socket, (PCHAR)&request, sizeof(request), 0) > 0)
+    {
+      KC_LOG_INFO("Sent read request\n");
+    }
+  }
+}
+
+VOID KcWriteMemoryProcess(SOCKET socket, ULONG pid, PWCHAR imageName, ULONG offset, ULONG size, PCHAR bytes)
+{
+  CHAR ctrl = (CHAR)KM_WRITE_MEMORY_PROCESS;
+  if (send(socket, &ctrl, sizeof(CHAR), 0) > 0)
+  {
+    WRITE_MEMORY_PROCESS request = {};
+    request.Pid = pid;
+    memcpy(request.ImageName, imageName, wcslen(imageName));
+    request.Offset = offset;
+    request.Size = size;
+    memcpy(request.Bytes, bytes, strlen(bytes));
+    if (send(socket, (PCHAR)&request, sizeof(request), 0) > 0)
+    {
+      KC_LOG_INFO("Sent write request\n");
+    }
+  }
+}
+
+/*
 * Communication socket.
 */
 
@@ -40,41 +79,12 @@ int32_t wmain(int32_t argc, wchar_t* argv[])
       if (connect(Socket, Address->ai_addr, (INT)Address->ai_addrlen) == 0)
       {
         KC_LOG_INFO("Connected\n");
-        ULONG size = 16;
-        CHAR buffer[16] = {};
-        memcpy(buffer, "Foo", 3);
-        if (send(Socket, buffer, size, 0) > 0)
-        {
-          KC_LOG_INFO("Sent %s bytes\n", buffer);
-        }
-        else
-        {
-          KC_LOG_INFO("Failed %d\n", WSAGetLastError());
-        }
-        while (1)
+        KcReadMemoryProcess(Socket, 666, L"666.exe", 666, 666);
+        //KcWriteMemoryProcess(Socket, 666, L"666.exe", 666, 666, "9090909090");
+        while (TRUE)
         {
 
         }
-        //INT result = 0;
-        //do
-        //{
-        //  KC_LOG_INFO("Receiving..\n");
-        //  result = recv(Socket, buffer, sizeof(buffer), 0);
-        //  KC_LOG_INFO("Received\n");
-        //  if (result > 0)
-        //  {
-        //    KC_LOG_INFO("Received %llu bytes\n", sizeof(buffer));
-        //  }
-        //  else if (result == 0)
-        //  {
-        //    KC_LOG_INFO("Connection closed\n");
-        //  }
-        //  else
-        //  {
-        //    KC_LOG_INFO("Receive failed with error %d\n", WSAGetLastError());
-        //  }
-        //}
-        //while (result > 0);
       }
       closesocket(Socket);
     }

@@ -72,18 +72,18 @@ void Module::UpdateLayout()
 }
 void Module::Fetch()
 {
-  REQ_PROCESS_MODULES request;
-  request.In.Size = Size;
-  if (request.Out.Buffer)
-  {
-    free(request.Out.Buffer);
-  }
-  request.Out.Buffer = malloc(sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
-  memset(request.Out.Buffer, 0, sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
-  //DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
-  Modules.clear();
-  Modules.resize(KC_MAX_MODULES_PROCESS);
-  memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
+  //PVOID request;
+  //request.In.Size = Size;
+  //if (request.Out.Buffer)
+  //{
+  //  free(request.Out.Buffer);
+  //}
+  //request.Out.Buffer = malloc(sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
+  //memset(request.Out.Buffer, 0, sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
+  ////DeviceIoControl(Device, KMOD_REQ_PROCESS_MODULES, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  //Modules.clear();
+  //Modules.resize(KC_MAX_MODULES_PROCESS);
+  //memcpy(&Modules[0], request.Out.Buffer, sizeof(MODULE) * KC_MAX_MODULES_PROCESS);
 }
 void Module::Render()
 {
@@ -133,18 +133,18 @@ void Thread::UpdateLayout()
 }
 void Thread::Fetch()
 {
-  REQ_PROCESS_THREADS request;
-  request.In.Size = Size;
-  if (request.Out.Buffer)
-  {
-    free(request.Out.Buffer);
-  }
-  request.Out.Buffer = malloc(sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
-  memset(request.Out.Buffer, 0, sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
-  //DeviceIoControl(Device, KMOD_REQ_PROCESS_THREADS, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
-  Threads.clear();
-  Threads.resize(KC_MAX_THREADS_PROCESS);
-  memcpy(&Threads[0], request.Out.Buffer, sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
+  //REQ_PROCESS_THREADS request;
+  //request.In.Size = Size;
+  //if (request.Out.Buffer)
+  //{
+  //  free(request.Out.Buffer);
+  //}
+  //request.Out.Buffer = malloc(sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
+  //memset(request.Out.Buffer, 0, sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
+  ////DeviceIoControl(Device, KMOD_REQ_PROCESS_THREADS, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  //Threads.clear();
+  //Threads.resize(KC_MAX_THREADS_PROCESS);
+  //memcpy(&Threads[0], request.Out.Buffer, sizeof(THREAD) * KC_MAX_THREADS_PROCESS);
 }
 void Thread::Render()
 {
@@ -207,64 +207,64 @@ void Memory::UpdateLayout()
 }
 void Memory::Fetch()
 {
-  wmemset(Request.In.Name, 0, ImageName.size());
-  wmemcpy(Request.In.Name, ImageName.c_str(), ImageName.size());
-  Request.In.Offset = Offset;
-  Request.In.Size = Size;
-  if (Request.Out.Buffer)
-  {
-    free(Request.Out.Buffer);
-  }
-  Request.Out.Buffer = malloc(Size);
-  memset(Request.Out.Buffer, 0, Size);
+  //wmemset(Request.In.Name, 0, ImageName.size());
+  //wmemcpy(Request.In.Name, ImageName.c_str(), ImageName.size());
+  //Request.In.Offset = Offset;
+  //Request.In.Size = Size;
+  //if (Request.Out.Buffer)
+  //{
+  //  free(Request.Out.Buffer);
+  //}
+  //Request.Out.Buffer = malloc(Size);
+  //memset(Request.Out.Buffer, 0, Size);
   //DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &Request, sizeof(Request), &Request, sizeof(Request), nullptr, nullptr);
 }
 void Memory::Render()
 {
-  View::Render();
-  USHORT xOff = 1;
-  USHORT yOff = 1;
-  Console->Text(X + xOff, Y + yOff, &AddressToHex(Request.Out.Base)[0]);
-  xOff += 19;
-  for (USHORT i = 0; i < Request.In.Size; ++i)
-  {
-    Console->Text(X + xOff, Y + yOff, &ByteToHex(((PBYTE)Request.Out.Buffer)[i])[0]);
-    xOff += 3;
-    if (xOff >= (W - 2))
-    {
-      yOff += 1;
-      if (yOff >= (H - 1))
-      {
-        break;
-      }
-      xOff = 1;
-      Console->Text(X + xOff, Y + yOff, &AddressToHex(Request.Out.Base + i)[0]);
-      xOff += 19;
-    }
-  }
+  //View::Render();
+  //USHORT xOff = 1;
+  //USHORT yOff = 1;
+  //Console->Text(X + xOff, Y + yOff, &AddressToHex(Request.Out.Base)[0]);
+  //xOff += 19;
+  //for (USHORT i = 0; i < Request.In.Size; ++i)
+  //{
+  //  Console->Text(X + xOff, Y + yOff, &ByteToHex(((PBYTE)Request.Out.Buffer)[i])[0]);
+  //  xOff += 3;
+  //  if (xOff >= (W - 2))
+  //  {
+  //    yOff += 1;
+  //    if (yOff >= (H - 1))
+  //    {
+  //      break;
+  //    }
+  //    xOff = 1;
+  //    Console->Text(X + xOff, Y + yOff, &AddressToHex(Request.Out.Base + i)[0]);
+  //    xOff += 19;
+  //  }
+  //}
 }
 void Memory::Event(INPUT_RECORD& event)
 {
-  if (KeyDown(event, VK_UP))
-  {
-    Offset--;
-    if (Offset < 0)
-    {
-      Offset = 0;
-    }
-    Fetch();
-    Render();
-  }
-  if (KeyDown(event, VK_DOWN))
-  {
-    Offset++;
-    if (Offset >= Request.In.Size)
-    {
-      Offset = (ULONG)Request.In.Size;
-    }
-    Fetch();
-    Render();
-  }
+  //if (KeyDown(event, VK_UP))
+  //{
+  //  Offset--;
+  //  if (Offset < 0)
+  //  {
+  //    Offset = 0;
+  //  }
+  //  Fetch();
+  //  Render();
+  //}
+  //if (KeyDown(event, VK_DOWN))
+  //{
+  //  Offset++;
+  //  if (Offset >= Request.In.Size)
+  //  {
+  //    Offset = (ULONG)Request.In.Size;
+  //  }
+  //  Fetch();
+  //  Render();
+  //}
 }
 void Memory::Command(wstring const& command)
 {
@@ -353,21 +353,21 @@ void Debugger::UpdateLayout()
 }
 void Debugger::Fetch()
 {
-  REQ_MEMORY_READ request;
-  wmemset(request.In.Name, 0, ImageName.size());
-  wmemcpy(request.In.Name, ImageName.c_str(), ImageName.size());
-  request.In.Offset = Offset;
-  request.In.Size = Size;
-  if (request.Out.Buffer)
-  {
-    free(request.Out.Buffer);
-  }
-  request.Out.Buffer = malloc(Size);
-  memset(request.Out.Buffer, 0, Size);
-  //DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
-  Bytes.clear();
-  Bytes.resize(Size);
-  memcpy(Bytes.data(), request.Out.Buffer, Size);
+  //REQ_MEMORY_READ request;
+  //wmemset(request.In.Name, 0, ImageName.size());
+  //wmemcpy(request.In.Name, ImageName.c_str(), ImageName.size());
+  //request.In.Offset = Offset;
+  //request.In.Size = Size;
+  //if (request.Out.Buffer)
+  //{
+  //  free(request.Out.Buffer);
+  //}
+  //request.Out.Buffer = malloc(Size);
+  //memset(request.Out.Buffer, 0, Size);
+  ////DeviceIoControl(Device, KMOD_REQ_MEMORY_READ, &request, sizeof(request), &request, sizeof(request), nullptr, nullptr);
+  //Bytes.clear();
+  //Bytes.resize(Size);
+  //memcpy(Bytes.data(), request.Out.Buffer, Size);
 }
 void Debugger::Render()
 {

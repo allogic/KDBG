@@ -4,68 +4,60 @@
 #include "global.h"
 
 /*
-* I/O request types.
+* Write control codes.
 */
 
-typedef struct _REQ_PROCESS_ATTACH
-{
-  struct
-  {
-    ULONG Pid = 0;
-  } In;
-} REQ_PROCESS_ATTACH, * PREQ_PROCESS_ATTACH;
-typedef struct _REQ_PROCESS_MODULES
-{
-  struct
-  {
-    SIZE_T Size = 0;
-  } In;
-  struct
-  {
-    PVOID Buffer = NULL;
-    SIZE_T Size = 0;
-  } Out;
-} REQ_PROCESS_MODULES, * PREQ_PROCESS_MODULES;
-typedef struct _REQ_PROCESS_THREADS
-{
-  struct
-  {
-    SIZE_T Size = 0;
-  } In;
-  struct
-  {
-    PVOID Buffer = NULL;
-    SIZE_T Size = 0;
-  } Out;
-} REQ_PROCESS_THREADS, * PREQ_PROCESS_THREADS;
+#define KM_WRITE_MEMORY_PROCESS 100
+#define KM_WRITE_MEMORY_KERNEL  101
 
-typedef struct _REQ_MEMORY_READ
+/*
+* Read control codes.
+*/
+
+#define KM_READ_MEMORY_PROCESS  200
+#define KM_READ_MEMORY_KERNEL   201
+
+#define KM_READ_MODULES_PROCESS 202
+#define KM_READ_MODULES_KERNEL  203
+
+#define KM_READ_THREADS_PROCESS 204
+
+/*
+* Write request types.
+*/
+
+typedef struct _WRITE_MEMORY_PROCESS
 {
-  struct
-  {
-    WCHAR Name[256] = {};
-    ULONG Offset = 0;
-    SIZE_T Size = 0;
-  } In;
-  struct
-  {
-    ULONG64 Base = 0;
-    PVOID Buffer = NULL;
-  } Out;
-} REQ_MEMORY_READ, * PREQ_MEMORY_READ;
-typedef struct _REQ_MEMORY_WRITE
+  ULONG Pid = NULL;
+  WCHAR ImageName[256];
+  ULONG Offset = 0;
+  ULONG Size = 0;
+  CHAR Bytes[1024];
+} WRITE_MEMORY_PROCESS, * PWRITE_MEMORY_PROCESS;
+typedef struct _WRITE_MEMORY_KERNEL
 {
-  struct
-  {
-    WCHAR Name[256] = {};
-    ULONG Offset = 0;
-    SIZE_T Size = 0;
-  } In;
-  struct
-  {
-    ULONG64 Base = 0;
-    PVOID Buffer = NULL;
-  } Out;
-} REQ_MEMORY_WRITE, * PREQ_MEMORY_WRITE;
+  WCHAR ImageName[256];
+  ULONG Offset = 0;
+  ULONG Size = 0;
+  CHAR Bytes[1024];
+} WRITE_MEMORY_KERNEL, * PWRITE_MEMORY_KERNEL;
+
+/*
+* Read request types.
+*/
+
+typedef struct _READ_MEMORY_PROCESS
+{
+  ULONG Pid = NULL;
+  WCHAR ImageName[256];
+  ULONG Offset = 0;
+  ULONG Size = 0;
+} READ_MEMORY_PROCESS, * PREAD_MEMORY_PROCESS;
+typedef struct _READ_MEMORY_KERNEL
+{
+  WCHAR ImageName[256];
+  ULONG Offset = 0;
+  ULONG Size = 0;
+} READ_MEMORY_KERNEL, * PREAD_MEMORY_KERNEL;
 
 #endif

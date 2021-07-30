@@ -303,6 +303,7 @@ NTSTATUS KmWriteVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID b
 * Request/Response handlers.
 */
 
+/*
 NTSTATUS KmHandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -337,34 +338,50 @@ NTSTATUS KmHandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
   }
   return status;
 }
-NTSTATUS KmHandleMemoryReadRequest(PREQ_MEMORY_READ req)
+*/
+
+NTSTATUS KmMemoryReadRequest(PKSOCKET socket, PREAD_MEMORY_PROCESS request)
 {
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PVOID base = NULL;
-  if (Pid)
-  {
-    status = KmGetProcessModuleBase(Pid, req->In.Name, base);
-    if (NT_SUCCESS(status))
-    {
-      req->Out.Base = (ULONG64)base;
-      status = KmReadVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
-    }
-  }
+  NTSTATUS status = STATUS_SUCCESS;
+  //PVOID base = NULL;
+  //PVOID buffer = KmAllocateMemory(TRUE, request->Size);
+  //status = KmGetProcessModuleBase(request->Pid, request->ImageName, base);
+  //if (NT_SUCCESS(status))
+  //{
+  //  status = KmReadVirtualProcessMemory(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
+  //  if (NT_SUCCESS(status))
+  //  {
+  //    ULONG size = request->Size;
+  //    status = KsSend(socket, buffer, &size, WSK_FLAG_WAITALL);
+  //    if (NT_SUCCESS(status))
+  //    {
+  //
+  //    }
+  //  }
+  //}
+  //KmFreeMemory(buffer);
   return status;
 }
-NTSTATUS KmHandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
+NTSTATUS KmMemoryWriteRequest(PKSOCKET socket, PWRITE_MEMORY_PROCESS request)
 {
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PVOID base = NULL;
-  if (Pid)
-  {
-    status = KmGetProcessModuleBase(Pid, req->In.Name, base);
-    if (NT_SUCCESS(status))
-    {
-      req->Out.Base = (ULONG64)base;
-      status = KmWriteVirtualProcessMemory(Pid, (PVOID)((PBYTE)base + req->In.Offset), req->In.Size, req->Out.Buffer);
-    }
-  }
+  NTSTATUS status = STATUS_SUCCESS;
+  //PVOID base = NULL;
+  //PVOID buffer = KmAllocateMemory(TRUE, request->Size);
+  //status = KmGetProcessModuleBase(request->Pid, request->ImageName, base);
+  //if (NT_SUCCESS(status))
+  //{
+  //  status = KmReadVirtualProcessMemory(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
+  //  if (NT_SUCCESS(status))
+  //  {
+  //    ULONG size = request->Size;
+  //    status = KsSend(socket, buffer, &size, WSK_FLAG_WAITALL);
+  //    if (NT_SUCCESS(status))
+  //    {
+  //
+  //    }
+  //  }
+  //}
+  //KmFreeMemory(buffer);
   return status;
 }
 
@@ -373,11 +390,6 @@ NTSTATUS KmHandleMemoryWriteRequest(PREQ_MEMORY_WRITE req)
 */
 
 #define KM_MAX_TCP_SESSIONS 128
-
-BOOL Shutdown = FALSE;
-
-KEVENT ServerShutdownEvent = {};
-LONG AtomicSessionCount = 0;
 
 typedef struct _TCP_CONTEXT
 {
@@ -390,45 +402,72 @@ TCP_CONTEXT Clients[KM_MAX_TCP_SESSIONS] = {};
 
 VOID KmSessionThread(PVOID context)
 {
-  ULONG clientId = *(PULONG)context;
-  KM_LOG_INFO("Session thread begin %u\n", clientId);
-  //KIRQL irql = DISPATCH_LEVEL;
-  //KeRaiseIrql(irql, &irql);
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  ULONG size = 16;
-  CHAR buffer[16] = {};
-  //memcpy(buffer, "Foo", 3);
-  while (!Shutdown)
+  PTCP_CONTEXT tcpContext = (PTCP_CONTEXT)context;
+  KM_LOG_INFO("Session thread begin\n");
+  NTSTATUS status = STATUS_SUCCESS;
+  ULONG size = 0;
+  CHAR ctrl = 0;
+  while (TRUE)
   {
-    __try
+    status = STATUS_UNSUCCESSFUL;
+    size = sizeof(CHAR);
+    ctrl = 0;
+    status = KsRecv(tcpContext->Socket, &ctrl, &size, WSK_FLAG_WAITALL);
+    if (NT_SUCCESS(status))
     {
-      KM_LOG_INFO("Receiving..\n");
-      status = KsRecv(Clients[clientId].Socket, buffer, &size, WSK_FLAG_WAITALL);
+      switch (ctrl)
+      {
+        case KM_READ_MEMORY_PROCESS:
+        {
+          size = sizeof(READ_MEMORY_PROCESS);
+          READ_MEMORY_PROCESS request = {};
+          status = KsRecv(tcpContext->Socket, &request, &size, WSK_FLAG_WAITALL);
+          if (NT_SUCCESS(status))
+          {
+            KM_LOG_INFO("Received memory read request\n");
+            KM_LOG_INFO("Pid %u\n", request.Pid);
+            KM_LOG_INFO("ImageName %ls\n", request.ImageName);
+            KM_LOG_INFO("Offset %u\n", request.Offset);
+            KM_LOG_INFO("Size %u\n", request.Size);
+            status = KmMemoryReadRequest(tcpContext->Socket, &request);
+          }
+          break;
+        }
+        case KM_WRITE_MEMORY_PROCESS:
+        {
+          size = sizeof(WRITE_MEMORY_PROCESS);
+          WRITE_MEMORY_PROCESS request = {};
+          status = KsRecv(tcpContext->Socket, &request, &size, WSK_FLAG_WAITALL);
+          if (NT_SUCCESS(status))
+          {
+            KM_LOG_INFO("Received memory write request\n");
+            KM_LOG_INFO("Pid %u\n", request.Pid);
+            KM_LOG_INFO("ImageName %ls\n", request.ImageName);
+            KM_LOG_INFO("Offset %u\n", request.Offset);
+            KM_LOG_INFO("Size %u\n", request.Size);
+            status = KmMemoryWriteRequest(tcpContext->Socket, &request);
+          }
+          break;
+        }
+      }
       if (NT_SUCCESS(status))
       {
-        KM_LOG_INFO("Received %u bytes\n", size);
+        KM_LOG_INFO("Handshake successfull\n");
       }
     }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-      KM_LOG_INFO("Something went wrong while receiving\n");
-    }
-    //KM_LOG_INFO("Received %s\n", buffer);
-    //KM_LOG_INFO("Sending\n");
-    //status = KsSend(Clients[clientId].Socket, buffer, &size, 0);
-    KmSleep(5000);
   }
-  KM_LOG_INFO("Closing socket %u\n", clientId);
-  KsCloseSocket(Clients[clientId].Socket);
-  //KeLowerIrql(irql);
-  InterlockedDecrement(&AtomicSessionCount);
-  KM_LOG_INFO("Session count %d\n", AtomicSessionCount);
-  KM_LOG_INFO("Session thread end %u\n", clientId);
+  KsCloseSocket(tcpContext->Socket);
+  PsTerminateSystemThread(status);
 }
-VOID KmListenThread(PVOID context)
+
+/*
+* Entry point.
+*/
+
+NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
-  KM_LOG_INFO("Listening thread begin\n");
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  UNREFERENCED_PARAMETER(regPath);
+  NTSTATUS status = STATUS_SUCCESS;
   status = KsInitialize();
   if (NT_SUCCESS(status))
   {
@@ -443,18 +482,15 @@ VOID KmListenThread(PVOID context)
       if (NT_SUCCESS(status))
       {
         ULONG clientId = 0;
-        KM_LOG_INFO("Listening..\n");
-        while (!Shutdown)
+        while (TRUE)
         {
+          KM_LOG_INFO("Listening..\n");
           status = KsAccept(Server.Socket, &Clients[clientId].Socket, NULL, (PSOCKADDR)&hints);
           if (NT_SUCCESS(status))
           {
-            status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmSessionThread, &clientId);
+            status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmSessionThread, &Clients[clientId]);
             if (NT_SUCCESS(status))
             {
-              InterlockedIncrement(&AtomicSessionCount);
-              KM_LOG_INFO("Session count %d\n", AtomicSessionCount);
-              KM_LOG_INFO("Starting session thread %u\n", clientId);
               clientId++;
             }
             else
@@ -463,75 +499,9 @@ VOID KmListenThread(PVOID context)
             }
           }
         }
-        KM_LOG_INFO("Shutting down..\n");
-        __try
-        {
-          // Use semaphore here instead of while
-          while (AtomicSessionCount > 0)
-          {
-            KM_LOG_INFO("Waiting for sessions to finish their operations\n");
-            KmSleep(1000);
-          }
-          KM_LOG_INFO("Now closing all sockets and threads\n");
-          for (ULONG i = 0; i < clientId; ++i)
-          {
-            KM_LOG_INFO("ZwClose client thread %u\n", i);
-            ZwClose(Clients[i].Thread);
-          }
-          KM_LOG_INFO("All sessions closed\n");
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-          KM_LOG_INFO("Something went wrong\n");
-        }
-      }
-      KM_LOG_INFO("Closing listening socket\n");
-      status = KsCloseSocket(Server.Socket);
-      if (NT_SUCCESS(status))
-      {
-        KM_LOG_INFO("Successfully closed server socket\n");
       }
     }
     KsDestroy();
-  }
-  KM_LOG_INFO("Server shutdown event fired\n");
-  KeSetEvent(&ServerShutdownEvent, IO_NO_INCREMENT, FALSE);
-  KM_LOG_INFO("Listening thread end\n");
-}
-
-/*
-* Entry point.
-*/
-
-VOID DriverUnload(PDRIVER_OBJECT driver)
-{
-  UNREFERENCED_PARAMETER(driver);
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  Shutdown = TRUE;
-  KM_LOG_INFO("Waiting for server to shutdown\n");
-  status = KeWaitForSingleObject(&ServerShutdownEvent, Executive, KernelMode, FALSE, NULL);
-  if (NT_SUCCESS(status))
-  {
-    KM_LOG_INFO("Server shutdown\n");
-  }
-  KM_LOG_INFO("ZwClose listening thread\n");
-  status = ZwClose(Server.Thread);
-  if (NT_SUCCESS(status))
-  {
-    KM_LOG_INFO("Server thread closed \n");
-  }
-  KM_LOG_INFO("KMOD deinitialized\n");
-}
-NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
-{
-  UNREFERENCED_PARAMETER(regPath);
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  driver->DriverUnload = DriverUnload;
-  KeInitializeEvent(&ServerShutdownEvent, SynchronizationEvent, 0);
-  status = PsCreateSystemThread(&Server.Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmListenThread, NULL);
-  if (NT_SUCCESS(status))
-  {
-    KM_LOG_INFO("KMOD initialized\n");
   }
   return status;
 }

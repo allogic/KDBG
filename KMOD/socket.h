@@ -7,7 +7,34 @@
 extern "C" {
 #endif
 
-typedef struct _KSOCKET KSOCKET, *PKSOCKET;
+  //////////////////////////////////////////////////////////////////////////
+  // Structures.
+  //////////////////////////////////////////////////////////////////////////
+
+typedef struct _KSOCKET_ASYNC_CONTEXT
+{
+  KEVENT CompletionEvent;
+  PIRP Irp;
+} KSOCKET_ASYNC_CONTEXT, * PKSOCKET_ASYNC_CONTEXT;
+
+typedef struct _KSOCKET
+{
+  PWSK_SOCKET	WskSocket;
+
+  union
+  {
+    PVOID WskDispatch;
+
+    PWSK_PROVIDER_CONNECTION_DISPATCH WskConnectionDispatch;
+    PWSK_PROVIDER_LISTEN_DISPATCH WskListenDispatch;
+    PWSK_PROVIDER_DATAGRAM_DISPATCH WskDatagramDispatch;
+#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
+    PWSK_PROVIDER_STREAM_DISPATCH WskStreamDispatch;
+#endif
+  };
+
+  KSOCKET_ASYNC_CONTEXT AsyncContext;
+} KSOCKET, * PKSOCKET;
 
 NTSTATUS
 NTAPI
@@ -71,6 +98,12 @@ KsCreateDatagramSocket(
   _In_ ADDRESS_FAMILY AddressFamily,
   _In_ USHORT SocketType,
   _In_ ULONG Protocol
+  );
+
+NTSTATUS
+NTAPI
+KsDisconnect(
+  _In_ PKSOCKET Socket
   );
 
 NTSTATUS

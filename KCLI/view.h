@@ -87,7 +87,7 @@ struct Thread : View
 };
 struct Memory : View
 {
-  REQ_MEMORY_READ Request;
+  PVOID Request;
   SIZE_T Size;
   ULONG Offset;
   std::wstring ImageName;

@@ -7,35 +7,6 @@
 #define MEMORY_TAG            '  sK'
 
 //////////////////////////////////////////////////////////////////////////
-// Structures.
-//////////////////////////////////////////////////////////////////////////
-
-typedef struct _KSOCKET_ASYNC_CONTEXT
-{
-  KEVENT CompletionEvent;
-  PIRP Irp;
-} KSOCKET_ASYNC_CONTEXT, *PKSOCKET_ASYNC_CONTEXT;
-
-typedef struct _KSOCKET
-{
-  PWSK_SOCKET	WskSocket;
-
-  union
-  {
-    PVOID WskDispatch;
-
-    PWSK_PROVIDER_CONNECTION_DISPATCH WskConnectionDispatch;
-    PWSK_PROVIDER_LISTEN_DISPATCH WskListenDispatch;
-    PWSK_PROVIDER_DATAGRAM_DISPATCH WskDatagramDispatch;
-#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
-    PWSK_PROVIDER_STREAM_DISPATCH WskStreamDispatch;
-#endif
-  };
-
-  KSOCKET_ASYNC_CONTEXT AsyncContext;
-} KSOCKET, *PKSOCKET;
-
-//////////////////////////////////////////////////////////////////////////
 // Variables.
 //////////////////////////////////////////////////////////////////////////
 
@@ -240,15 +211,14 @@ KspAsyncContextWaitForCompletionNonBlocking(
     interval.QuadPart = KM_DELAY_ONE_MILLISECOND;
     interval.QuadPart *= Ms;
 
-    *Status = KeWaitForSingleObject(
-      &AsyncContext->CompletionEvent,
-      Executive,
-      KernelMode,
-      FALSE,
-      &interval
-    );
-
-    if (NT_SUCCESS(*Status))
+    if (NT_SUCCESS(
+      KeWaitForSingleObject(
+        &AsyncContext->CompletionEvent,
+        Executive,
+        KernelMode,
+        FALSE,
+        &interval
+        )))
     {
       *Status = AsyncContext->Irp->IoStatus.Status;
     }
@@ -515,6 +485,32 @@ KsCreateDatagramSocket(
   )
 {
   return KsCreateSocket(Socket, AddressFamily, SocketType, Protocol, WSK_FLAG_DATAGRAM_SOCKET);
+}
+
+NTSTATUS
+NTAPI
+KsDisconnect(
+  _In_ PKSOCKET Socket
+  )
+{
+  NTSTATUS Status;
+
+  //
+  // Reset the async context.
+  //
+
+  KspAsyncContextReset(&Socket->AsyncContext);
+
+  Status = Socket->WskConnectionDispatch->WskDisconnect(
+    Socket->WskSocket,
+    NULL,
+    WSK_FLAG_ABORTIVE,
+    Socket->AsyncContext.Irp
+    );
+
+  KspAsyncContextWaitForCompletion(&Socket->AsyncContext, &Status);
+
+  return Status;
 }
 
 NTSTATUS
