@@ -20,10 +20,10 @@ typedef struct _KM_MODULE_KERNEL
   ULONG Size = 0;
 } KM_MODULE_KERNEL, * PKM_MODULE_KERNEL;
 
-typedef struct _KM_THREAD
+typedef struct _KM_THREAD_PROCESS
 {
   ULONG Tid = 0;
   ULONG Pid = 0;
-} KM_THREAD, * PKM_THREAD;
+} KM_THREAD_PROCESS, * PKM_THREAD_PROCESS;
 
 #endif

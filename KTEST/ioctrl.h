@@ -59,6 +59,7 @@ typedef struct _READ_MEMORY_KERNEL
   ULONG Offset = 0;
   ULONG Size = 0;
 } READ_MEMORY_KERNEL, * PREAD_MEMORY_KERNEL;
+
 typedef struct _READ_MODULES_PROCESS
 {
   ULONG Pid = 0;
@@ -68,5 +69,11 @@ typedef struct _READ_MODULES_KERNEL
 {
   ULONG Size = 0;
 } READ_MODULES_KERNEL, * PREAD_MODULES_KERNEL;
+
+typedef struct _READ_THREADS_PROCESS
+{
+  ULONG Pid = 0;
+  ULONG Size = 0;
+} READ_THREADS_PROCESS, * PREAD_THREADS_PROCESS;
 
 #endif

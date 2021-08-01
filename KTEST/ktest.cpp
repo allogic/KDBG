@@ -58,7 +58,7 @@ wmain(
     if (DeviceIoControl(Device, KM_READ_MEMORY_PROCESS, &request, sizeof(request), &response, sizeof(response), 0, 0))
     {
       KC_LOG_INFO("Read memory process\n");
-      for (SIZE_T i = 0; i < sizeof(response); ++i)
+      for (SIZE_T i = 0; i < request.Size; ++i)
       {
         KC_LOG_INFO("%02X\n", response[i]);
       }
@@ -78,7 +78,7 @@ wmain(
     if (DeviceIoControl(Device, KM_READ_MEMORY_KERNEL, &request, sizeof(request), &response, sizeof(response), 0, 0))
     {
       KC_LOG_INFO("Read memory kernel\n");
-      for (SIZE_T i = 0; i < sizeof(response); ++i)
+      for (SIZE_T i = 0; i < request.Size; ++i)
       {
         KC_LOG_INFO("%02X\n", response[i]);
       }
@@ -97,7 +97,7 @@ wmain(
     if (DeviceIoControl(Device, KM_READ_MODULES_PROCESS, &request, sizeof(request), &response, sizeof(response), 0, 0))
     {
       KC_LOG_INFO("Read modules process\n");
-      for (SIZE_T i = 0; i < sizeof(response); ++i)
+      for (SIZE_T i = 0; i < request.Size; ++i)
       {
         KC_LOG_INFO("%ls\n", response[i].Name);
         KC_LOG_INFO("%p\n", (PVOID)response[i].Base);
@@ -117,11 +117,31 @@ wmain(
     if (DeviceIoControl(Device, KM_READ_MODULES_KERNEL, &request, sizeof(request), &response, sizeof(response), 0, 0))
     {
       KC_LOG_INFO("Read modules kernel\n");
-      for (SIZE_T i = 0; i < sizeof(response); ++i)
+      for (SIZE_T i = 0; i < request.Size; ++i)
       {
         KC_LOG_INFO("%s\n", response[i].Name);
         KC_LOG_INFO("%p\n", (PVOID)response[i].Base);
         KC_LOG_INFO("%lu\n", response[i].Size);
+      }
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
+  // Test read threads process
+  {
+    READ_THREADS_PROCESS request;
+    request.Pid = GetProcessIdFromName(L"taskmgr.exe");
+    request.Size = 1;
+
+    KM_THREAD_PROCESS response[1];
+    memset(response, 0, sizeof(response));
+
+    if (DeviceIoControl(Device, KM_READ_THREADS_PROCESS, &request, sizeof(request), &response, sizeof(response), 0, 0))
+    {
+      KC_LOG_INFO("Read threads process\n");
+      for (SIZE_T i = 0; i < request.Size; ++i)
+      {
+        KC_LOG_INFO("%u\n", response[i].Tid);
+        KC_LOG_INFO("%u\n", response[i].Pid);
       }
       KC_LOG_INFO("Test passed\n");
     }
