@@ -1,4 +1,6 @@
 #include "global.h"
+#include "common.h"
+#include "ioctrl.h"
 #include "shell.h"
 #include "socket.h"
 #include "view.h"
