@@ -90,20 +90,20 @@ void Module::Render()
   View::Render();
   USHORT xOff = 1;
   USHORT yOff = 1;
-  for (MODULE& module : Modules)
-  {
-    Console->TextW(X + xOff, Y + yOff, &AddressToHexW(module.Base)[0]);
-    xOff += 19;
-    Console->TextW(X + xOff, Y + yOff, &ULongToDecW((ULONG)module.Size)[0]);
-    xOff += 19;
-    Console->TextW(X + xOff, Y + yOff, module.Name);
-    xOff = 1;
-    yOff += 1;
-    if (yOff >= (H - 1))
-    {
-      break;
-    }
-  }
+  //for (MODULE& module : Modules)
+  //{
+  //  Console->TextW(X + xOff, Y + yOff, &AddressToHexW(module.Base)[0]);
+  //  xOff += 19;
+  //  Console->TextW(X + xOff, Y + yOff, &ULongToDecW((ULONG)module.Size)[0]);
+  //  xOff += 19;
+  //  Console->TextW(X + xOff, Y + yOff, module.Name);
+  //  xOff = 1;
+  //  yOff += 1;
+  //  if (yOff >= (H - 1))
+  //  {
+  //    break;
+  //  }
+  //}
 }
 
 Thread::Thread(
@@ -151,18 +151,18 @@ void Thread::Render()
   View::Render();
   USHORT xOff = 1;
   USHORT yOff = 1;
-  for (THREAD& thread : Threads)
-  {
-    Console->TextW(X + xOff, Y + yOff, &ULongToDecW(thread.Tid)[0]);
-    xOff += 19;
-    Console->TextW(X + xOff, Y + yOff, &ULongToDecW(thread.Pid)[0]);
-    xOff += 19;
-    yOff += 1;
-    if (yOff >= (H - 1))
-    {
-      break;
-    }
-  }
+  //for (THREAD& thread : Threads)
+  //{
+  //  Console->TextW(X + xOff, Y + yOff, &ULongToDecW(thread.Tid)[0]);
+  //  xOff += 19;
+  //  Console->TextW(X + xOff, Y + yOff, &ULongToDecW(thread.Pid)[0]);
+  //  xOff += 19;
+  //  yOff += 1;
+  //  if (yOff >= (H - 1))
+  //  {
+  //    break;
+  //  }
+  //}
 }
 void Thread::Event(INPUT_RECORD& event)
 {

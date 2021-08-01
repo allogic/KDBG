@@ -7,20 +7,23 @@
 * Common request types.
 */
 
-#define KM_MAX_MODULES_KERNEL 128
-#define KM_MAX_MODULES_PROCESS 128
-#define KM_MAX_THREADS_PROCESS 128
-
-typedef struct _MODULE
+typedef struct _KM_MODULE_PROCESS
 {
   WCHAR Name[256] = {};
   ULONG64 Base = 0;
   SIZE_T Size = 0;
-} MODULE, * PMODULE;
-typedef struct _THREAD
+} KM_MODULE_PROCESS, * PKM_MODULE_PROCESS;
+typedef struct _KM_MODULE_KERNEL
+{
+  CHAR Name[256] = {};
+  ULONG64 Base = 0;
+  SIZE_T Size = 0;
+} KM_MODULE_KERNEL, * PKM_MODULE_KERNEL;
+
+typedef struct _KM_THREAD
 {
   ULONG Tid = 0;
   ULONG Pid = 0;
-} THREAD, * PTHREAD;
+} KM_THREAD, * PKM_THREAD;
 
 #endif

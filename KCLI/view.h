@@ -42,7 +42,7 @@ struct View
 
 struct Module : View
 {
-  std::vector<MODULE> Modules = {};
+  //std::vector<MODULE> Modules = {};
   SIZE_T Size = 0;
 
   Module(
@@ -63,7 +63,7 @@ struct Module : View
 };
 struct Thread : View
 {
-  std::vector<THREAD> Threads = {};
+  //std::vector<THREAD> Threads = {};
   SIZE_T Size = 0;
 
   Thread(

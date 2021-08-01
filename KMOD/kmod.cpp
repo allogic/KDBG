@@ -10,69 +10,11 @@
 #include "trace.h"
 
 /*
-* Global driver state.
+* Tmp.
 */
 
-MODULE ModulesKernel[KM_MAX_MODULES_KERNEL] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
-MODULE ModulesProcess[KM_MAX_MODULES_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
-THREAD ThreadsProcess[KM_MAX_THREADS_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
-
-/*
-* Process utilities relative to kernel space.
-*/
-
-NTSTATUS KmFetchProcessModules(ULONG pid)
-{
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PEPROCESS process = NULL;
-  KAPC_STATE apc;
-  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
-  if (NT_SUCCESS(status))
-  {
-    status = STATUS_UNSUCCESSFUL;
-    KeStackAttachProcess(process, &apc);
-    __try
-    {
-      PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
-      if (peb)
-      {
-        memset(ModulesProcess, 0, sizeof(MODULE) * KM_MAX_MODULES_PROCESS);
-        PVOID imageBase = peb->ImageBaseAddress;
-        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
-        PLDR_DATA_TABLE_ENTRY module = NULL;
-        PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
-        PLIST_ENTRY moduleEntry = moduleHead->Flink;
-        ULONG count = 0;
-        while (moduleEntry != moduleHead)
-        {
-          module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-          if (module && module->DllBase)
-          {
-            KmInterlockedMemcpy(&ModulesProcess[count].Base, &module->DllBase, sizeof(ULONG64), KernelMode);
-            KmInterlockedMemcpy(&ModulesProcess[count].Name, module->BaseDllName.Buffer, sizeof(WCHAR) * module->BaseDllName.Length, KernelMode);
-            KmInterlockedMemcpy(&ModulesProcess[count].Size, &module->SizeOfImage, sizeof(ULONG), KernelMode);
-            count++;
-            if (count >= KM_MAX_MODULES_PROCESS)
-            {
-              break;
-            }
-          }
-          moduleEntry = moduleEntry->Flink;
-        }
-        KM_LOG_INFO("Fetched modules\n");
-        status = STATUS_SUCCESS;
-      }
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-      KM_LOG_ERROR("Something went wrong!\n");
-    }
-    KeUnstackDetachProcess(&apc);
-    ObDereferenceObject(process);
-  }
-  return status;
-}
-NTSTATUS KmFetchProcessThreads()
+NTSTATUS
+  KmFetchProcessThreads()
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   ULONG read = 0;
@@ -110,40 +52,85 @@ NTSTATUS KmFetchProcessThreads()
   return status;
 }
 
-NTSTATUS KmGetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer)
+/*
+* Request/Response handlers.
+*/
+
+NTSTATUS
+KmHandleReadMemoryProcess(
+  PREAD_MEMORY_PROCESS request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  PVOID base = NULL;
+  status = KmGetProcessImageBase(request->Pid, request->ImageName, base);
+  if (NT_SUCCESS(status))
+  {
+    status = KmReadMemoryProcess(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, response);
+    if (NT_SUCCESS(status))
+    {
+      KM_LOG_INFO("Read successfull\n");
+    }
+  }
+  return status;
+}
+
+NTSTATUS
+KmHandleReadMemoryKernel(
+  PREAD_MEMORY_KERNEL request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  PVOID base = NULL;
+  status = KmGetKernelImageBase(request->ImageName, base);
+  if (NT_SUCCESS(status))
+  {
+    status = KmReadMemoryKernel((PVOID)((PBYTE)base + request->Offset), request->Size, response);
+    if (NT_SUCCESS(status))
+    {
+      KM_LOG_INFO("Read successfull\n");
+    }
+  }
+  return status;
+}
+
+NTSTATUS
+KmHandleReadModulesProcess(
+  PREAD_MODULES_PROCESS request,
+  PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
   KAPC_STATE apc;
-  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  status = PsLookupProcessByProcessId((HANDLE)request->Pid, &process);
   if (NT_SUCCESS(status))
   {
     status = STATUS_UNSUCCESSFUL;
     KeStackAttachProcess(process, &apc);
-    KM_LOG_INFO("Attached\n");
     __try
     {
       PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
       if (peb)
       {
-        KM_LOG_INFO("Found PEB\n");
         PVOID imageBase = peb->ImageBaseAddress;
-        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
+        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
         PLDR_DATA_TABLE_ENTRY module = NULL;
         PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
         PLIST_ENTRY moduleEntry = moduleHead->Flink;
+        ULONG count = 0;
         while (moduleEntry != moduleHead)
         {
           module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
           KM_LOG_INFO("%ls\n", module->BaseDllName.Buffer);
           if (module && module->DllBase)
           {
-            KmInterlockedMemcpy(&((PMODULE)buffer)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
-            KmInterlockedMemcpy(&((PMODULE)buffer)[count].Size, &module->DllBase, sizeof(SIZE_T), UserMode);
+            KmInterlockedMemcpy(((PKM_MODULE_PROCESS)response)[count].Name, &module->BaseDllName.Buffer, module->BaseDllName.Length, UserMode);
+            KmInterlockedMemcpy(&((PKM_MODULE_PROCESS)response)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
+            KmInterlockedMemcpy(&((PKM_MODULE_PROCESS)response)[count].Size, &module->SizeOfImage, sizeof(SIZE_T), UserMode);
             count++;
             KM_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
             KM_LOG_INFO("value is %p\n");
-            if (count >= size)
+            if (count >= request->Size)
             {
               break;
             }
@@ -163,37 +150,30 @@ NTSTATUS KmGetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer
   return status;
 }
 
-/*
-* Request/Response handlers.
-*/
-
-NTSTATUS KmHandleReadMemoryProcess(PREAD_MEMORY_PROCESS request, PVOID buffer)
+NTSTATUS
+KmHandleReadModulesKernel(
+  PREAD_MODULES_KERNEL request,
+  PVOID response)
 {
   NTSTATUS status = STATUS_SUCCESS;
-  PVOID base = NULL;
-  status = KmGetProcessImageBase(request->Pid, request->ImageName, base);
-  if (NT_SUCCESS(status))
+  PRTL_PROCESS_MODULES images = (PRTL_PROCESS_MODULES)KmAllocateMemory(TRUE, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024);
+  if (images)
   {
-    status = KmReadMemoryProcess(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
+    status = ZwQuerySystemInformation(SystemModuleInformation, images, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024, NULL);
     if (NT_SUCCESS(status))
     {
-      KM_LOG_INFO("Read successfull\n");
+      for (SIZE_T i = 0; i < images[0].NumberOfModules; ++i)
+      {
+        KmInterlockedMemcpy(((PKM_MODULE_KERNEL)response)[i].Name, images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName, strlen((PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName)), KernelMode);
+        KmInterlockedMemcpy(&((PKM_MODULE_KERNEL)response)[i].Base, &images[0].Modules[i].ImageBase, sizeof(ULONG64), KernelMode);
+        KmInterlockedMemcpy(&((PKM_MODULE_KERNEL)response)[i].Size, &images[0].Modules[i].ImageSize, sizeof(ULONG), KernelMode);
+        if (i >= request->Size)
+        {
+          break;
+        }
+      }
     }
-  }
-  return status;
-}
-NTSTATUS KmHandleReadMemoryKernel(PREAD_MEMORY_KERNEL request, PVOID buffer)
-{
-  NTSTATUS status = STATUS_SUCCESS;
-  PVOID base = NULL;
-  status = KmGetKernelImageBase(request->ImageName, base);
-  if (NT_SUCCESS(status))
-  {
-    status = KmReadMemoryKernel((PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
-    if (NT_SUCCESS(status))
-    {
-      KM_LOG_INFO("Read successfull\n");
-    }
+    KmFreeMemory(images);
   }
   return status;
 }
@@ -202,7 +182,10 @@ NTSTATUS KmHandleReadMemoryKernel(PREAD_MEMORY_KERNEL request, PVOID buffer)
 * I/O callbacks.
 */
 
-NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
+NTSTATUS
+OnIrpDflt(
+  PDEVICE_OBJECT device,
+  PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
   irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
@@ -210,7 +193,11 @@ NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;
 }
-NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
+
+NTSTATUS
+OnIrpCreate(
+  PDEVICE_OBJECT device,
+  PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
   irp->IoStatus.Status = STATUS_SUCCESS;
@@ -218,7 +205,11 @@ NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   return irp->IoStatus.Status;
 }
-NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
+
+NTSTATUS
+OnIrpCtrl(
+  PDEVICE_OBJECT device,
+  PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
@@ -242,12 +233,34 @@ NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
       KM_LOG_INFO("End read memory kernel\n");
       break;
     }
+    case KM_READ_MODULES_PROCESS:
+    {
+      KM_LOG_INFO("Begin read modules process\n");
+      READ_MODULES_PROCESS request = *(PREAD_MODULES_PROCESS)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleReadModulesProcess(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(KM_MODULE_PROCESS) * request.Size : 0;
+      KM_LOG_INFO("End read modules process\n");
+      break;
+    }
+    case KM_READ_MODULES_KERNEL:
+    {
+      KM_LOG_INFO("Begin read modules kernel\n");
+      READ_MODULES_KERNEL request = *(PREAD_MODULES_KERNEL)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleReadModulesKernel(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(KM_MODULE_KERNEL) * request.Size : 0;
+      KM_LOG_INFO("End read modules kernel\n");
+      break;
+    }
   }
   IoCompleteRequest(irp, IO_NO_INCREMENT);
   KM_LOG_INFO("========================================\n");
   return irp->IoStatus.Status;
 }
-NTSTATUS OnIrpClose(PDEVICE_OBJECT device, PIRP irp)
+
+NTSTATUS
+OnIrpClose(
+  PDEVICE_OBJECT device,
+  PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
   irp->IoStatus.Status = STATUS_SUCCESS;
@@ -269,7 +282,9 @@ PDEVICE_OBJECT Device = NULL;
 * Entry point.
 */
 
-VOID DriverUnload(PDRIVER_OBJECT driver)
+VOID
+DriverUnload(
+  PDRIVER_OBJECT driver)
 {
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
@@ -279,7 +294,11 @@ VOID DriverUnload(PDRIVER_OBJECT driver)
     KM_LOG_INFO("KMOD deinitialized\n");
   }
 }
-NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
+
+NTSTATUS
+DriverEntry(
+  PDRIVER_OBJECT driver,
+  PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;

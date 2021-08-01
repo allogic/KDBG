@@ -1,5 +1,6 @@
 #include "global.h"
 #include "ioctrl.h"
+#include "common.h"
 
 using namespace std;
 
@@ -43,7 +44,6 @@ wmain(
   PWCHAR argv[])
 {
   Device = CreateFileA("\\\\.\\KMOD", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-
   // Test read memory process
   {
     READ_MEMORY_PROCESS request;
@@ -57,11 +57,12 @@ wmain(
 
     if (DeviceIoControl(Device, KM_READ_MEMORY_PROCESS, &request, sizeof(request), &response, sizeof(response), 0, 0))
     {
-      KC_LOG_INFO("Read process\n");
+      KC_LOG_INFO("Read memory process\n");
       for (SIZE_T i = 0; i < sizeof(response); ++i)
       {
-        KC_LOG_INFO("%u\n", response[i]);
+        KC_LOG_INFO("%02X\n", response[i]);
       }
+      KC_LOG_INFO("Test passed\n");
     }
   }
   // Test read memory kernel
@@ -76,11 +77,53 @@ wmain(
 
     if (DeviceIoControl(Device, KM_READ_MEMORY_KERNEL, &request, sizeof(request), &response, sizeof(response), 0, 0))
     {
-      KC_LOG_INFO("Read kernel\n");
+      KC_LOG_INFO("Read memory kernel\n");
       for (SIZE_T i = 0; i < sizeof(response); ++i)
       {
-        KC_LOG_INFO("%u\n", response[i]);
+        KC_LOG_INFO("%02X\n", response[i]);
       }
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
+  // Test read modules process
+  {
+    READ_MODULES_PROCESS request;
+    request.Pid = GetProcessIdFromName(L"taskmgr.exe");
+    request.Size = 1;
+
+    KM_MODULE_PROCESS response[1];
+    memset(response, 0, sizeof(response));
+
+    if (DeviceIoControl(Device, KM_READ_MODULES_PROCESS, &request, sizeof(request), &response, sizeof(response), 0, 0))
+    {
+      KC_LOG_INFO("Read modules process\n");
+      for (SIZE_T i = 0; i < sizeof(response); ++i)
+      {
+        KC_LOG_INFO("%ls\n", response[i].Name);
+        KC_LOG_INFO("%p\n", (PVOID)response[i].Base);
+        KC_LOG_INFO("%lu\n", response[i].Size);
+      }
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
+  // Test read modules kernel
+  {
+    READ_MODULES_KERNEL request;
+    request.Size = 1;
+
+    KM_MODULE_KERNEL response[1];
+    memset(response, 0, sizeof(response));
+
+    if (DeviceIoControl(Device, KM_READ_MODULES_KERNEL, &request, sizeof(request), &response, sizeof(response), 0, 0))
+    {
+      KC_LOG_INFO("Read modules kernel\n");
+      for (SIZE_T i = 0; i < sizeof(response); ++i)
+      {
+        KC_LOG_INFO("%s\n", response[i].Name);
+        KC_LOG_INFO("%p\n", (PVOID)response[i].Base);
+        KC_LOG_INFO("%lu\n", response[i].Size);
+      }
+      KC_LOG_INFO("Test passed\n");
     }
   }
   return 0;

@@ -28,18 +28,18 @@
 
 typedef struct _WRITE_MEMORY_PROCESS
 {
-  ULONG Pid = NULL;
-  WCHAR ImageName[256];
+  ULONG Pid = 0;
+  WCHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
-  CHAR Bytes[1024];
+  CHAR Bytes[1024] = {};
 } WRITE_MEMORY_PROCESS, * PWRITE_MEMORY_PROCESS;
 typedef struct _WRITE_MEMORY_KERNEL
 {
-  WCHAR ImageName[256];
+  WCHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
-  CHAR Bytes[1024];
+  CHAR Bytes[1024] = {};
 } WRITE_MEMORY_KERNEL, * PWRITE_MEMORY_KERNEL;
 
 /*
@@ -48,16 +48,25 @@ typedef struct _WRITE_MEMORY_KERNEL
 
 typedef struct _READ_MEMORY_PROCESS
 {
-  ULONG Pid = NULL;
-  WCHAR ImageName[256];
+  ULONG Pid = 0;
+  WCHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
 } READ_MEMORY_PROCESS, * PREAD_MEMORY_PROCESS;
 typedef struct _READ_MEMORY_KERNEL
 {
-  CHAR ImageName[256];
+  CHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
 } READ_MEMORY_KERNEL, * PREAD_MEMORY_KERNEL;
+typedef struct _READ_MODULES_PROCESS
+{
+  ULONG Pid = 0;
+  ULONG Size = 0;
+} READ_MODULES_PROCESS, * PREAD_MODULES_PROCESS;
+typedef struct _READ_MODULES_KERNEL
+{
+  ULONG Size = 0;
+} READ_MODULES_KERNEL, * PREAD_MODULES_KERNEL;
 
 #endif
