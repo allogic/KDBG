@@ -124,12 +124,16 @@ KmHandleReadModulesProcess(
           KM_LOG_INFO("%ls\n", module->BaseDllName.Buffer);
           if (module && module->DllBase)
           {
-            KmInterlockedMemcpy(((PKM_MODULE_PROCESS)response)[count].Name, &module->BaseDllName.Buffer, module->BaseDllName.Length, UserMode);
+            KmInterlockedMemcpy(((PKM_MODULE_PROCESS)response)[count].Name, module->BaseDllName.Buffer, module->BaseDllName.Length, UserMode);
             KmInterlockedMemcpy(&((PKM_MODULE_PROCESS)response)[count].Base, &module->DllBase, sizeof(ULONG64), UserMode);
-            KmInterlockedMemcpy(&((PKM_MODULE_PROCESS)response)[count].Size, &module->SizeOfImage, sizeof(SIZE_T), UserMode);
-            count++;
+            KmInterlockedMemcpy(&((PKM_MODULE_PROCESS)response)[count].Size, &module->SizeOfImage, sizeof(ULONG), UserMode);
             KM_LOG_INFO("%llu copied %ls\n", count, module->BaseDllName.Buffer);
-            KM_LOG_INFO("value is %p\n");
+            KM_LOG_INFO("%llu copied %p\n", count, module->DllBase);
+            KM_LOG_INFO("%llu copied %lu\n", count, module->SizeOfImage);
+            KM_LOG_INFO("copied name value is %ls\n", ((PKM_MODULE_PROCESS)response)[count].Name);
+            KM_LOG_INFO("copied base value is %p\n", (PVOID)((PKM_MODULE_PROCESS)response)[count].Base);
+            KM_LOG_INFO("copied size value is %lu\n", ((PKM_MODULE_PROCESS)response)[count].Size);
+            count++;
             if (count >= request->Size)
             {
               break;
@@ -162,15 +166,11 @@ KmHandleReadModulesKernel(
     status = ZwQuerySystemInformation(SystemModuleInformation, images, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024, NULL);
     if (NT_SUCCESS(status))
     {
-      for (SIZE_T i = 0; i < images[0].NumberOfModules; ++i)
+      for (ULONG i = 0; i < min(images[0].NumberOfModules, request->Size); ++i)
       {
-        KmInterlockedMemcpy(((PKM_MODULE_KERNEL)response)[i].Name, images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName, strlen((PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName)), KernelMode);
+        //KmInterlockedMemcpy(((PKM_MODULE_KERNEL)response)[i].Name, images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName, strlen((PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName)), KernelMode);
         KmInterlockedMemcpy(&((PKM_MODULE_KERNEL)response)[i].Base, &images[0].Modules[i].ImageBase, sizeof(ULONG64), KernelMode);
         KmInterlockedMemcpy(&((PKM_MODULE_KERNEL)response)[i].Size, &images[0].Modules[i].ImageSize, sizeof(ULONG), KernelMode);
-        if (i >= request->Size)
-        {
-          break;
-        }
       }
     }
     KmFreeMemory(images);
