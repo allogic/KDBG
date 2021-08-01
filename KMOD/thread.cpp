@@ -1,26 +1,5 @@
 #include "thread.h"
 
-NTSTATUS PsGetContextThread(
-  PETHREAD Thread,
-  PCONTEXT ThreadContext,
-  KPROCESSOR_MODE Mode)
-{
-  return KmGetSystemRoutine<PSGETCONTEXTTHREAD>(L"PsGetContextThread")(
-    Thread,
-    ThreadContext,
-    Mode);
-}
-NTSTATUS PsSetContextThread(
-  PETHREAD Thread,
-  PCONTEXT ThreadContext,
-  KPROCESSOR_MODE Mode)
-{
-  return KmGetSystemRoutine<PSSETCONTEXTTHREAD>(L"PsSetContextThread")(
-    Thread,
-    ThreadContext,
-    Mode);
-}
-
 VOID KmDumpContext(PCONTEXT context)
 {
   KM_LOG_ERROR("Control flags\n");

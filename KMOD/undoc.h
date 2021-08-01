@@ -25,6 +25,10 @@ static FUNCTION KmGetSystemRoutine(PCWCHAR procName)
   return functionPointer;
 }
 
+/*
+* Kernel structs and enums.
+*/
+
 typedef enum _SYSTEM_INFORMATION_CLASS
 {
   SystemBasicInformation = 0,
@@ -148,20 +152,91 @@ typedef struct _SYSTEM_PROCESS_INFORMATION
   LARGE_INTEGER WriteTransferCount;
   LARGE_INTEGER OtherTransferCount;
 } SYSTEM_PROCESS_INFORMATION, * PSYSTEM_PROCESS_INFORMATION;
+typedef struct _PEB_LDR_DATA
+{
+  ULONG Length;
+  BOOLEAN Initialized;
+  PVOID SsHandler;
+  LIST_ENTRY InLoadOrderModuleList;
+  LIST_ENTRY InMemoryOrderModuleList;
+  LIST_ENTRY InInitializationOrderModuleList;
+  PVOID EntryInProgress;
+} PEB_LDR_DATA, * PPEB_LDR_DATA;
+typedef struct _LDR_DATA_TABLE_ENTRY
+{
+  LIST_ENTRY InLoadOrderLinks;
+  LIST_ENTRY InMemoryOrderLinks;
+  CHAR Reserved0[0x10];
+  PVOID DllBase;
+  PVOID EntryPoint;
+  ULONG SizeOfImage;
+  UNICODE_STRING FullDllName;
+  UNICODE_STRING BaseDllName;
+} LDR_DATA_TABLE_ENTRY, * PLDR_DATA_TABLE_ENTRY;
+typedef struct _PEB64 {
+  CHAR Reserved[0x10];
+  PVOID ImageBaseAddress;
+  PPEB_LDR_DATA Ldr;
+} PEB64, * PPEB64;
+typedef struct _SYSTEM_THREAD_INFORMATION
+{
+  LARGE_INTEGER KernelTime;
+  LARGE_INTEGER UserTime;
+  LARGE_INTEGER CreateTime;
+  ULONG WaitTime;
+  PVOID StartAddress;
+  CLIENT_ID ClientId;
+  LONG Priority;
+  LONG BasePriority;
+  ULONG ContextSwitches;
+  ULONG ThreadState;
+  ULONG WaitReason;
+} SYSTEM_THREAD_INFORMATION, * PSYSTEM_THREAD_INFORMATION;
+typedef struct _RTL_PROCESS_MODULE_INFORMATION
+{
+  HANDLE Section;
+  PVOID MappedBase;
+  PVOID ImageBase;
+  ULONG ImageSize;
+  ULONG Flags;
+  USHORT LoadOrderIndex;
+  USHORT InitOrderIndex;
+  USHORT LoadCount;
+  USHORT OffsetToFileName;
+  UCHAR FullPathName[256];
+} RTL_PROCESS_MODULE_INFORMATION, * PRTL_PROCESS_MODULE_INFORMATION;
+typedef struct _RTL_PROCESS_MODULES
+{
+  ULONG NumberOfModules;
+  RTL_PROCESS_MODULE_INFORMATION Modules[1];
+} RTL_PROCESS_MODULES, * PRTL_PROCESS_MODULES;
+
+/*
+* Function pointers.
+*/
 
 typedef NTSTATUS(*ZWQUERYSYSTEMINFORMATION)(
   SYSTEM_INFORMATION_CLASS SystemInformationClass,
   PVOID SystemInformation,
   ULONG SystemInformationLength,
   ULONG* ReturnLength);
-typedef NTSTATUS(*PSGETTHREADCONTEXT)(
+
+typedef NTSTATUS(*PSGETCONTEXTTHREAD)(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode);
-typedef NTSTATUS(*PSSETTHREADCONTEXT)(
+
+typedef NTSTATUS(*PSSETCONTEXTTHREAD)(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode);
+
+typedef PPEB(*PSGETPROCESSPEB)(
+  PEPROCESS Process);
+
+/*
+* Kernel functions.
+*/
 
 NTSTATUS ZwQuerySystemInformation(
   SYSTEM_INFORMATION_CLASS SystemInformationClass,
@@ -173,9 +248,13 @@ NTSTATUS PsGetContextThread(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode);
+
 NTSTATUS PsSetContextThread(
   PETHREAD Thread,
   PCONTEXT ThreadContext,
   KPROCESSOR_MODE Mode);
+
+PPEB PsGetProcessPeb(
+  PEPROCESS process);
 
 #endif

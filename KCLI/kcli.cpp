@@ -2,7 +2,6 @@
 #include "common.h"
 #include "ioctrl.h"
 #include "shell.h"
-#include "socket.h"
 #include "view.h"
 #include "util.h"
 
@@ -20,7 +19,7 @@ using namespace std;
 
 VOID KcReadMemoryProcess(SOCKET socket, ULONG pid, PWCHAR imageName, ULONG offset, ULONG size)
 {
-  CHAR ctrl = (CHAR)KM_READ_MEMORY_PROCESS;
+  CHAR ctrl = (CHAR)0;
   if (send(socket, &ctrl, sizeof(CHAR), 0) > 0)
   {
     READ_MEMORY_PROCESS request = {};
@@ -37,7 +36,7 @@ VOID KcReadMemoryProcess(SOCKET socket, ULONG pid, PWCHAR imageName, ULONG offse
 
 VOID KcWriteMemoryProcess(SOCKET socket, ULONG pid, PWCHAR imageName, ULONG offset, ULONG size, PCHAR bytes)
 {
-  CHAR ctrl = (CHAR)KM_WRITE_MEMORY_PROCESS;
+  CHAR ctrl = (CHAR)0;
   if (send(socket, &ctrl, sizeof(CHAR), 0) > 0)
   {
     WRITE_MEMORY_PROCESS request = {};

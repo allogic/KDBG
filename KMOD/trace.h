@@ -3,7 +3,7 @@
 
 #include "global.h"
 #include "common.h"
-#include "krnl.h"
+#include "undoc.h"
 
 /*
 * Stack frames.
@@ -20,7 +20,16 @@ typedef struct _STACK_FRAME_X64
 * Tracing utilities.
 */
 
-VOID KmTraceContext(HANDLE tid, SIZE_T iterations);
-VOID KmTraceStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations);
+VOID
+KmTraceContext(
+  HANDLE tid,
+  SIZE_T iterations);
+
+VOID
+KmTraceStack(
+  HANDLE pid,
+  HANDLE tid,
+  PWCHAR moduleName,
+  SIZE_T iterations);
 
 #endif

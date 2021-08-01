@@ -47,7 +47,7 @@ wstring AddressToHexW(ULONG64 value)
   return str;
 }
 
-wstring Utf8ToUtf16(std::string const& utf8Str)
+wstring Utf8ToUtf16(string const& utf8Str)
 {
   return wstring_convert<codecvt_utf8_utf16<wchar_t>>{}.from_bytes(utf8Str);
 }

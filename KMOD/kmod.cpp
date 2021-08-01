@@ -1,17 +1,17 @@
 #include "global.h"
 #include "common.h"
 #include "ioctrl.h"
-#include "krnl.h"
+#include "device.h"
+#include "undoc.h"
 #include "pe.h"
+#include "memory.h"
+#include "process.h"
 #include "thread.h"
 #include "trace.h"
-#include "socket.h"
 
 /*
 * Global driver state.
 */
-
-ULONG Pid = 0;
 
 MODULE ModulesKernel[KM_MAX_MODULES_KERNEL] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
 MODULE ModulesProcess[KM_MAX_MODULES_PROCESS] = {}; // Buffer is required in order to copy from process memory to kernel memory to process again.
@@ -21,48 +21,12 @@ THREAD ThreadsProcess[KM_MAX_THREADS_PROCESS] = {}; // Buffer is required in ord
 * Process utilities relative to kernel space.
 */
 
-NTSTATUS KmInterlockedMemcpy(PVOID dst, PVOID src, SIZE_T size, KPROCESSOR_MODE mode)
-{
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PMDL mdl = IoAllocateMdl(src, size, FALSE, FALSE, NULL);
-  if (mdl)
-  {
-    MmProbeAndLockPages(mdl, mode, IoReadAccess);
-    PVOID mappedSrc = MmMapLockedPagesSpecifyCache(mdl, mode, MmNonCached, NULL, FALSE, HighPagePriority);
-    if (mappedSrc)
-    {
-      status = MmProtectMdlSystemAddress(mdl, PAGE_READONLY);
-      if (NT_SUCCESS(status))
-      {
-        __try
-        {
-          memcpy(dst, mappedSrc, size);
-          status = STATUS_SUCCESS;
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-          KM_LOG_INFO("Something went wrong\n");
-        }
-      }
-      MmUnmapLockedPages(mappedSrc, mdl);
-    }
-    MmUnlockPages(mdl);
-  }
-  IoFreeMdl(mdl);
-  return status;
-}
-
-NTSTATUS KmFetchKernelModules()
-{
-  return STATUS_UNSUCCESSFUL;
-}
-
-NTSTATUS KmFetchProcessModules()
+NTSTATUS KmFetchProcessModules(ULONG pid)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
   KAPC_STATE apc;
-  status = PsLookupProcessByProcessId((HANDLE)Pid, &process);
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
   if (NT_SUCCESS(status))
   {
     status = STATUS_UNSUCCESSFUL;
@@ -198,310 +162,137 @@ NTSTATUS KmGetProcessModules(ULONG pid, SIZE_T size, SIZE_T& count, PVOID buffer
   }
   return status;
 }
-NTSTATUS KmGetProcessModuleBase(ULONG pid, PWCHAR name, PVOID& base)
-{
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PEPROCESS process = NULL;
-  KAPC_STATE apc;
-  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
-  if (NT_SUCCESS(status))
-  {
-    status = STATUS_UNSUCCESSFUL;
-    KeStackAttachProcess(process, &apc);
-    __try
-    {
-      PPEB64 peb = (PPEB64)PsGetProcessPeb(process);
-      if (peb)
-      {
-        PVOID imageBase = peb->ImageBaseAddress;
-        PLDR_DATA_TABLE_ENTRY modules = CONTAINING_RECORD(peb->Ldr->InMemoryOrderModuleList.Flink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);;
-        PLDR_DATA_TABLE_ENTRY module = NULL;
-        PLIST_ENTRY moduleHead = modules->InMemoryOrderLinks.Flink;
-        PLIST_ENTRY moduleEntry = moduleHead->Flink;
-        while (moduleEntry != moduleHead)
-        {
-          module = CONTAINING_RECORD(moduleEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-          if (module && module->DllBase)
-          {
-            if (_wcsicmp(name, module->BaseDllName.Buffer) == 0)
-            {
-              break;
-            }
-          }
-          moduleEntry = moduleEntry->Flink;
-        }
-        base = module->DllBase;
-        status = STATUS_SUCCESS;
-        KM_LOG_INFO("Selected module %ls\n", module->BaseDllName.Buffer);
-      }
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-      KM_LOG_ERROR("Something went wrong!\n");
-    }
-    KeUnstackDetachProcess(&apc);
-    ObDereferenceObject(process);
-  }
-  return status;
-}
-
-NTSTATUS KmReadVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
-{
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PEPROCESS process = NULL;
-  KAPC_STATE apc;
-  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
-  if (NT_SUCCESS(status))
-  {
-    status = STATUS_UNSUCCESSFUL;
-    PBYTE asyncBuffer = (PBYTE)KmAllocateMemory(TRUE, size);
-    if (asyncBuffer)
-    {
-      PMDL mdl = IoAllocateMdl(base, size, FALSE, FALSE, NULL);
-      if (mdl)
-      {
-        KeStackAttachProcess(process, &apc);
-        __try
-        {
-          MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
-          PBYTE mappedBuffer = (PBYTE)MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmNonCached, NULL, FALSE, HighPagePriority);
-          if (mappedBuffer)
-          {
-            status = MmProtectMdlSystemAddress(mdl, PAGE_READONLY);
-            if (NT_SUCCESS(status))
-            {
-              status = STATUS_UNSUCCESSFUL;
-              memcpy(asyncBuffer, mappedBuffer, size);
-              KM_LOG_INFO("Copy successfull\n");
-              status = STATUS_SUCCESS;
-            }
-            MmUnmapLockedPages(mappedBuffer, mdl);
-          }
-          MmUnlockPages(mdl);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-          KM_LOG_ERROR("Something went wrong!\n");
-          status = STATUS_UNHANDLED_EXCEPTION;
-        }
-        KeUnstackDetachProcess(&apc);
-        IoFreeMdl(mdl);
-      }
-      memcpy(buffer, asyncBuffer, size);
-      KmFreeMemory(asyncBuffer);
-    }
-    ObDereferenceObject(process);
-  }
-  return status;
-}
-NTSTATUS KmWriteVirtualProcessMemory(ULONG pid, PVOID base, SIZE_T size, PVOID buffer)
-{
-  return STATUS_UNSUCCESSFUL;
-}
 
 /*
 * Request/Response handlers.
 */
 
-/*
-NTSTATUS KmHandleProcessAttachRequest(PREQ_PROCESS_ATTACH req)
+NTSTATUS KmHandleReadMemoryProcess(PREAD_MEMORY_PROCESS request, PVOID buffer)
 {
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  Pid = req->In.Pid;
-  KM_LOG_INFO("Attached to process %u\n", Pid);
-  status = STATUS_SUCCESS;
-  return status;
-}
-NTSTATUS KmHandleProcessModulesRequest(PREQ_PROCESS_MODULES req)
-{
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  if (Pid)
+  NTSTATUS status = STATUS_SUCCESS;
+  PVOID base = NULL;
+  status = KmGetProcessImageBase(request->Pid, request->ImageName, base);
+  if (NT_SUCCESS(status))
   {
-    status = KmFetchProcessModules();
+    status = KmReadMemoryProcess(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
     if (NT_SUCCESS(status))
     {
-      memcpy(req->Out.Buffer, ModulesProcess, sizeof(MODULE) * KM_MAX_MODULES_PROCESS);
+      KM_LOG_INFO("Read successfull\n");
     }
   }
   return status;
 }
-NTSTATUS KmHandleProcessThreadsRequest(PREQ_PROCESS_THREADS req)
+NTSTATUS KmHandleReadMemoryKernel(PREAD_MEMORY_KERNEL request, PVOID buffer)
 {
-  NTSTATUS status = STATUS_UNSUCCESSFUL;
-  if (Pid)
+  NTSTATUS status = STATUS_SUCCESS;
+  PVOID base = NULL;
+  status = KmGetKernelImageBase(request->ImageName, base);
+  if (NT_SUCCESS(status))
   {
-    status = KmFetchProcessThreads();
+    status = KmReadMemoryKernel((PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
     if (NT_SUCCESS(status))
     {
-      memcpy(req->Out.Buffer, ThreadsProcess, sizeof(THREAD) * KM_MAX_THREADS_PROCESS);
+      KM_LOG_INFO("Read successfull\n");
     }
   }
-  return status;
-}
-*/
-
-NTSTATUS KmMemoryReadRequest(PKSOCKET socket, PREAD_MEMORY_PROCESS request)
-{
-  NTSTATUS status = STATUS_SUCCESS;
-  //PVOID base = NULL;
-  //PVOID buffer = KmAllocateMemory(TRUE, request->Size);
-  //status = KmGetProcessModuleBase(request->Pid, request->ImageName, base);
-  //if (NT_SUCCESS(status))
-  //{
-  //  status = KmReadVirtualProcessMemory(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
-  //  if (NT_SUCCESS(status))
-  //  {
-  //    ULONG size = request->Size;
-  //    status = KsSend(socket, buffer, &size, WSK_FLAG_WAITALL);
-  //    if (NT_SUCCESS(status))
-  //    {
-  //
-  //    }
-  //  }
-  //}
-  //KmFreeMemory(buffer);
-  return status;
-}
-NTSTATUS KmMemoryWriteRequest(PKSOCKET socket, PWRITE_MEMORY_PROCESS request)
-{
-  NTSTATUS status = STATUS_SUCCESS;
-  //PVOID base = NULL;
-  //PVOID buffer = KmAllocateMemory(TRUE, request->Size);
-  //status = KmGetProcessModuleBase(request->Pid, request->ImageName, base);
-  //if (NT_SUCCESS(status))
-  //{
-  //  status = KmReadVirtualProcessMemory(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, buffer);
-  //  if (NT_SUCCESS(status))
-  //  {
-  //    ULONG size = request->Size;
-  //    status = KsSend(socket, buffer, &size, WSK_FLAG_WAITALL);
-  //    if (NT_SUCCESS(status))
-  //    {
-  //
-  //    }
-  //  }
-  //}
-  //KmFreeMemory(buffer);
   return status;
 }
 
 /*
-* Communication socket.
+* I/O callbacks.
 */
 
-#define KM_MAX_TCP_SESSIONS 128
-
-typedef struct _TCP_CONTEXT
+NTSTATUS OnIrpDflt(PDEVICE_OBJECT device, PIRP irp)
 {
-  PKSOCKET Socket = NULL;
-  HANDLE Thread = NULL;
-} TCP_CONTEXT, * PTCP_CONTEXT;
-
-TCP_CONTEXT Server = {};
-TCP_CONTEXT Clients[KM_MAX_TCP_SESSIONS] = {};
-
-VOID KmSessionThread(PVOID context)
+  UNREFERENCED_PARAMETER(device);
+  irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
+  irp->IoStatus.Information = 0;
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
+NTSTATUS OnIrpCreate(PDEVICE_OBJECT device, PIRP irp)
 {
-  PTCP_CONTEXT tcpContext = (PTCP_CONTEXT)context;
-  KM_LOG_INFO("Session thread begin\n");
-  NTSTATUS status = STATUS_SUCCESS;
-  ULONG size = 0;
-  CHAR ctrl = 0;
-  while (TRUE)
+  UNREFERENCED_PARAMETER(device);
+  irp->IoStatus.Status = STATUS_SUCCESS;
+  irp->IoStatus.Information = 0;
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
+NTSTATUS OnIrpCtrl(PDEVICE_OBJECT device, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(device);
+  PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
+  switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
-    status = STATUS_UNSUCCESSFUL;
-    size = sizeof(CHAR);
-    ctrl = 0;
-    status = KsRecv(tcpContext->Socket, &ctrl, &size, WSK_FLAG_WAITALL);
-    if (NT_SUCCESS(status))
+    case KM_READ_MEMORY_PROCESS:
     {
-      switch (ctrl)
-      {
-        case KM_READ_MEMORY_PROCESS:
-        {
-          size = sizeof(READ_MEMORY_PROCESS);
-          READ_MEMORY_PROCESS request = {};
-          status = KsRecv(tcpContext->Socket, &request, &size, WSK_FLAG_WAITALL);
-          if (NT_SUCCESS(status))
-          {
-            KM_LOG_INFO("Received memory read request\n");
-            KM_LOG_INFO("Pid %u\n", request.Pid);
-            KM_LOG_INFO("ImageName %ls\n", request.ImageName);
-            KM_LOG_INFO("Offset %u\n", request.Offset);
-            KM_LOG_INFO("Size %u\n", request.Size);
-            status = KmMemoryReadRequest(tcpContext->Socket, &request);
-          }
-          break;
-        }
-        case KM_WRITE_MEMORY_PROCESS:
-        {
-          size = sizeof(WRITE_MEMORY_PROCESS);
-          WRITE_MEMORY_PROCESS request = {};
-          status = KsRecv(tcpContext->Socket, &request, &size, WSK_FLAG_WAITALL);
-          if (NT_SUCCESS(status))
-          {
-            KM_LOG_INFO("Received memory write request\n");
-            KM_LOG_INFO("Pid %u\n", request.Pid);
-            KM_LOG_INFO("ImageName %ls\n", request.ImageName);
-            KM_LOG_INFO("Offset %u\n", request.Offset);
-            KM_LOG_INFO("Size %u\n", request.Size);
-            status = KmMemoryWriteRequest(tcpContext->Socket, &request);
-          }
-          break;
-        }
-      }
-      if (NT_SUCCESS(status))
-      {
-        KM_LOG_INFO("Handshake successfull\n");
-      }
+      KM_LOG_INFO("Begin read memory process\n");
+      READ_MEMORY_PROCESS request = *(PREAD_MEMORY_PROCESS)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleReadMemoryProcess(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? request.Size : 0;
+      KM_LOG_INFO("End read memory process\n");
+      break;
+    }
+    case KM_READ_MEMORY_KERNEL:
+    {
+      KM_LOG_INFO("Begin read memory kernel\n");
+      READ_MEMORY_KERNEL request = *(PREAD_MEMORY_KERNEL)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleReadMemoryKernel(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? request.Size : 0;
+      KM_LOG_INFO("End read memory kernel\n");
+      break;
     }
   }
-  KsCloseSocket(tcpContext->Socket);
-  PsTerminateSystemThread(status);
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  KM_LOG_INFO("========================================\n");
+  return irp->IoStatus.Status;
 }
+NTSTATUS OnIrpClose(PDEVICE_OBJECT device, PIRP irp)
+{
+  UNREFERENCED_PARAMETER(device);
+  irp->IoStatus.Status = STATUS_SUCCESS;
+  irp->IoStatus.Information = 0;
+  IoCompleteRequest(irp, IO_NO_INCREMENT);
+  return irp->IoStatus.Status;
+}
+
+/*
+* I/O communication device.
+*/
+
+PDEVICE_OBJECT Device = NULL;
+
+#define KMOD_DEVICE_NAME L"\\Device\\KMOD"
+#define KMOD_DEVICE_SYMBOL_NAME L"\\DosDevices\\KMOD"
 
 /*
 * Entry point.
 */
 
+VOID DriverUnload(PDRIVER_OBJECT driver)
+{
+  UNREFERENCED_PARAMETER(driver);
+  NTSTATUS status = STATUS_SUCCESS;
+  status = DeleteDevice(Device, KMOD_DEVICE_SYMBOL_NAME);
+  if (NT_SUCCESS(status))
+  {
+    KM_LOG_INFO("KMOD deinitialized\n");
+  }
+}
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING regPath)
 {
   UNREFERENCED_PARAMETER(regPath);
   NTSTATUS status = STATUS_SUCCESS;
-  status = KsInitialize();
+  driver->DriverUnload = DriverUnload;
+  for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; ++i)
+    driver->MajorFunction[i] = OnIrpDflt;
+  driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
+  driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
+  driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
+  status = CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
   if (NT_SUCCESS(status))
   {
-    status = KsCreateListenSocket(&Server.Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (NT_SUCCESS(status))
-    {
-      SOCKADDR_IN hints = {};
-      hints.sin_family = AF_INET;
-      hints.sin_addr.s_addr = INADDR_ANY;
-      hints.sin_port = RtlUshortByteSwap(9095);
-      status = KsBind(Server.Socket, (PSOCKADDR)&hints);
-      if (NT_SUCCESS(status))
-      {
-        ULONG clientId = 0;
-        while (TRUE)
-        {
-          KM_LOG_INFO("Listening..\n");
-          status = KsAccept(Server.Socket, &Clients[clientId].Socket, NULL, (PSOCKADDR)&hints);
-          if (NT_SUCCESS(status))
-          {
-            status = PsCreateSystemThread(&Clients[clientId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmSessionThread, &Clients[clientId]);
-            if (NT_SUCCESS(status))
-            {
-              clientId++;
-            }
-            else
-            {
-              KsCloseSocket(Clients[clientId].Socket);
-            }
-          }
-        }
-      }
-    }
-    KsDestroy();
+    KM_LOG_INFO("KMOD initialized\n");
   }
   return status;
 }
