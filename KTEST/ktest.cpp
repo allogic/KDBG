@@ -178,5 +178,28 @@ wmain(
       KC_LOG_INFO("Test passed\n");
     }
   }
+  // Test debug breakpoint set
+  {
+    DEBUG_BREAKPOINT_SET request;
+    request.Base = 0;
+    request.Type = DEBUG_BREAKPOINT_SET::Software;
+
+    if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_SET, &request, sizeof(request), 0, 0, 0, 0))
+    {
+      KC_LOG_INFO("Debug breakpoint set\n");
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
+  // Test debug breakpoint rem
+  {
+    DEBUG_BREAKPOINT_REM request;
+    request.Base = 0;
+
+    if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_REM, &request, sizeof(request), 0, 0, 0, 0))
+    {
+      KC_LOG_INFO("Debug breakpoint rem\n");
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
   return 0;
 }

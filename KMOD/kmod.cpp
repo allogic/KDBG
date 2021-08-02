@@ -253,6 +253,24 @@ KmHandleTraceContextStop(
   return status;
 }
 
+NTSTATUS
+KmHandleDebugBreakpointSet(
+  PDEBUG_BREAKPOINT_SET request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
+NTSTATUS
+KmHandleDebugBreakpointRem(
+  PDEBUG_BREAKPOINT_REM request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
 /*
 * I/O callbacks.
 */
@@ -287,6 +305,7 @@ OnIrpCtrl(
   PIRP irp)
 {
   UNREFERENCED_PARAMETER(device);
+  KM_LOG_ENTER_FUNCTION(::, OnIrpCtrl);
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
@@ -353,9 +372,27 @@ OnIrpCtrl(
       KM_LOG_INFO("End read thread process\n");
       break;
     }
+    case KM_DEBUG_BREAKPOINT_SET:
+    {
+      KM_LOG_INFO("Begin debug breakpoint set\n");
+      DEBUG_BREAKPOINT_SET request = *(PDEBUG_BREAKPOINT_SET)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleDebugBreakpointSet(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+      KM_LOG_INFO("End debug breakpoint set\n");
+      break;
+    }
+    case KM_DEBUG_BREAKPOINT_REM:
+    {
+      KM_LOG_INFO("Begin debug breakpoint rem\n");
+      DEBUG_BREAKPOINT_REM request = *(PDEBUG_BREAKPOINT_REM)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleDebugBreakpointRem(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+      KM_LOG_INFO("End debug breakpoint rem\n");
+      break;
+    }
   }
   IoCompleteRequest(irp, IO_NO_INCREMENT);
-  KM_LOG_INFO("========================================\n");
+  KM_LOG_EXIT_FUNCTION(::, OnIrpCtrl);
   return irp->IoStatus.Status;
 }
 
