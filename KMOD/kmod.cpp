@@ -10,6 +10,35 @@
 #include "trace.h"
 
 /*
+* Trace utilities.
+*/
+
+typedef struct _TRACE_CONTEXT
+{
+  HANDLE Thread = NULL;
+  ULONG Id = 0;
+  BOOL Running = TRUE;
+  KEVENT Event = {};
+  ULONG64 Opcodes[64] = {};
+} TRACE_CONTEXT, * PTRACE_CONTEXT;
+
+ULONG TraceId = 0;
+TRACE_CONTEXT TraceContexts[64] = {};
+
+VOID TraceThread(PVOID context)
+{
+  PTRACE_CONTEXT traceContext = (PTRACE_CONTEXT)context;
+  ULONG count = 0;
+  while (traceContext->Running)
+  {
+    traceContext->Opcodes[count++ % 64] = count;
+    KM_LOG_INFO("Tracing..\n");
+    KmSleep(1000);
+  }
+  KeSetEvent(&traceContext->Event, IO_NO_INCREMENT, FALSE);
+}
+
+/*
 * Request/Response handlers.
 */
 
@@ -187,6 +216,43 @@ KmHandleReadThreadsProcess(
   return status;
 }
 
+NTSTATUS
+KmHandleTraceContextStart(
+  PTRACE_CONTEXT_START request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  status = PsCreateSystemThread(&TraceContexts[TraceId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, TraceThread, &TraceContexts[TraceId]);
+  if (NT_SUCCESS(status))
+  {
+    KeInitializeEvent(&TraceContexts[TraceId].Event, SynchronizationEvent, FALSE);
+    KM_LOG_INFO("Trace thread started\n");
+    *(PULONG)response = TraceId++;
+  }
+  return status;
+}
+
+NTSTATUS
+KmHandleTraceContextStop(
+  PTRACE_CONTEXT_STOP request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  TraceContexts[request->Id].Running = FALSE;
+  status = KeWaitForSingleObject(&TraceContexts[request->Id].Event, Executive, KernelMode, FALSE, NULL);
+  if (NT_SUCCESS(status))
+  {
+    status = ZwClose(TraceContexts[request->Id].Thread);
+    if (NT_SUCCESS(status))
+    {
+      memcpy(response, TraceContexts[request->Id].Opcodes, sizeof(TraceContexts[request->Id].Opcodes));
+      memset(&TraceContexts[request->Id], 0, sizeof(TraceContexts[request->Id]));
+      KM_LOG_INFO("Trace thread stoped\n");
+    }
+  }
+  return status;
+}
+
 /*
 * I/O callbacks.
 */
@@ -266,6 +332,24 @@ OnIrpCtrl(
       READ_THREADS_PROCESS request = *(PREAD_THREADS_PROCESS)irp->AssociatedIrp.SystemBuffer;
       irp->IoStatus.Status = KmHandleReadThreadsProcess(&request, irp->AssociatedIrp.SystemBuffer);
       irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(KM_THREAD_PROCESS) * request.Size : 0;
+      KM_LOG_INFO("End read thread process\n");
+      break;
+    }
+    case KM_TRACE_CONTEXT_START:
+    {
+      KM_LOG_INFO("Begin read thread process\n");
+      TRACE_CONTEXT_START request = *(PTRACE_CONTEXT_START)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleTraceContextStart(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(ULONG) : 0;
+      KM_LOG_INFO("End read thread process\n");
+      break;
+    }
+    case KM_TRACE_CONTEXT_STOP:
+    {
+      KM_LOG_INFO("Begin read thread process\n");
+      TRACE_CONTEXT_STOP request = *(PTRACE_CONTEXT_STOP)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleTraceContextStop(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(ULONG64) * 64 : 0;
       KM_LOG_INFO("End read thread process\n");
       break;
     }

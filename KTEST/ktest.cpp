@@ -146,5 +146,37 @@ wmain(
       KC_LOG_INFO("Test passed\n");
     }
   }
+  // Test trace context start
+  {
+    TRACE_CONTEXT_START request;
+    request.Address = 0;
+
+    ULONG response = 0;
+
+    if (DeviceIoControl(Device, KM_TRACE_CONTEXT_START, &request, sizeof(request), &response, sizeof(response), 0, 0))
+    {
+      KC_LOG_INFO("Start trace context\n");
+      KC_LOG_INFO("Trace started with id %u\n", response);
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
+  // Test trace context stop
+  {
+    TRACE_CONTEXT_STOP request;
+    request.Id = 0;
+
+    ULONG64 response[64];
+    memset(response, 0, sizeof(response));
+
+    if (DeviceIoControl(Device, KM_TRACE_CONTEXT_STOP, &request, sizeof(request), &response, sizeof(response), 0, 0))
+    {
+      KC_LOG_INFO("Stop trace context\n");
+      for (ULONG i = 0; i < 64; ++i)
+      {
+        KC_LOG_INFO("Found opcode %llu\n", response[i]);
+      }
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
   return 0;
 }
