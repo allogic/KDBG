@@ -44,6 +44,35 @@ wmain(
   PWCHAR argv[])
 {
   Device = CreateFileA("\\\\.\\KMOD", GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  // Test write memory process
+  {
+    WRITE_MEMORY_PROCESS request;
+    request.Pid = GetProcessIdFromName(L"taskmgr.exe");
+    wcscpy_s(request.ImageName, L"taskmgr.exe");
+    request.Offset = 0;
+    request.Size = 1;
+    memset(request.Bytes, 90, sizeof(request.Bytes));
+
+    if (DeviceIoControl(Device, KM_WRITE_MEMORY_PROCESS, &request, sizeof(request), 0, 0, 0, 0))
+    {
+      KC_LOG_INFO("Write memory process\n");
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
+  // Test write memory kernel
+  {
+    WRITE_MEMORY_KERNEL request;
+    wcscpy_s(request.ImageName, L"ntoskrnl.exe");
+    request.Offset = 0;
+    request.Size = 1;
+    memset(request.Bytes, 90, sizeof(request.Bytes));
+
+    if (DeviceIoControl(Device, KM_WRITE_MEMORY_KERNEL, &request, sizeof(request), 0, 0, 0, 0))
+    {
+      KC_LOG_INFO("Write memory kernel\n");
+      KC_LOG_INFO("Test passed\n");
+    }
+  }
   // Test read memory process
   {
     READ_MEMORY_PROCESS request;

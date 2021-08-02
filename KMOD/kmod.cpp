@@ -25,7 +25,9 @@ typedef struct _TRACE_CONTEXT
 ULONG TraceId = 0;
 TRACE_CONTEXT TraceContexts[64] = {};
 
-VOID TraceThread(PVOID context)
+VOID
+KmTraceThread(
+  PVOID context)
 {
   PTRACE_CONTEXT traceContext = (PTRACE_CONTEXT)context;
   ULONG count = 0;
@@ -39,7 +41,29 @@ VOID TraceThread(PVOID context)
 }
 
 /*
-* Request/Response handlers.
+* Write request/response handlers.
+*/
+
+NTSTATUS
+KmHandleWriteMemoryProcess(
+  PWRITE_MEMORY_PROCESS request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
+NTSTATUS
+KmHandleWriteMemoryKernel(
+  PWRITE_MEMORY_KERNEL request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
+/*
+* Read request/response handlers.
 */
 
 NTSTATUS
@@ -216,13 +240,17 @@ KmHandleReadThreadsProcess(
   return status;
 }
 
+/*
+* Trace request/response handlers.
+*/
+
 NTSTATUS
 KmHandleTraceContextStart(
   PTRACE_CONTEXT_START request,
   PVOID response)
 {
   NTSTATUS status = STATUS_SUCCESS;
-  status = PsCreateSystemThread(&TraceContexts[TraceId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, TraceThread, &TraceContexts[TraceId]);
+  status = PsCreateSystemThread(&TraceContexts[TraceId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmTraceThread, &TraceContexts[TraceId]);
   if (NT_SUCCESS(status))
   {
     KeInitializeEvent(&TraceContexts[TraceId].Event, SynchronizationEvent, FALSE);
@@ -252,6 +280,10 @@ KmHandleTraceContextStop(
   }
   return status;
 }
+
+/*
+* Debug request/response handlers.
+*/
 
 NTSTATUS
 KmHandleDebugBreakpointSet(
@@ -309,6 +341,24 @@ OnIrpCtrl(
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
   switch (stack->Parameters.DeviceIoControl.IoControlCode)
   {
+    case KM_WRITE_MEMORY_PROCESS:
+    {
+      KM_LOG_INFO("Begin write memory process\n");
+      WRITE_MEMORY_PROCESS request = *(PWRITE_MEMORY_PROCESS)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleWriteMemoryProcess(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+      KM_LOG_INFO("End write memory process\n");
+      break;
+    }
+    case KM_WRITE_MEMORY_KERNEL:
+    {
+      KM_LOG_INFO("Begin write memory kernel\n");
+      WRITE_MEMORY_KERNEL request = *(PWRITE_MEMORY_KERNEL)irp->AssociatedIrp.SystemBuffer;
+      irp->IoStatus.Status = KmHandleWriteMemoryKernel(&request, irp->AssociatedIrp.SystemBuffer);
+      irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+      KM_LOG_INFO("End write memory kernel\n");
+      break;
+    }
     case KM_READ_MEMORY_PROCESS:
     {
       KM_LOG_INFO("Begin read memory process\n");
