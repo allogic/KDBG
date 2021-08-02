@@ -10,6 +10,15 @@
 #include "trace.h"
 
 /*
+* Hints:
+*  - https://github.com/ReClassNET/ReClass.NET/blob/master/NativeCore/Windows/Debugger.cpp
+*  - https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-debug_event
+*  - https://docs.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent
+*  - https://cpp.hotexamples.com/de/examples/-/-/GetThreadContext/cpp-getthreadcontext-function-examples.html
+*  - https://cpp.hotexamples.com/examples/-/ThreadContext/-/cpp-threadcontext-class-examples.html
+*/
+
+/*
 * Trace utilities.
 */
 
