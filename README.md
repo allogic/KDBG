@@ -34,6 +34,7 @@ Example: `.\KCLI.exe /WriteMemoryProcess taskmgr.exe taskmgr.exe 40000 3 909090`
 
 ### WriteMemoryKernel
 Syntax: `.\KCLI.exe /WriteMemoryKernel [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`
+
 Example: `.\KCLI.exe /WriteMemoryKernel ntoskrnl.exe 40000 3 909090`
 
 ### ReadMemoryProcess
