@@ -35,6 +35,7 @@ wmain(
       HexToBytesW(request.Bytes, argv[6]);
 
       DeviceIoControl(Device, KM_WRITE_MEMORY_PROCESS, &request, sizeof(request), 0, 0, 0, 0);
+      printf("\n");
     }
     if (_wcsicmp(L"/WriteMemoryKernel", argv[1]) == 0)
     {
@@ -45,6 +46,7 @@ wmain(
       HexToBytesW(request.Bytes, argv[5]);
 
       DeviceIoControl(Device, KM_WRITE_MEMORY_KERNEL, &request, sizeof(request), 0, 0, 0, 0);
+      printf("\n");
     }
     // Read API
     if (_wcsicmp(L"/ReadMemoryProcess", argv[1]) == 0)
@@ -59,6 +61,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_READ_MEMORY_PROCESS, &request, sizeof(request), response, sizeof(BYTE) * request.Size, 0, 0))
       {
+        printf("\n");
         printf("0x%08X ", request.Offset);
         for (ULONG i = 0; i < request.Size; i++)
         {
@@ -67,8 +70,8 @@ wmain(
             printf("\n0x%08X ", request.Offset + (ULONG)i);
         }
         printf("\n\n");
-
         DisassembleBytes(response, request.Size, request.Offset);
+        printf("\n");
       }
 
       free(response);
@@ -84,6 +87,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_READ_MEMORY_KERNEL, &request, sizeof(request), response, sizeof(BYTE) * request.Size, 0, 0))
       {
+        printf("\n");
         printf("0x%08X ", request.Offset);
         for (ULONG i = 0; i < request.Size; i++)
         {
@@ -92,8 +96,8 @@ wmain(
             printf("\n0x%08X ", request.Offset + (ULONG)i);
         }
         printf("\n\n");
-
         DisassembleBytes(response, request.Size, request.Offset);
+        printf("\n");
       }
 
       free(response);
@@ -108,7 +112,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_READ_MODULES_PROCESS, &request, sizeof(request), response, sizeof(KM_MODULE_PROCESS) * request.Size, 0, 0))
       {
-        printf("----------------------------------------------------------------\n");
+        printf("\n");
         printf("  Start            End                    Size Name\n");
         printf("----------------------------------------------------------------\n");
         for (ULONG i = 0; i < request.Size; ++i)
@@ -119,6 +123,7 @@ wmain(
             response[i].Size,
             response[i].Name);
         }
+        printf("\n");
       }
 
       free(response);
@@ -132,7 +137,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_READ_MODULES_KERNEL, &request, sizeof(request), response, sizeof(KM_MODULE_KERNEL) * request.Size, 0, 0))
       {
-        printf("----------------------------------------------------------------\n");
+        printf("\n");
         printf("  Start            End                    Size Name\n");
         printf("----------------------------------------------------------------\n");
         for (ULONG i = 0; i < request.Size; ++i)
@@ -143,6 +148,7 @@ wmain(
             response[i].Size,
             response[i].Name);
         }
+        printf("\n");
       }
 
       free(response);
@@ -157,7 +163,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_READ_THREADS_PROCESS, &request, sizeof(request), response, sizeof(KM_THREAD_PROCESS) * request.Size, 0, 0))
       {
-        printf("----------------------------------------------------------------\n");
+        printf("\n");
         printf("  Pid Tid\n");
         printf("----------------------------------------------------------------\n");
         for (ULONG i = 0; i < request.Size; ++i)
@@ -166,6 +172,7 @@ wmain(
             response[i].Pid,
             response[i].Tid);
         }
+        printf("\n");
       }
 
       free(response);
@@ -174,7 +181,7 @@ wmain(
     if (_wcsicmp(L"/TraceContextStart", argv[1]) == 0)
     {
       TRACE_CONTEXT_START request = {};
-      request.Address = wcstoul(argv[2], NULL, 10);
+      request.Address = wcstoul(argv[2], NULL, 16);
 
       if (DeviceIoControl(Device, KM_TRACE_CONTEXT_START, &request, sizeof(request), 0, 0, 0, 0))
       {
@@ -195,7 +202,7 @@ wmain(
     if (_wcsicmp(L"/DebugBreakpointSet", argv[1]) == 0)
     {
       DEBUG_BREAKPOINT_SET request = {};
-      request.Base = wcstoul(argv[2], NULL, 10);
+      request.Base = wcstoul(argv[2], NULL, 16);
       request.Type = (DEBUG_BREAKPOINT_SET::TYPE)wcstoul(argv[3], NULL, 10);
 
       if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_SET, &request, sizeof(request), 0, 0, 0, 0))
@@ -206,7 +213,7 @@ wmain(
     if (_wcsicmp(L"/DebugBreakpointRem", argv[1]) == 0)
     {
       DEBUG_BREAKPOINT_REM request = {};
-      request.Base = wcstoul(argv[2], NULL, 10);
+      request.Base = wcstoul(argv[2], NULL, 16);
 
       if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_REM, &request, sizeof(request), 0, 0, 0, 0))
       {
