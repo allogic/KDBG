@@ -64,7 +64,7 @@ KmGetKernelImageBase(
     status = ZwQuerySystemInformation(SystemModuleInformation, images, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024, NULL);
     if (NT_SUCCESS(status))
     {
-      for (SIZE_T i = 0; i < images[0].NumberOfModules; ++i)
+      for (ULONG i = 0; i < images[0].NumberOfModules; ++i)
       {
         if (_stricmp(imageName, (PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName)) == 0)
         {

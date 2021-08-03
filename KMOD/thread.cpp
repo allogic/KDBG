@@ -3,8 +3,8 @@
 VOID KmDumpContext(PCONTEXT context)
 {
   KM_LOG_ERROR("Control flags\n");
-  KM_LOG_ERROR("ContextFlags: %u\n", context->ContextFlags);
-  KM_LOG_ERROR("MxCsr: %u\n", context->MxCsr);
+  KM_LOG_ERROR("ContextFlags: %lu\n", context->ContextFlags);
+  KM_LOG_ERROR("MxCsr: %lu\n", context->MxCsr);
   KM_LOG_ERROR("\n");
   KM_LOG_ERROR("Segment registers and processor flags\n");
   KM_LOG_ERROR("SegCs: %u\n", context->SegCs);
@@ -13,7 +13,7 @@ VOID KmDumpContext(PCONTEXT context)
   KM_LOG_ERROR("SegFs: %u\n", context->SegFs);
   KM_LOG_ERROR("SegGs: %u\n", context->SegGs);
   KM_LOG_ERROR("SegSs: %u\n", context->SegSs);
-  KM_LOG_ERROR("EFlags: %u\n", context->EFlags);
+  KM_LOG_ERROR("EFlags: %lu\n", context->EFlags);
   KM_LOG_ERROR("\n");
   KM_LOG_ERROR("Debug registers\n");
   KM_LOG_ERROR("Dr0: %llu\n", context->Dr0);

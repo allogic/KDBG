@@ -50,7 +50,7 @@ typedef struct _WRITE_MEMORY_PROCESS
 } WRITE_MEMORY_PROCESS, * PWRITE_MEMORY_PROCESS;
 typedef struct _WRITE_MEMORY_KERNEL
 {
-  WCHAR ImageName[256] = {};
+  CHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
   BYTE Bytes[1024] = {};
@@ -110,7 +110,7 @@ typedef struct _TRACE_CONTEXT_STOP
 typedef struct _DEBUG_BREAKPOINT_SET
 {
   ULONG64 Base = 0;
-  enum
+  enum TYPE
   {
     Software,
     Hardware,

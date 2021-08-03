@@ -37,6 +37,61 @@ KmInterlockedMemcpy(
 }
 
 NTSTATUS
+KmWriteMemoryProcess(
+  ULONG pid,
+  PVOID base,
+  SIZE_T size,
+  PVOID buffer)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PEPROCESS process = NULL;
+  KAPC_STATE apc;
+  status = PsLookupProcessByProcessId((HANDLE)pid, &process);
+  if (NT_SUCCESS(status))
+  {
+    status = STATUS_UNSUCCESSFUL;
+    PMDL mdl = IoAllocateMdl(base, size, FALSE, FALSE, NULL);
+    if (mdl)
+    {
+      KeStackAttachProcess(process, &apc);
+      __try
+      {
+        MmProbeAndLockPages(mdl, KernelMode, IoReadAccess);
+        PBYTE mappedBuffer = (PBYTE)MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmNonCached, NULL, FALSE, HighPagePriority);
+        if (mappedBuffer)
+        {
+          status = MmProtectMdlSystemAddress(mdl, PAGE_READWRITE);
+          if (NT_SUCCESS(status))
+          {
+            memcpy(mappedBuffer, buffer, size);
+          }
+          MmUnmapLockedPages(mappedBuffer, mdl);
+        }
+        MmUnlockPages(mdl);
+      }
+      __except (EXCEPTION_EXECUTE_HANDLER)
+      {
+        KM_LOG_ERROR("Something went wrong!\n");
+        status = STATUS_UNHANDLED_EXCEPTION;
+      }
+      KeUnstackDetachProcess(&apc);
+      IoFreeMdl(mdl);
+    }
+    ObDereferenceObject(process);
+  }
+  return status;
+}
+
+NTSTATUS
+KmWriteMemoryKernel(
+  PVOID base,
+  SIZE_T size,
+  PVOID buffer)
+{
+  return KmInterlockedMemcpy(base, buffer, size, KernelMode);
+}
+
+NTSTATUS
 KmReadMemoryProcess(
   ULONG pid,
   PVOID base,
@@ -89,29 +144,10 @@ KmReadMemoryProcess(
 }
 
 NTSTATUS
-KmWriteMemoryProcess(
-  ULONG pid,
-  PVOID base,
-  SIZE_T size,
-  PVOID buffer)
-{
-  return STATUS_UNSUCCESSFUL;
-}
-
-NTSTATUS
 KmReadMemoryKernel(
   PVOID base,
   SIZE_T size,
   PVOID buffer)
 {
   return KmInterlockedMemcpy(buffer, base, size, KernelMode);
-}
-
-NTSTATUS
-KmWriteMemoryKernel(
-  PVOID base,
-  SIZE_T size,
-  PVOID buffer)
-{
-  return STATUS_UNSUCCESSFUL;
 }
