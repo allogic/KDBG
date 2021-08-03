@@ -3,16 +3,23 @@
 
 #include "global.h"
 
-std::string ByteToHex(BYTE value);
-std::wstring ByteToHexW(BYTE value);
+ULONG
+GetProcessIdFromNameW(
+  PCWCHAR processName);
 
-std::string ULongToDec(ULONG value);
-std::wstring ULongToDecW(ULONG value);
+VOID
+Utf16ToUtf8(
+  PWCHAR utf16,
+  PCHAR utf8);
 
-std::string AddressToHex(ULONG64 value);
-std::wstring AddressToHexW(ULONG64 value);
+VOID
+Utf8ToUtf16(
+  PCHAR utf8,
+  PWCHAR utf16);
 
-std::wstring Utf8ToUtf16(std::string const& utf8Str);
-std::string Utf16ToUtf8(std::wstring const& utf16Str);
+VOID
+HexToBytesW(
+  PBYTE bytes,
+  PWCHAR hex);
 
 #endif

@@ -18,12 +18,6 @@
     <ClCompile Include="kcli.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="shell.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="view.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -32,13 +26,7 @@
     <ClInclude Include="global.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="shell.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ioctrl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="view.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="util.h">

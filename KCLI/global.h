@@ -5,37 +5,13 @@
 #include <windows.h>
 
 #include <tlhelp32.h>
-#include <WinSock2.h>
-#include <WS2tcpip.h>
+#include <winioctl.h>
 
-/*
-* Standard library.
-*/
-
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <map>
-#include <cstdint>
-#include <codecvt>
-
-/*
-* Disassembler library.
-*/
+#include <stdlib.h>
+#include <stdio.h>
 
 #include <capstone/capstone.h>
 #include <capstone/platform.h>
-
-/*
-* KCLI specific.
-*/
-
-enum State
-{
-  KCLI_CTRL_MODE,
-  KCLI_CMD_MODE,
-};
 
 /*
 * Logging utilities.

@@ -1,100 +1,68 @@
 #include "global.h"
 #include "common.h"
 #include "ioctrl.h"
-#include "shell.h"
-#include "view.h"
 #include "util.h"
 
-// TODO: create view serializer via JSON
-// TODO: finish event handling
-// TODO: fix text input max length
-// TODO: start using windows primitive typedefs for everything
-// TODO: implement PDB mapping
+/*
+* I/O communication device.
+*/
 
-using namespace std;
+#define KC_DEVICE_NAME "\\\\.\\KMOD"
+
+HANDLE Device = NULL;
 
 /*
 * Entry point.
 */
 
-int32_t wmain(int32_t argc, wchar_t* argv[])
+INT
+wmain(
+  INT argc,
+  PWCHAR argv[])
 {
-  //WSAStartup(MAKEWORD(2, 2), &WsaData);
-  //ADDRINFOA hints = {};
-  //hints.ai_family = AF_INET;
-  //hints.ai_socktype = SOCK_STREAM;
-  //hints.ai_protocol = IPPROTO_TCP;
-  //if (getaddrinfo(&Utf16ToUtf8(argv[1])[0], "9095", &hints, &Address) == 0)
+  //Device = CreateFileA(KC_DEVICE_NAME, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  //if (Device != NULL)
   //{
-  //  Socket = socket(Address->ai_family, Address->ai_socktype, Address->ai_protocol);
-  //  if (Socket != INVALID_SOCKET)
-  //  {
-  //    KC_LOG_INFO("Socket found\n");
-  //    if (connect(Socket, Address->ai_addr, (INT)Address->ai_addrlen) == 0)
-  //    {
-  //      KC_LOG_INFO("Connected\n");
-  //      KcReadMemoryProcess(Socket, 666, L"666.exe", 666, 666);
-  //      //KcWriteMemoryProcess(Socket, 666, L"666.exe", 666, 666, "9090909090");
-  //      while (TRUE)
-  //      {
-  //
-  //      }
-  //    }
-  //    closesocket(Socket);
-  //  }
-  //}
-  //WSACleanup();
-  //return 0;
-  //Shell shell;
-  //USHORT thirdWidth = (USHORT)(shell.Width() / 3);
-  //USHORT halfHeight = (USHORT)(shell.Height() / 2);
-  //Module moduleView{ NULL, &shell, 0, 0, 0, 0, 0, L"Modules", 32 };
-  //Thread threadView{ NULL, &shell, 1, 0, 0, 0, 0, L"Threads", 32 };
-  //Memory memoryView{ NULL, &shell, 2, 0, 0, 0, 0, L"Memory", 512, 0, L"kernel32.dll" };
-  //Scanner scannerView{ NULL, &shell, 3, 0, 0, 0, 0, L"Scanner" };
-  //Debugger debuggerView{ NULL, &shell, 4, 0, 0, 0, 0, L"Debugger", 512, 0, L"taskmgr.exe" };
-  //vector<View*> views
-  //{
-  //  &moduleView,
-  //  &threadView,
-  //  &memoryView,
-  //  &scannerView,
-  //  &debuggerView,
-  //};
-  //for (View* view : views)
-  //{
-  //  //view->Fetch();
-  //  view->UpdateLayout();
-  //  view->Render();
-  //}
-  //SIZE_T selectedView = 0;
-  //State state = KCLI_CTRL_MODE;
-  //while (true)
-  //{
-  //  switch (state)
-  //  {
-  //    case KCLI_CTRL_MODE:
-  //    {
-  //      shell.Poll(views, selectedView);
-  //      if (KeyDown(shell.InputEvent, VK_TAB))
-  //      {
-  //        state = KCLI_CMD_MODE;
-  //      }
-  //      break;
-  //    }
-  //    case KCLI_CMD_MODE:
-  //    {
-  //      shell.Read(views[selectedView]);
-  //      views[selectedView]->Command(shell.InputBuffer);
-  //      state = KCLI_CTRL_MODE;
-  //      break;
-  //    }
-  //  }
-  //};
-  //for (View*& view : views)
-  //{
-  //  delete view;
-  //  view = nullptr;
+    if (_wcsicmp(L"/wmp", argv[1]) == 0)
+    {
+      WRITE_MEMORY_PROCESS request = {};
+      request.Pid = GetProcessIdFromNameW(argv[2]);
+      wcscpy_s(request.ImageName, argv[3]);
+      request.Offset = wcstoul(argv[4], NULL, 10);
+      request.Size = wcstoul(argv[5], NULL, 10);
+      HexToBytesW(request.Bytes, argv[6]);
+      KC_LOG_INFO("Pid %u\n", request.Pid);
+      KC_LOG_INFO("ImageName %ls\n", request.ImageName);
+      KC_LOG_INFO("Offset %u\n", request.Offset);
+      KC_LOG_INFO("Size %u\n", request.Size);
+      for (ULONG i = 0; i < request.Size; ++i)
+      {
+        KC_LOG_INFO("Bytes %02X\n", request.Bytes[i]);
+      }
+      if (DeviceIoControl(Device, KM_WRITE_MEMORY_PROCESS, &request, sizeof(request), 0, 0, 0, 0))
+      {
+        KC_LOG_INFO("Success\n");
+      }
+    }
+    else if (_wcsicmp(L"/wmk", argv[1]) == 0)
+    {
+      WRITE_MEMORY_KERNEL request = {};
+      wcscpy_s(request.ImageName, argv[2]);
+      request.Offset = wcstoul(argv[3], NULL, 10);
+      request.Size = wcstoul(argv[4], NULL, 10);
+      HexToBytesW(request.Bytes, argv[5]);
+      KC_LOG_INFO("ImageName %ls\n", request.ImageName);
+      KC_LOG_INFO("Offset %u\n", request.Offset);
+      KC_LOG_INFO("Size %u\n", request.Size);
+      for (ULONG i = 0; i < request.Size; ++i)
+      {
+        KC_LOG_INFO("Bytes %02X\n", request.Bytes[i]);
+      }
+      if (DeviceIoControl(Device, KM_WRITE_MEMORY_KERNEL, &request, sizeof(request), 0, 0, 0, 0))
+      {
+        KC_LOG_INFO("Success\n");
+      }
+    }
   //}
   return 0;
 }

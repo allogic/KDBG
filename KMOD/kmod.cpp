@@ -473,8 +473,8 @@ OnIrpClose(
 
 PDEVICE_OBJECT Device = NULL;
 
-#define KMOD_DEVICE_NAME L"\\Device\\KMOD"
-#define KMOD_DEVICE_SYMBOL_NAME L"\\DosDevices\\KMOD"
+#define KM_DEVICE_NAME L"\\Device\\KMOD"
+#define KM_DEVICE_SYMBOL_NAME L"\\DosDevices\\KMOD"
 
 /*
 * Entry point.
@@ -486,7 +486,7 @@ DriverUnload(
 {
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
-  status = DeleteDevice(Device, KMOD_DEVICE_SYMBOL_NAME);
+  status = DeleteDevice(Device, KM_DEVICE_SYMBOL_NAME);
   if (NT_SUCCESS(status))
   {
     KM_LOG_INFO("KMOD deinitialized\n");
@@ -506,7 +506,7 @@ DriverEntry(
   driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-  status = CreateDevice(driver, Device, KMOD_DEVICE_NAME, KMOD_DEVICE_SYMBOL_NAME);
+  status = CreateDevice(driver, Device, KM_DEVICE_NAME, KM_DEVICE_SYMBOL_NAME);
   if (NT_SUCCESS(status))
   {
     KM_LOG_INFO("KMOD initialized\n");

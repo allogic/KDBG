@@ -1,57 +1,55 @@
 #include "util.h"
 
-using namespace std;
-
-string ByteToHex(BYTE value)
+ULONG
+GetProcessIdFromNameW(
+  PCWCHAR processName)
 {
-  string str{};
-  str.resize(2);
-  sprintf(&str[0], "%02X", value);
-  return str;
-}
-wstring ByteToHexW(BYTE value)
-{
-  wstring str{};
-  str.resize(2);
-  wsprintf(&str[0], L"%02X", value);
-  return str;
-}
-
-string ULongToDec(ULONG value)
-{
-  string str{};
-  str.resize(32);
-  sprintf(&str[0], "%lu", value);
-  return str;
-}
-wstring ULongToDecW(ULONG value)
-{
-  wstring str{};
-  str.resize(32);
-  wsprintf(&str[0], L"%lu", value);
-  return str;
+  PROCESSENTRY32 pe;
+  pe.dwSize = sizeof(PROCESSENTRY32);
+  PVOID snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (!Process32First(snapshot, &pe))
+  {
+    CloseHandle(snapshot);
+    return 0;
+  }
+  do
+  {
+    if (_wcsicmp(processName, pe.szExeFile) == 0)
+    {
+      ULONG pid = pe.th32ProcessID;
+      CloseHandle(snapshot);
+      return pid;
+    }
+  } while (Process32Next(snapshot, &pe));
+  CloseHandle(snapshot);
+  return 0;
 }
 
-string AddressToHex(ULONG64 value)
+VOID
+Utf16ToUtf8(
+  PWCHAR utf16,
+  PCHAR utf8)
 {
-  string str{};
-  str.resize(32);
-  sprintf(&str[0], "0x%p", (PVOID)value);
-  return str;
-}
-wstring AddressToHexW(ULONG64 value)
-{
-  wstring str{};
-  str.resize(32);
-  wsprintf(&str[0], L"0x%p", (PVOID)value);
-  return str;
+  wcstombs_s(NULL, utf8, wcslen(utf16) + 1, utf16, _TRUNCATE);
 }
 
-wstring Utf8ToUtf16(string const& utf8Str)
+VOID
+Utf8ToUtf16(
+  PCHAR utf8,
+  PWCHAR utf16)
 {
-  return wstring_convert<codecvt_utf8_utf16<wchar_t>>{}.from_bytes(utf8Str);
+  mbstowcs_s(NULL, utf16, strlen(utf8) + 1, utf8, _TRUNCATE);
 }
-string Utf16ToUtf8(wstring const& utf16Str)
+
+VOID
+HexToBytesW(
+  PBYTE bytes,
+  PWCHAR argv)
 {
-  return wstring_convert<codecvt_utf8_utf16<wchar_t>>{}.to_bytes(utf16Str);
+  WCHAR byte[2];
+  for (ULONG i = 0, j = 0; i < wcslen(argv) - 1; i += 2, j++)
+  {
+    wcsncpy(byte, argv + i, 2);
+    bytes[j] = (BYTE)wcstoul(byte, NULL, 16);
+  }
 }

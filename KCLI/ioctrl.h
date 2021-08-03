@@ -46,14 +46,14 @@ typedef struct _WRITE_MEMORY_PROCESS
   WCHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
-  CHAR Bytes[1024] = {};
+  BYTE Bytes[1024] = {};
 } WRITE_MEMORY_PROCESS, * PWRITE_MEMORY_PROCESS;
 typedef struct _WRITE_MEMORY_KERNEL
 {
   WCHAR ImageName[256] = {};
   ULONG Offset = 0;
   ULONG Size = 0;
-  CHAR Bytes[1024] = {};
+  BYTE Bytes[1024] = {};
 } WRITE_MEMORY_KERNEL, * PWRITE_MEMORY_KERNEL;
 
 /*
