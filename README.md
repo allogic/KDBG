@@ -29,15 +29,15 @@ sc.exe start/stop KMOD
  * DebugBreakpointRem (not implemented yet)
 
 ### WriteMemoryProcess
-Syntax: `.\KCLI.exe /WriteMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`
+Syntax: `.\KCLI.exe /WriteMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`  
 Example: `.\KCLI.exe /WriteMemoryProcess taskmgr.exe taskmgr.exe 40000 3 909090`
 
 ### WriteMemoryKernel
-Syntax: `.\KCLI.exe /WriteMemoryKernel [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`
+Syntax: `.\KCLI.exe /WriteMemoryKernel [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`  
 Example: `.\KCLI.exe /WriteMemoryKernel ntoskrnl.exe 40000 3 909090`
 
 ### ReadMemoryProcess
-Syntax: `.\KCLI.exe /ReadMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)]`
+Syntax: `.\KCLI.exe /ReadMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadMemoryProcess taskmgr.exe taskmgr.exe 40000 32`
 ```
 0x00040000 FD FF 48 FF 15 17 57 09 00 0F 1F 44 00 00 8B 43
@@ -53,7 +53,7 @@ Example: `.\KCLI.exe /ReadMemoryProcess taskmgr.exe taskmgr.exe 40000 32`
 0x0004001A BE 02 00 07 80 .. .. .. .. .. .. mov esi, 0x80070002
 ```
 ### ReadMemoryKernel
-Syntax: `.\KCLI.exe /ReadMemoryKernel [ImageName] [Offset(hex)] [Size(dec)]`
+Syntax: `.\KCLI.exe /ReadMemoryKernel [ImageName] [Offset(hex)] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadMemoryKernel ntoskrnl.exe 40000 32`
 ```
 0x00040000 63 00 74 00 00 00 00 00 5C 00 52 00 45 00 47 00
@@ -74,7 +74,7 @@ Example: `.\KCLI.exe /ReadMemoryKernel ntoskrnl.exe 40000 32`
 0x0004001D 00 53 00 .. .. .. .. .. .. .. .. add byte ptr [rbx], dl
 ```
 ### ReadModulesProcess
-Syntax: `.\KCLI.exe /ReadModulesProcess [ProcessName] [Size(dec)]`
+Syntax: `.\KCLI.exe /ReadModulesProcess [ProcessName] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadModulesProcess taskmgr.exe 10`
 ```
   Start            End                    Size Name
@@ -91,7 +91,7 @@ Example: `.\KCLI.exe /ReadModulesProcess taskmgr.exe 10`
   00007FFAD1740000 00007FFAD17DE000     647168 msvcrt.dll
 ```
 ### ReadModulesKernel
-Syntax: `.\KCLI.exe /ReadModulesKernel [Size(dec)]`
+Syntax: `.\KCLI.exe /ReadModulesKernel [Size(dec)]`  
 Example: `.\KCLI.exe /ReadModulesKernel 10`
 ```
   Start            End                    Size Name
