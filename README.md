@@ -39,7 +39,7 @@ Example: `.\KCLI.exe /WriteMemoryKernel ntoskrnl.exe 40000 3 909090`
 ### ReadMemoryProcess
 Syntax: `.\KCLI.exe /ReadMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)]`
 Example: `.\KCLI.exe /ReadMemoryProcess taskmgr.exe taskmgr.exe 40000 32`
-
+```
 0x00040000 FD FF 48 FF 15 17 57 09 00 0F 1F 44 00 00 8B 43
 0x00040010 3C E9 A1 93 FD FF 4C 89 7D 48 BE 02 00 07 80 E9
 
@@ -51,11 +51,11 @@ Example: `.\KCLI.exe /ReadMemoryProcess taskmgr.exe taskmgr.exe 40000 32`
 0x00040011 E9 A1 93 FD FF .. .. .. .. .. .. jmp 0x193b7
 0x00040016 4C 89 7D 48 .. .. .. .. .. .. .. mov qword ptr [rbp + 0x48], r15
 0x0004001A BE 02 00 07 80 .. .. .. .. .. .. mov esi, 0x80070002
-
+```
 ### ReadMemoryKernel
 Syntax: `.\KCLI.exe /ReadMemoryKernel [ImageName] [Offset(hex)] [Size(dec)]`
 Example: `.\KCLI.exe /ReadMemoryKernel ntoskrnl.exe 40000 32`
-
+```
 0x00040000 63 00 74 00 00 00 00 00 5C 00 52 00 45 00 47 00
 0x00040010 49 00 53 00 54 00 52 00 59 00 5C 00 55 00 53 00
 
@@ -72,11 +72,11 @@ Example: `.\KCLI.exe /ReadMemoryKernel ntoskrnl.exe 40000 32`
 0x00040018 59 .. .. .. .. .. .. .. .. .. .. pop rcx
 0x00040019 00 5C 00 55 .. .. .. .. .. .. .. add byte ptr [rax + rax + 0x55], bl
 0x0004001D 00 53 00 .. .. .. .. .. .. .. .. add byte ptr [rbx], dl
-
+```
 ### ReadModulesProcess
 Syntax: `.\KCLI.exe /ReadModulesProcess [ProcessName] [Size(dec)]`
 Example: `.\KCLI.exe /ReadModulesProcess taskmgr.exe 10`
-
+```
   Start            End                    Size Name
 ----------------------------------------------------------------
   00007FFAD0740000 00007FFAD07FD000     774144 KERNEL32.DLL
@@ -89,11 +89,11 @@ Example: `.\KCLI.exe /ReadModulesProcess taskmgr.exe 10`
   00007FFACF8B0000 00007FFACF8B8000      32768 NSI.dll
   00007FFAD0E60000 00007FFAD0EB5000     348160 SHLWAPI.dll
   00007FFAD1740000 00007FFAD17DE000     647168 msvcrt.dll
-
+```
 ### ReadModulesKernel
 Syntax: `.\KCLI.exe /ReadModulesKernel [Size(dec)]`
 Example: `.\KCLI.exe /ReadModulesKernel 10`
-
+```
   Start            End                    Size Name
 ----------------------------------------------------------------
   FFFFF80457800000 FFFFF80458846000   17063936 ntoskrnl.exe
@@ -106,7 +106,7 @@ Example: `.\KCLI.exe /ReadModulesKernel 10`
   FFFFF80454F50000 FFFFF80454F5B000      45056 BOOTVID.dll
   FFFFF80454F60000 FFFFF80454FCF000     454656 FLTMGR.SYS
   FFFFF8045A550000 FFFFF8045A5B2000     401408 msrpc.sys
-
+```
 ### ReadThreadsProcess
 Syntax: `.\KCLI.exe /ReadThreadsProcess [Size(dec)]`
 
