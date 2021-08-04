@@ -2,34 +2,24 @@
 #define _TRACE_H
 
 #include "global.h"
-#include "common.h"
-#include "undoc.h"
 
 /*
-* Stack frames.
+* Trace thread utilities.
 */
 
-typedef struct _STACK_FRAME_X64
+typedef struct _TRACE_CONTEXT
 {
-  ULONG64 AddrOffset;
-  ULONG64 StackOffset;
-  ULONG64 FrameOffset;
-} STACK_FRAME_X64, * PSTACK_FRAME_X64;
-
-/*
-* Tracing utilities.
-*/
-
-VOID
-KmTraceContext(
-  HANDLE tid,
-  SIZE_T iterations);
+  HANDLE Thread = NULL;
+  ULONG Id = 0;
+  ULONG Tid = 0;
+  ULONG64 Address = 0;
+  BOOL Running = TRUE;
+  KEVENT Event = {};
+  ULONG64 Opcodes[64] = {};
+} TRACE_CONTEXT, * PTRACE_CONTEXT;
 
 VOID
-KmTraceStack(
-  HANDLE pid,
-  HANDLE tid,
-  PWCHAR moduleName,
-  SIZE_T iterations);
+KmTraceThread(
+  PVOID context);
 
 #endif

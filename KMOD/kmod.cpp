@@ -7,9 +7,11 @@
 #include "memory.h"
 #include "process.h"
 #include "thread.h"
+#include "trace.h"
 
 /*
 * Hints:
+*  - https://github.com/reactos/reactos/blob/master/drivers/base/kdgdb/gdb_input.c
 *  - https://github.com/ReClassNET/ReClass.NET/blob/master/NativeCore/Windows/Debugger.cpp
 *  - https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-debug_event
 *  - https://docs.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent
@@ -18,70 +20,11 @@
 */
 
 /*
-* TODO:
-*  - Swap ZwAllocateVirtualMemory with KmAllocateMemory
+* Global tracing state.
 */
-
-/*
-* Trace utilities.
-*/
-
-typedef struct _TRACE_CONTEXT
-{
-  HANDLE Thread = NULL;
-  ULONG Id = 0;
-  ULONG Tid = 0;
-  ULONG64 Address = 0;
-  BOOL Running = TRUE;
-  KEVENT Event = {};
-  ULONG64 Opcodes[64] = {};
-} TRACE_CONTEXT, * PTRACE_CONTEXT;
 
 ULONG TraceId = 0;
 TRACE_CONTEXT TraceContexts[64] = {};
-
-VOID
-KmTraceThread(
-  PVOID context)
-{
-  PTRACE_CONTEXT traceContext = (PTRACE_CONTEXT)context;
-  NTSTATUS status = STATUS_SUCCESS;
-  PCONTEXT registers = NULL;
-  SIZE_T registersSize = sizeof(CONTEXT);
-  ULONG count = 0;
-  PETHREAD thread = NULL;
-  status = PsLookupThreadByThreadId((HANDLE)traceContext->Tid, &thread);
-  if (NT_SUCCESS(status))
-  {
-    status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&registers, 0, &registersSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-    if (NT_SUCCESS(status))
-    {
-      while (traceContext->Running)
-      {
-        traceContext->Opcodes[count++ % 64] = count;
-        memset(registers, 0, registersSize);
-        registers->ContextFlags = CONTEXT_ALL;
-        status = PsGetContextThread(thread, registers, UserMode);
-        if (NT_SUCCESS(status))
-        {
-          KM_LOG_INFO("%10llu %10llu %10llu %10llu %10llu %10llu %10llu %10llu\n",
-            registers->Rax,
-            registers->Rcx,
-            registers->Rdx,
-            registers->Rbx,
-            registers->Rsp,
-            registers->Rbp,
-            registers->Rsi,
-            registers->Rdi);
-        }
-        KmSleep(10);
-      }
-      ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)registers, &registersSize, MEM_RELEASE);
-    }
-    ObDereferenceObject(thread);
-  }
-  KeSetEvent(&traceContext->Event, IO_NO_INCREMENT, FALSE);
-}
 
 /*
 * Write request/response handlers.

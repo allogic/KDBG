@@ -66,6 +66,4 @@
 //  return PreviousCount;
 //}
 
-VOID KmDumpContext(PCONTEXT context);
-
 #endif

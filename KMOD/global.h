@@ -53,7 +53,6 @@ static ULONG KmNextPoolTag()
   };
   static ULONG numPoolTags = ARRAYSIZE(poolTags);
   const ULONG index = KmNextRandom(0, numPoolTags);
-  NT_ASSERT(index <= numPoolTags - 1);
   return index;
 }
 
@@ -69,8 +68,8 @@ static VOID KmFreeMemory(PVOID ptr)
   ExFreePool(ptr);
 }
 
-#define KM_DELAY_ONE_MICROSECOND 	(-10)
-#define KM_DELAY_ONE_MILLISECOND	(KM_DELAY_ONE_MICROSECOND*1000)
+#define KM_DELAY_ONE_MICROSECOND (-10)
+#define KM_DELAY_ONE_MILLISECOND (KM_DELAY_ONE_MICROSECOND*1000)
 
 static VOID KmSleep(LONG ms)
 {

@@ -35,16 +35,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="allocator.h" />
-    <ClInclude Include="global.h" />
-    <ClInclude Include="kcpp.h" />
-    <ClInclude Include="random.h" />
-    <ClInclude Include="thread.h" />
-    <ClInclude Include="vector.h" />
+    <ClInclude Include="kmap.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="allocator.cpp" />
-    <ClCompile Include="random.cpp" />
+    <ClCompile Include="kmap.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{02575E02-7679-4D34-A999-1669E55BC9C5}</ProjectGuid>
@@ -131,10 +125,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(KM_IncludePath);$(IncludePath)</IncludePath>
+    <IncludePath>C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30037\include</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(KM_IncludePath);$(IncludePath)</IncludePath>
+    <IncludePath>C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30037\include</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
