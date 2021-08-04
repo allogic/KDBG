@@ -173,11 +173,114 @@ typedef struct _LDR_DATA_TABLE_ENTRY
   UNICODE_STRING FullDllName;
   UNICODE_STRING BaseDllName;
 } LDR_DATA_TABLE_ENTRY, * PLDR_DATA_TABLE_ENTRY;
-typedef struct _PEB64 {
-  CHAR Reserved[0x10];
-  PVOID ImageBaseAddress;
+typedef struct _PEB64
+{
+  union
+  {
+    struct
+    {
+      BYTE InheritedAddressSpace;
+      BYTE ReadImageFileExecOptions;
+      BYTE BeingDebugged;
+      BYTE _SYSTEM_DEPENDENT_01;
+    } flags;
+    ULONG64 dummyalign;
+  } dword0;
+  ULONG64 Mutant;
+  ULONG64 ImageBaseAddress;
   PPEB_LDR_DATA Ldr;
+  PVOID ProcessParameters;
+  ULONG64 SubSystemData;
+  ULONG64 ProcessHeap;
+  ULONG64 FastPebLock;
+  ULONG64 _SYSTEM_DEPENDENT_02;
+  ULONG64 _SYSTEM_DEPENDENT_03;
+  ULONG64 _SYSTEM_DEPENDENT_04;
+  union
+  {
+    ULONG64 KernelCallbackTable;
+    ULONG64 UserSharedInfoPtr;
+  };
+  DWORD SystemReserved;
+  DWORD _SYSTEM_DEPENDENT_05;
+  ULONG64 _SYSTEM_DEPENDENT_06;
+  ULONG64 TlsExpansionCounter;
+  ULONG64 TlsBitmap;
+  DWORD TlsBitmapBits[2];
+  ULONG64 ReadOnlySharedMemoryBase;
+  ULONG64 _SYSTEM_DEPENDENT_07;
+  ULONG64 ReadOnlyStaticServerData;
+  ULONG64 AnsiCodePageData;
+  ULONG64 OemCodePageData;
+  ULONG64 UnicodeCaseTableData;
+  DWORD NumberOfProcessors;
+  union
+  {
+    DWORD NtGlobalFlag;
+    DWORD dummy02;
+  };
+  LARGE_INTEGER CriticalSectionTimeout;
+  ULONG64 HeapSegmentReserve;
+  ULONG64 HeapSegmentCommit;
+  ULONG64 HeapDeCommitTotalFreeThreshold;
+  ULONG64 HeapDeCommitFreeBlockThreshold;
+  DWORD NumberOfHeaps;
+  DWORD MaximumNumberOfHeaps;
+  ULONG64 ProcessHeaps;
+  ULONG64 GdiSharedHandleTable;
+  ULONG64 ProcessStarterHelper;
+  ULONG64 GdiDCAttributeList;
+  ULONG64 LoaderLock;
+  DWORD OSMajorVersion;
+  DWORD OSMinorVersion;
+  WORD OSBuildNumber;
+  WORD OSCSDVersion;
+  DWORD OSPlatformId;
+  DWORD ImageSubsystem;
+  DWORD ImageSubsystemMajorVersion;
+  ULONG64 ImageSubsystemMinorVersion;
+  union
+  {
+    ULONG64 ImageProcessAffinityMask;
+    ULONG64 ActiveProcessAffinityMask;
+  };
+  ULONG64 GdiHandleBuffer[30];
+  ULONG64 PostProcessInitRoutine;
+  ULONG64 TlsExpansionBitmap;
+  DWORD TlsExpansionBitmapBits[32];
+  ULONG64 SessionId;
+  ULARGE_INTEGER AppCompatFlags;
+  ULARGE_INTEGER AppCompatFlagsUser;
+  ULONG64 pShimData;
+  ULONG64 AppCompatInfo;
+  UNICODE_STRING64 CSDVersion;
+  ULONG64 ActivationContextData;
+  ULONG64 ProcessAssemblyStorageMap;
+  ULONG64 SystemDefaultActivationContextData;
+  ULONG64 SystemAssemblyStorageMap;
+  ULONG64 MinimumStackCommit;
 } PEB64, * PPEB64;
+typedef struct _TEB64
+{
+  BYTE NtTib[56];
+  PVOID EnvironmentPointer;
+  CLIENT_ID ClientId;
+  PVOID ActiveRpcHandle;
+  PVOID ThreadLocalStoragePointer;
+  PVOID ProcessEnvironmentBlock;
+  DWORD LastErrorValue;
+  DWORD CountOfOwnedCriticalSections;
+  PVOID CsrClientThread;
+  PVOID Win32ThreadInfo;
+  DWORD User32Reserved[26];
+  DWORD UserReserved[6];
+  PVOID WOW32Reserved;
+  DWORD CurrentLocale;
+  DWORD FpSoftwareStatusRegister;
+  PVOID SystemReserved1[54];
+  DWORD ExceptionCode;
+  PVOID ActivationContextStackPointer;
+} TEB64, * PTEB64;
 typedef struct _SYSTEM_THREAD_INFORMATION
 {
   LARGE_INTEGER KernelTime;
