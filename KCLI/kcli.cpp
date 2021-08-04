@@ -181,11 +181,16 @@ wmain(
     if (_wcsicmp(L"/TraceContextStart", argv[1]) == 0)
     {
       TRACE_CONTEXT_START request = {};
-      request.Address = wcstoul(argv[2], NULL, 16);
+      request.Tid = wcstoul(argv[2], NULL, 10);
+      request.Address = wcstoul(argv[3], NULL, 16);
 
-      if (DeviceIoControl(Device, KM_TRACE_CONTEXT_START, &request, sizeof(request), 0, 0, 0, 0))
+      ULONG response = 0;
+
+      if (DeviceIoControl(Device, KM_TRACE_CONTEXT_START, &request, sizeof(request), &response, sizeof(response), 0, 0))
       {
-        KC_LOG_INFO("Success\n");
+        printf("\n");
+        printf("Trace %lu started\n", response);
+        printf("\n");
       }
     }
     if (_wcsicmp(L"/TraceContextStop", argv[1]) == 0)
@@ -193,9 +198,18 @@ wmain(
       TRACE_CONTEXT_STOP request = {};
       request.Id = wcstoul(argv[2], NULL, 10);
 
-      if (DeviceIoControl(Device, KM_TRACE_CONTEXT_STOP, &request, sizeof(request), 0, 0, 0, 0))
+      ULONG64 response[64] = {};
+
+      if (DeviceIoControl(Device, KM_TRACE_CONTEXT_STOP, &request, sizeof(request), &response, sizeof(response), 0, 0))
       {
-        KC_LOG_INFO("Success\n");
+        printf("\n");
+        printf("Trace %lu stopped\n", request.Id);
+        printf("\n");
+        for (ULONG i = 0; i < 64; ++i)
+        {
+          printf("%llu\n", response[i]);
+        }
+        printf("\n");
       }
     }
     // Debug API
@@ -207,7 +221,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_SET, &request, sizeof(request), 0, 0, 0, 0))
       {
-        KC_LOG_INFO("Success\n");
+
       }
     }
     if (_wcsicmp(L"/DebugBreakpointRem", argv[1]) == 0)
@@ -217,7 +231,7 @@ wmain(
 
       if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_REM, &request, sizeof(request), 0, 0, 0, 0))
       {
-        KC_LOG_INFO("Success\n");
+
       }
     }
   }

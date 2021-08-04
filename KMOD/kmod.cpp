@@ -7,7 +7,6 @@
 #include "memory.h"
 #include "process.h"
 #include "thread.h"
-#include "trace.h"
 
 /*
 * Hints:
@@ -19,6 +18,11 @@
 */
 
 /*
+* TODO:
+*  - Swap ZwAllocateVirtualMemory with KmAllocateMemory
+*/
+
+/*
 * Trace utilities.
 */
 
@@ -26,6 +30,8 @@ typedef struct _TRACE_CONTEXT
 {
   HANDLE Thread = NULL;
   ULONG Id = 0;
+  ULONG Tid = 0;
+  ULONG64 Address = 0;
   BOOL Running = TRUE;
   KEVENT Event = {};
   ULONG64 Opcodes[64] = {};
@@ -39,12 +45,40 @@ KmTraceThread(
   PVOID context)
 {
   PTRACE_CONTEXT traceContext = (PTRACE_CONTEXT)context;
+  NTSTATUS status = STATUS_SUCCESS;
+  PCONTEXT registers = NULL;
+  SIZE_T registersSize = sizeof(CONTEXT);
   ULONG count = 0;
-  while (traceContext->Running)
+  PETHREAD thread = NULL;
+  status = PsLookupThreadByThreadId((HANDLE)traceContext->Tid, &thread);
+  if (NT_SUCCESS(status))
   {
-    traceContext->Opcodes[count++ % 64] = count;
-    KM_LOG_INFO("Tracing..\n");
-    KmSleep(1000);
+    status = ZwAllocateVirtualMemory(ZwCurrentProcess(), (PVOID*)&registers, 0, &registersSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    if (NT_SUCCESS(status))
+    {
+      while (traceContext->Running)
+      {
+        traceContext->Opcodes[count++ % 64] = count;
+        memset(registers, 0, registersSize);
+        registers->ContextFlags = CONTEXT_ALL;
+        status = PsGetContextThread(thread, registers, UserMode);
+        if (NT_SUCCESS(status))
+        {
+          KM_LOG_INFO("%10llu %10llu %10llu %10llu %10llu %10llu %10llu %10llu\n",
+            registers->Rax,
+            registers->Rcx,
+            registers->Rdx,
+            registers->Rbx,
+            registers->Rsp,
+            registers->Rbp,
+            registers->Rsi,
+            registers->Rdi);
+        }
+        KmSleep(10);
+      }
+      ZwFreeVirtualMemory(ZwCurrentProcess(), (PVOID*)registers, &registersSize, MEM_RELEASE);
+    }
+    ObDereferenceObject(thread);
   }
   KeSetEvent(&traceContext->Event, IO_NO_INCREMENT, FALSE);
 }
@@ -277,6 +311,11 @@ KmHandleTraceContextStart(
   PVOID response)
 {
   NTSTATUS status = STATUS_SUCCESS;
+  memset(&TraceContexts[TraceId], 0, sizeof(TraceContexts[TraceId]));
+  TraceContexts[TraceId].Running = TRUE;
+  TraceContexts[TraceId].Id = TraceId;
+  TraceContexts[TraceId].Tid = request->Tid;
+  TraceContexts[TraceId].Address = request->Address;
   status = PsCreateSystemThread(&TraceContexts[TraceId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmTraceThread, &TraceContexts[TraceId]);
   if (NT_SUCCESS(status))
   {
@@ -301,8 +340,7 @@ KmHandleTraceContextStop(
     if (NT_SUCCESS(status))
     {
       memcpy(response, TraceContexts[request->Id].Opcodes, sizeof(TraceContexts[request->Id].Opcodes));
-      memset(&TraceContexts[request->Id], 0, sizeof(TraceContexts[request->Id]));
-      KM_LOG_INFO("Trace thread stoped\n");
+      KM_LOG_INFO("Trace thread stopped\n");
     }
   }
   return status;
@@ -435,20 +473,20 @@ OnIrpCtrl(
       }
       case KM_TRACE_CONTEXT_START:
       {
-        KM_LOG_INFO("Begin read thread process\n");
+        KM_LOG_INFO("Begin trace context start\n");
         TRACE_CONTEXT_START request = *(PTRACE_CONTEXT_START)irp->AssociatedIrp.SystemBuffer;
         irp->IoStatus.Status = KmHandleTraceContextStart(&request, irp->AssociatedIrp.SystemBuffer);
         irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(ULONG) : 0;
-        KM_LOG_INFO("End read thread process\n");
+        KM_LOG_INFO("End trace context start\n");
         break;
       }
       case KM_TRACE_CONTEXT_STOP:
       {
-        KM_LOG_INFO("Begin read thread process\n");
+        KM_LOG_INFO("Begin trace context stop\n");
         TRACE_CONTEXT_STOP request = *(PTRACE_CONTEXT_STOP)irp->AssociatedIrp.SystemBuffer;
         irp->IoStatus.Status = KmHandleTraceContextStop(&request, irp->AssociatedIrp.SystemBuffer);
         irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? sizeof(ULONG64) * 64 : 0;
-        KM_LOG_INFO("End read thread process\n");
+        KM_LOG_INFO("End trace context stop\n");
         break;
       }
       case KM_DEBUG_BREAKPOINT_SET:
