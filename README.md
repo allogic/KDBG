@@ -22,7 +22,7 @@ sc.exe start/stop KMOD
  * ReadMemoryKernel
  * ReadModulesProcess
  * ReadModulesKernel
- * ReadThreadsProcess (not implemented yet)
+ * ReadThreadsProcess
  * ReadScanResults (not implemented yet)
  * TraceContextStart (not implemented yet)
  * TraceContextStop (not implemented yet)
@@ -118,8 +118,18 @@ Example: `.\KCLI.exe /ReadModulesKernel 10`
   FFFFF8045A550000 FFFFF8045A5B2000     401408 msrpc.sys
 ```
 ### ReadThreadsProcess
-Syntax: `.\KCLI.exe /ReadThreadsProcess [Size(dec)]`
-
+Syntax: `.\KCLI.exe /ReadThreadsProcess [ProcessName] [Size(dec)]`  
+Example: `.\KCLI.exe /ReadThreadsProcess taskmgr.exe 6`
+```
+         Pid        Tid
+----------------------------------------------------------------
+        9116       5632
+        9116      10704
+        9116      10804
+        9116      12284
+        9116      10096
+        9116       4984
+```
 ### ReadScanResults
 Syntax: `.\KCLI.exe /ReadScanResults`
 
