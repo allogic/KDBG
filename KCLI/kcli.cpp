@@ -298,7 +298,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanUnchanged", argv[1]) == 0)
+    if (_wcsicmp(L"/ReadScanFilterUnchanged", argv[1]) == 0)
     {
       SCAN_FILTER_UNCHANGED request = {};
 
@@ -316,7 +316,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanDecreased", argv[1]) == 0)
+    if (_wcsicmp(L"/ReadScanFilterDecreased", argv[1]) == 0)
     {
       SCAN_FILTER_DECREASED request = {};
 
