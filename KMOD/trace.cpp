@@ -24,7 +24,7 @@ KmTraceThread(
       {
         while (traceContext->Running)
         {
-          KM_LOG_INFO("                 Rax                 Rcx                 Rdx                 Rbx                 Rsp                 Rbp                 Rsi                 Rdi\n");
+          KM_LOG_INFO("                 Rax                  Rcx                  Rdx                  Rbx                  Rsp                  Rbp                  Rsi                  Rdi\n");
           for (ULONG i = 0; i < traceContext->ThreadCount; ++i)
           {            
             traceContext->Opcodes[count++ % 64] = count;
