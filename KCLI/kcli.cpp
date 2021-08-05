@@ -177,6 +177,15 @@ wmain(
 
       free(response);
     }
+    if (_wcsicmp(L"/ReadScanResults", argv[1]) == 0)
+    {
+      READ_SCAN_RESULTS request = {};
+
+      if (DeviceIoControl(Device, KM_READ_SCAN_RESULTS, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
     // Trace API
     if (_wcsicmp(L"/TraceContextStart", argv[1]) == 0)
     {
@@ -230,6 +239,88 @@ wmain(
       request.Base = wcstoul(argv[2], NULL, 16);
 
       if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_REM, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    // Scan API
+    if (_wcsicmp(L"/ReadScanNew", argv[1]) == 0)
+    {
+      SCAN_NEW request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_NEW, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanUndo", argv[1]) == 0)
+    {
+      SCAN_UNDO request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_UNDO, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanInt", argv[1]) == 0)
+    {
+      SCAN_INT request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_INT, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanReal", argv[1]) == 0)
+    {
+      SCAN_REAL request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_REAL, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanBytes", argv[1]) == 0)
+    {
+      SCAN_BYTES request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_BYTES, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanFilterChanged", argv[1]) == 0)
+    {
+      SCAN_FILTER_CHANGED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_CHANGED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanUnchanged", argv[1]) == 0)
+    {
+      SCAN_FILTER_UNCHANGED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_UNCHANGED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanFilterIncreased", argv[1]) == 0)
+    {
+      SCAN_FILTER_INCREASED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_INCREASED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ReadScanDecreased", argv[1]) == 0)
+    {
+      SCAN_FILTER_DECREASED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_DECREASED, &request, sizeof(request), 0, 0, 0, 0))
       {
 
       }
