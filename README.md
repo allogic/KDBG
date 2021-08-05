@@ -118,8 +118,8 @@ Example: `.\KCLI.exe /ReadModulesKernel 10`
   FFFFF8045A550000 FFFFF8045A5B2000     401408 msrpc.sys
 ```
 ### ReadThreadsProcess
-Syntax: `.\KCLI.exe /ReadThreadsProcess [Size(dec)]`  
-Example: `.\KCLI.exe /ReadThreadsProcess deadspace3.exe 6`
+Syntax: `.\KCLI.exe /ReadThreadsProcess [ProcessName] [Size(dec)]`  
+Example: `.\KCLI.exe /ReadThreadsProcess taskmgr.exe 6`
 ```
          Pid        Tid
 ----------------------------------------------------------------
