@@ -130,13 +130,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(SolutionDir)KCPP;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(SolutionDir)KCPP;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -179,7 +179,7 @@
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
-      <AdditionalDependencies>KCPP.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
@@ -205,7 +205,7 @@
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
-      <AdditionalDependencies>KCPP.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
@@ -258,6 +258,7 @@
     <ClCompile Include="kmod.cpp" />
     <ClCompile Include="memory.cpp" />
     <ClCompile Include="process.cpp" />
+    <ClCompile Include="scanner.cpp" />
     <ClCompile Include="undoc.cpp" />
     <ClCompile Include="pe.cpp" />
     <ClCompile Include="thread.cpp" />
@@ -271,6 +272,7 @@
     <ClInclude Include="ioctrl.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="process.h" />
+    <ClInclude Include="scanner.h" />
     <ClInclude Include="undoc.h" />
     <ClInclude Include="pe.h" />
     <ClInclude Include="thread.h" />

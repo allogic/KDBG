@@ -48,6 +48,9 @@
     <ClCompile Include="process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="scanner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h">
@@ -81,6 +84,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="process.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="scanner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

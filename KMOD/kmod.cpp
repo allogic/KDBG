@@ -8,6 +8,7 @@
 #include "process.h"
 #include "thread.h"
 #include "trace.h"
+#include "scanner.h"
 
 /*
 * Hints:
@@ -244,6 +245,15 @@ KmHandleReadThreadsProcess(
   return status;
 }
 
+NTSTATUS
+KmHandleReadScanResults(
+  PREAD_SCAN_RESULTS request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
 /*
 * Trace request/response handlers.
 */
@@ -308,6 +318,91 @@ KmHandleDebugBreakpointRem(
   PVOID response)
 {
   NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
+/*
+* Scan request/response handlers.
+*/
+
+NTSTATUS
+KmHandleScanNew(
+  PSCAN_NEW request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanUndo(
+  PSCAN_UNDO request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanInt32(
+  PSCAN_INT_32 request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanReal32(
+  PSCAN_REAL_32 request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanBytes(
+  PSCAN_BYTES request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanFilterChanged(
+  PSCAN_FILTER_CHANGED request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanFilterUnchanged(
+  PSCAN_FILTER_UNCHANGED request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanFilterIncreased(
+  PSCAN_FILTER_INCREASED request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
+  return status;
+}
+
+NTSTATUS
+KmHandleScanFilterDecreased(
+  PSCAN_FILTER_DECREASED request,
+  PVOID response)
+{
+  NTSTATUS status = STATUS_UNSUCCESSFUL;
   return status;
 }
 
@@ -414,6 +509,15 @@ OnIrpCtrl(
         KM_LOG_INFO("End read thread process\n");
         break;
       }
+      case KM_READ_SCAN_RESULTS:
+      {
+        KM_LOG_INFO("Begin read scan results\n");
+        READ_SCAN_RESULTS request = *(PREAD_SCAN_RESULTS)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleReadScanResults(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End read scan results\n");
+        break;
+      }
       case KM_TRACE_CONTEXT_START:
       {
         KM_LOG_INFO("Begin trace context start\n");
@@ -448,6 +552,87 @@ OnIrpCtrl(
         irp->IoStatus.Status = KmHandleDebugBreakpointRem(&request, irp->AssociatedIrp.SystemBuffer);
         irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
         KM_LOG_INFO("End debug breakpoint rem\n");
+        break;
+      }
+      case KM_SCAN_NEW:
+      {
+        KM_LOG_INFO("Begin scan new\n");
+        SCAN_NEW request = *(PSCAN_NEW)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanNew(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan new\n");
+        break;
+      }
+      case KM_SCAN_UNDO:
+      {
+        KM_LOG_INFO("Begin scan undo\n");
+        SCAN_UNDO request = *(PSCAN_UNDO)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanUndo(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan undo\n");
+        break;
+      }
+      case KM_SCAN_INT_32:
+      {
+        KM_LOG_INFO("Begin scan int 32\n");
+        SCAN_INT_32 request = *(PSCAN_INT_32)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanInt32(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan int 32\n");
+        break;
+      }
+      case KM_SCAN_REAL_32:
+      {
+        KM_LOG_INFO("Begin scan real 32\n");
+        SCAN_REAL_32 request = *(PSCAN_REAL_32)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanReal32(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan real 32\n");
+        break;
+      }
+      case KM_SCAN_BYTES:
+      {
+        KM_LOG_INFO("Begin scan bytes\n");
+        SCAN_BYTES request = *(PSCAN_BYTES)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanBytes(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan bytes\n");
+        break;
+      }
+      case KM_SCAN_FILTER_CHANGED:
+      {
+        KM_LOG_INFO("Begin scan filter changed\n");
+        SCAN_FILTER_CHANGED request = *(PSCAN_FILTER_CHANGED)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanFilterChanged(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan filter changed\n");
+        break;
+      }
+      case KM_SCAN_FILTER_UNCHANGED:
+      {
+        KM_LOG_INFO("Begin scan filter unchanged\n");
+        SCAN_FILTER_UNCHANGED request = *(PSCAN_FILTER_UNCHANGED)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanFilterUnchanged(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan filter unchanged\n");
+        break;
+      }
+      case KM_SCAN_FILTER_INCREASED:
+      {
+        KM_LOG_INFO("Begin scan filter increased\n");
+        SCAN_FILTER_INCREASED request = *(PSCAN_FILTER_INCREASED)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanFilterIncreased(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan filter increased\n");
+        break;
+      }
+      case KM_SCAN_FILTER_DECREASED:
+      {
+        KM_LOG_INFO("Begin scan filter decreased\n");
+        SCAN_FILTER_DECREASED request = *(PSCAN_FILTER_DECREASED)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanFilterDecreased(&request, irp->AssociatedIrp.SystemBuffer);
+        irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
+        KM_LOG_INFO("End scan filter decreased\n");
         break;
       }
     }
