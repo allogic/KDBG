@@ -21,6 +21,11 @@
 */
 
 /*
+* Todos:
+*  - Create test user program with multiple threads and start scanning registers for known value addresses
+*/
+
+/*
 * Global tracing state.
 */
 
