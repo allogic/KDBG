@@ -23,10 +23,20 @@ sc.exe start/stop KMOD
  * ReadModulesProcess
  * ReadModulesKernel
  * ReadThreadsProcess (not implemented yet)
+ * ReadScanResults (not implemented yet)
  * TraceContextStart (not implemented yet)
  * TraceContextStop (not implemented yet)
  * DebugBreakpointSet (not implemented yet)
  * DebugBreakpointRem (not implemented yet)
+ * ScanNew (not implemented yet)
+ * ScanUndo (not implemented yet)
+ * ScanInt (not implemented yet)
+ * ScanReal (not implemented yet)
+ * ScanBytes (not implemented yet)
+ * ScanFilterChanged (not implemented yet)
+ * ScanFilterUnchanged (not implemented yet)
+ * ScanFilterIncreased (not implemented yet)
+ * ScanFilterDecreased (not implemented yet)
 
 ### WriteMemoryProcess
 Syntax: `.\KCLI.exe /WriteMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`  
@@ -110,6 +120,9 @@ Example: `.\KCLI.exe /ReadModulesKernel 10`
 ### ReadThreadsProcess
 Syntax: `.\KCLI.exe /ReadThreadsProcess [Size(dec)]`
 
+### ReadScanResults
+Syntax: `.\KCLI.exe /ReadScanResults`
+
 ### TraceContextStart
 Syntax: `.\KCLI.exe /TraceContextStart [Address(hex)]`
 
@@ -121,3 +134,30 @@ Syntax: `.\KCLI.exe /DebugBreakpointSet [Base(hex)] [Type(0=Software|1=Hardware)
 
 ### DebugBreakpointRem
 Syntax: `.\KCLI.exe /DebugBreakpointRem [Base(hex)]`
+
+### ScanNew
+Syntax: `.\KCLI.exe /ScanNew`
+
+### ScanUndo
+Syntax: `.\KCLI.exe /ScanUndo`
+
+### ScanInt
+Syntax: `.\KCLI.exe /ScanInt`
+
+### ScanReal
+Syntax: `.\KCLI.exe /ScanReal`
+
+### ScanBytes
+Syntax: `.\KCLI.exe /ScanBytes`
+
+### ScanFilterChanged
+Syntax: `.\KCLI.exe /ScanFilterChanged`
+
+### ScanFilterUnchanged
+Syntax: `.\KCLI.exe /ScanFilterUnchanged`
+
+### ScanFilterIncreased
+Syntax: `.\KCLI.exe /ScanFilterIncreased`
+
+### ScanFilterDecreased
+Syntax: `.\KCLI.exe /ScanFilterDecreased`
