@@ -344,8 +344,8 @@ KmHandleScanUndo(
 }
 
 NTSTATUS
-KmHandleScanInt32(
-  PSCAN_INT_32 request,
+KmHandleScanInt(
+  PSCAN_INT request,
   PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -353,8 +353,8 @@ KmHandleScanInt32(
 }
 
 NTSTATUS
-KmHandleScanReal32(
-  PSCAN_REAL_32 request,
+KmHandleScanReal(
+  PSCAN_REAL request,
   PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
@@ -572,22 +572,22 @@ OnIrpCtrl(
         KM_LOG_INFO("End scan undo\n");
         break;
       }
-      case KM_SCAN_INT_32:
+      case KM_SCAN_INT:
       {
-        KM_LOG_INFO("Begin scan int 32\n");
-        SCAN_INT_32 request = *(PSCAN_INT_32)irp->AssociatedIrp.SystemBuffer;
-        irp->IoStatus.Status = KmHandleScanInt32(&request, irp->AssociatedIrp.SystemBuffer);
+        KM_LOG_INFO("Begin scan int\n");
+        SCAN_INT request = *(PSCAN_INT)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanInt(&request, irp->AssociatedIrp.SystemBuffer);
         irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
-        KM_LOG_INFO("End scan int 32\n");
+        KM_LOG_INFO("End scan int\n");
         break;
       }
-      case KM_SCAN_REAL_32:
+      case KM_SCAN_REAL:
       {
-        KM_LOG_INFO("Begin scan real 32\n");
-        SCAN_REAL_32 request = *(PSCAN_REAL_32)irp->AssociatedIrp.SystemBuffer;
-        irp->IoStatus.Status = KmHandleScanReal32(&request, irp->AssociatedIrp.SystemBuffer);
+        KM_LOG_INFO("Begin scan real\n");
+        SCAN_REAL request = *(PSCAN_REAL)irp->AssociatedIrp.SystemBuffer;
+        irp->IoStatus.Status = KmHandleScanReal(&request, irp->AssociatedIrp.SystemBuffer);
         irp->IoStatus.Information = NT_SUCCESS(irp->IoStatus.Status) ? 0 : 0;
-        KM_LOG_INFO("End scan real 32\n");
+        KM_LOG_INFO("End scan real\n");
         break;
       }
       case KM_SCAN_BYTES:
