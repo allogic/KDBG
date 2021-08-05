@@ -2,6 +2,7 @@
 #define _TRACE_H
 
 #include "global.h"
+#include "common.h"
 
 /*
 * Trace thread utilities.
@@ -11,7 +12,9 @@ typedef struct _TRACE_CONTEXT
 {
   HANDLE Thread = NULL;
   ULONG Id = 0;
-  ULONG Tid = 0;
+  ULONG Pid = 0;
+  ULONG ThreadCount = 0;
+  KM_THREAD_PROCESS Threads[1024] = {};
   ULONG64 Address = 0;
   BOOL Running = TRUE;
   KEVENT Event = {};

@@ -111,7 +111,7 @@ typedef struct _READ_SCAN_RESULTS
 
 typedef struct _TRACE_CONTEXT_START
 {
-  ULONG Tid = 0;
+  ULONG Pid = 0;
   ULONG64 Address = 0;
 } TRACE_CONTEXT_START, * PTRACE_CONTEXT_START;
 typedef struct _TRACE_CONTEXT_STOP

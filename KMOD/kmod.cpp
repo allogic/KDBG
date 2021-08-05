@@ -229,16 +229,20 @@ KmHandleTraceContextStart(
 {
   NTSTATUS status = STATUS_SUCCESS;
   memset(&TraceContexts[TraceId], 0, sizeof(TraceContexts[TraceId]));
-  TraceContexts[TraceId].Running = TRUE;
-  TraceContexts[TraceId].Id = TraceId;
-  TraceContexts[TraceId].Tid = request->Tid;
-  TraceContexts[TraceId].Address = request->Address;
-  status = PsCreateSystemThread(&TraceContexts[TraceId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmTraceThread, &TraceContexts[TraceId]);
+  status = KmGetProcessThreads(request->Pid, &TraceContexts[TraceId].ThreadCount, TraceContexts[TraceId].Threads);
   if (NT_SUCCESS(status))
   {
-    KeInitializeEvent(&TraceContexts[TraceId].Event, SynchronizationEvent, FALSE);
-    KM_LOG_INFO("Trace thread started\n");
-    *(PULONG)response = TraceId++;
+    TraceContexts[TraceId].Running = TRUE;
+    TraceContexts[TraceId].Id = TraceId;
+    TraceContexts[TraceId].Pid = request->Pid;
+    TraceContexts[TraceId].Address = request->Address;
+    status = PsCreateSystemThread(&TraceContexts[TraceId].Thread, STANDARD_RIGHTS_ALL, NULL, NULL, NULL, KmTraceThread, &TraceContexts[TraceId]);
+    if (NT_SUCCESS(status))
+    {
+      KeInitializeEvent(&TraceContexts[TraceId].Event, SynchronizationEvent, FALSE);
+      KM_LOG_INFO("Trace thread started\n");
+      *(PULONG)response = TraceId++;
+    }
   }
   return status;
 }

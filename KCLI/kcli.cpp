@@ -190,7 +190,7 @@ wmain(
     if (_wcsicmp(L"/TraceContextStart", argv[1]) == 0)
     {
       TRACE_CONTEXT_START request = {};
-      request.Tid = wcstoul(argv[2], NULL, 10);
+      request.Pid = GetProcessIdFromNameW(argv[2]);
       request.Address = wcstoul(argv[3], NULL, 16);
 
       ULONG response = 0;
