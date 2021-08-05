@@ -24,7 +24,7 @@ KmTraceThread(
       {
         while (traceContext->Running)
         {
-          KM_LOG_INFO("Rax Rcx Rdx Rbx Rsp Rbp Rsi Rdi\n");
+          KM_LOG_INFO("                 Rax                 Rcx                 Rdx                 Rbx                 Rsp                 Rbp                 Rsi                 Rdi\n");
           for (ULONG i = 0; i < traceContext->ThreadCount; ++i)
           {            
             traceContext->Opcodes[count++ % 64] = count;
@@ -33,7 +33,7 @@ KmTraceThread(
             status = PsGetContextThread(threads[i], registers, UserMode);
             if (NT_SUCCESS(status))
             {
-              KM_LOG_INFO("%10llu %10llu %10llu %10llu %10llu %10llu %10llu %10llu\n",
+              KM_LOG_INFO("%20llu %20llu %20llu %20llu %20llu %20llu %20llu %20llu\n",
                 registers->Rax,
                 registers->Rcx,
                 registers->Rdx,
