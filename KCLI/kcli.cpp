@@ -244,7 +244,7 @@ wmain(
       }
     }
     // Scan API
-    if (_wcsicmp(L"/ReadScanNew", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanNew", argv[1]) == 0)
     {
       SCAN_NEW request = {};
 
@@ -253,7 +253,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanUndo", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanUndo", argv[1]) == 0)
     {
       SCAN_UNDO request = {};
 
@@ -262,7 +262,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanInt", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanInt", argv[1]) == 0)
     {
       SCAN_INT request = {};
 
@@ -271,7 +271,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanReal", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanReal", argv[1]) == 0)
     {
       SCAN_REAL request = {};
 
@@ -280,7 +280,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanBytes", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanBytes", argv[1]) == 0)
     {
       SCAN_BYTES request = {};
 
@@ -289,7 +289,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanFilterChanged", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanFilterChanged", argv[1]) == 0)
     {
       SCAN_FILTER_CHANGED request = {};
 
@@ -298,7 +298,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanFilterUnchanged", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanFilterUnchanged", argv[1]) == 0)
     {
       SCAN_FILTER_UNCHANGED request = {};
 
@@ -307,7 +307,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanFilterIncreased", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanFilterIncreased", argv[1]) == 0)
     {
       SCAN_FILTER_INCREASED request = {};
 
@@ -316,7 +316,7 @@ wmain(
 
       }
     }
-    if (_wcsicmp(L"/ReadScanFilterDecreased", argv[1]) == 0)
+    if (_wcsicmp(L"/ScanFilterDecreased", argv[1]) == 0)
     {
       SCAN_FILTER_DECREASED request = {};
 
