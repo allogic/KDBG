@@ -164,11 +164,11 @@ wmain(
       if (DeviceIoControl(Device, KM_READ_THREADS_PROCESS, &request, sizeof(request), response, sizeof(KM_THREAD_PROCESS) * request.Size, 0, 0))
       {
         printf("\n");
-        printf("  Pid Tid\n");
+        printf("         Pid        Tid\n");
         printf("----------------------------------------------------------------\n");
         for (ULONG i = 0; i < request.Size; ++i)
         {
-          printf("  %lu %lu\n",
+          printf("  %10lu %10lu\n",
             response[i].Pid,
             response[i].Tid);
         }

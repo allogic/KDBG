@@ -37,7 +37,7 @@ KmHandleWriteMemoryProcess(
 {
   NTSTATUS status = STATUS_SUCCESS;
   PVOID base = NULL;
-  status = KmGetProcessImageBase(request->Pid, request->ImageName, base);
+  status = KmGetProcessImageBase(request->Pid, request->ImageName, &base);
   if (NT_SUCCESS(status))
   {
     status = KmWriteMemoryProcess(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, request->Bytes);
@@ -55,7 +55,7 @@ KmHandleWriteMemoryKernel(
 {
   NTSTATUS status = STATUS_SUCCESS;
   PVOID base = NULL;
-  status = KmGetKernelImageBase(request->ImageName, base);
+  status = KmGetKernelImageBase(request->ImageName, &base);
   if (NT_SUCCESS(status))
   {
     status = KmWriteMemoryKernel((PVOID)((PBYTE)base + request->Offset), request->Size, request->Bytes);
@@ -78,7 +78,7 @@ KmHandleReadMemoryProcess(
 {
   NTSTATUS status = STATUS_SUCCESS;
   PVOID base = NULL;
-  status = KmGetProcessImageBase(request->Pid, request->ImageName, base);
+  status = KmGetProcessImageBase(request->Pid, request->ImageName, &base);
   if (NT_SUCCESS(status))
   {
     status = KmReadMemoryProcess(request->Pid, (PVOID)((PBYTE)base + request->Offset), request->Size, response);
@@ -97,7 +97,7 @@ KmHandleReadMemoryKernel(
 {
   NTSTATUS status = STATUS_SUCCESS;
   PVOID base = NULL;
-  status = KmGetKernelImageBase(request->ImageName, base);
+  status = KmGetKernelImageBase(request->ImageName, &base);
   if (NT_SUCCESS(status))
   {
     status = KmReadMemoryKernel((PVOID)((PBYTE)base + request->Offset), request->Size, response);
@@ -198,49 +198,13 @@ KmHandleReadThreadsProcess(
   PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
-  PBYTE buffer = (PBYTE)KmAllocateMemory(TRUE, sizeof(SYSTEM_PROCESS_INFORMATION) * 1024 * 1024);
-  if (buffer)
+  ULONG threadCount = 0;
+  KM_THREAD_PROCESS threads[1024] = {};
+  status = KmGetProcessThreads(request->Pid, &threadCount, threads);
+  if (NT_SUCCESS(status))
   {
-    status = ZwQuerySystemInformation(SystemProcessInformation, buffer, sizeof(SYSTEM_PROCESS_INFORMATION) * 1024 * 1024, NULL);
-    if (NT_SUCCESS(status))
-    {
-      __try
-      {
-        ULONG processAcc = 0;
-        while (1)
-        {
-          KM_LOG_INFO("Thread count %lu\n", ((PSYSTEM_PROCESS_INFORMATION)buffer)->NumberOfThreads);
-          //KM_LOG_INFO("Tid %lu Pid %u\n", (ULONG)threads[i].ClientId.UniqueThread, (ULONG)threads[i].ClientId.UniqueProcess);
-          //KM_LOG_INFO("Copy from %p to %p\n", &threads[i].ClientId.UniqueThread, &Threads[i].Tid);
-          //for (ULONG i = 0; i < processInfo->NumberOfThreads; ++i)
-          //{
-          //  PSYSTEM_THREAD_INFORMATION thread = (PSYSTEM_THREAD_INFORMATION)(((PBYTE)processInfo) + sizeof(SYSTEM_PROCESS_INFORMATION) + sizeof(SYSTEM_THREAD_INFORMATION) * i);
-          //  if (verbose)
-          //  {
-          //    LOG_INFO("\tTid: %lu\n", *(PULONG)thread->ClientId.UniqueThread);
-          //    LOG_INFO("\tBase: %p\n", thread->StartAddress);
-          //    LOG_INFO("\n");
-          //  }
-          //  //request->Processes[processAcc].Threads[i].Tid = *(PULONG)thread->ClientId.UniqueThread;
-          //  //request->Processes[processAcc].Threads[i].Base = thread->StartAddress;
-          //  //request->Processes[processAcc].Threads[i].State = thread->ThreadState;
-          //}
-          if (!((PSYSTEM_PROCESS_INFORMATION)buffer)->NextEntryOffset)
-          {
-            KM_LOG_INFO("Fetched threads\n");
-            status = STATUS_SUCCESS;
-            break;
-          }
-          buffer += ((PSYSTEM_PROCESS_INFORMATION)buffer)->NextEntryOffset;
-          processAcc++;
-        }
-      }
-      __except (EXCEPTION_EXECUTE_HANDLER)
-      {
-        KM_LOG_INFO("Something went wrong\n");
-      }
-    }
-    KmFreeMemory(buffer);
+    memcpy(response, threads, sizeof(KM_THREAD_PROCESS) * request->Size);
+    KM_LOG_INFO("Fetched %u threads for process %u\n", threadCount, request->Pid);
   }
   return status;
 }
@@ -699,7 +663,7 @@ DriverEntry(
   driver->MajorFunction[IRP_MJ_CREATE] = OnIrpCreate;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
-  status = CreateDevice(driver, Device, KM_DEVICE_NAME, KM_DEVICE_SYMBOL_NAME);
+  status = CreateDevice(driver, &Device, KM_DEVICE_NAME, KM_DEVICE_SYMBOL_NAME);
   if (NT_SUCCESS(status))
   {
     KM_LOG_INFO("KMOD initialized\n");

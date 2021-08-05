@@ -5,7 +5,7 @@ NTSTATUS
 KmGetProcessImageBase(
   ULONG pid,
   PWCHAR imageName,
-  PVOID& base)
+  PVOID* base)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   PEPROCESS process = NULL;
@@ -37,7 +37,7 @@ KmGetProcessImageBase(
           }
           moduleEntry = moduleEntry->Flink;
         }
-        base = module->DllBase;
+        *base = module->DllBase;
         status = STATUS_SUCCESS;
         KM_LOG_INFO("Selected module %ls\n", module->BaseDllName.Buffer);
       }
@@ -55,7 +55,7 @@ KmGetProcessImageBase(
 NTSTATUS
 KmGetKernelImageBase(
   PCHAR imageName,
-  PVOID& imageBase)
+  PVOID* imageBase)
 {
   NTSTATUS status = STATUS_SUCCESS;
   PRTL_PROCESS_MODULES images = (PRTL_PROCESS_MODULES)KmAllocateMemory(TRUE, sizeof(RTL_PROCESS_MODULES) * 1024 * 1024);
@@ -68,7 +68,7 @@ KmGetKernelImageBase(
       {
         if (_stricmp(imageName, (PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName)) == 0)
         {
-          imageBase = images[0].Modules[i].ImageBase;
+          *imageBase = images[0].Modules[i].ImageBase;
           KM_LOG_INFO("Selected module %s\n", (PCHAR)(images[0].Modules[i].FullPathName + images[0].Modules[i].OffsetToFileName));
           break;
         }

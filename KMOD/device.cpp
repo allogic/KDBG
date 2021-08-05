@@ -3,7 +3,7 @@
 NTSTATUS
 CreateDevice(
   PDRIVER_OBJECT driver,
-  PDEVICE_OBJECT& device,
+  PDEVICE_OBJECT* device,
   PCWCHAR deviceName,
   PCWCHAR symbolicName)
 {
@@ -12,11 +12,10 @@ CreateDevice(
   UNICODE_STRING symbolicNameTmp;
   RtlInitUnicodeString(&deviceNameTmp, deviceName);
   RtlInitUnicodeString(&symbolicNameTmp, symbolicName);
-  status = IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, &device);
+  status = IoCreateDevice(driver, 0, &deviceNameTmp, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, 0, device);
   if (NT_SUCCESS(status))
   {
-    device->Flags |= (DO_DIRECT_IO | DO_BUFFERED_IO);
-    device->Flags &= ~DO_DEVICE_INITIALIZING;
+    (*device)->Flags &= ~DO_DEVICE_INITIALIZING;
     IoCreateSymbolicLink(&symbolicNameTmp, &deviceNameTmp);
   }
   return status;

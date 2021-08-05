@@ -7,11 +7,11 @@ NTSTATUS
 KmGetProcessImageBase(
   ULONG pid,
   PWCHAR imageName,
-  PVOID& base);
+  PVOID* base);
 
 NTSTATUS
 KmGetKernelImageBase(
   PCHAR imageName,
-  PVOID& imageBase);
+  PVOID* imageBase);
 
 #endif

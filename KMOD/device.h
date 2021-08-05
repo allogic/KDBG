@@ -11,7 +11,7 @@
 NTSTATUS
 CreateDevice(
   PDRIVER_OBJECT driver,
-  PDEVICE_OBJECT& device,
+  PDEVICE_OBJECT* device,
   PCWCHAR deviceName,
   PCWCHAR symbolicName);
 
