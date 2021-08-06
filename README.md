@@ -13,9 +13,9 @@ Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
 ## Install
 You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.
 ```
-sc.exe create kmod type=kernel binPath="C:\KMOD.sys" // create the system service (has to be done only once)
+sc.exe create kmod type=kernel binPath="C:\KMOD.sys" // create system service (has to be done only once)
 .\kdu.exe -dse 0                                     // disable DSE
-sc.exe start/stop kmod                               // start or stop the service
+sc.exe start/stop kmod                               // start or stop service
 .\kdu.exe -dse 6                                     // enable DSE (some AC's require DSE to be enabled)
 .\KCLI.exe                                           // issue a variety of commands
 ```
