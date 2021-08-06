@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file memory.h
+* @brief Interprocess memory utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _MEMORY_H
 #define _MEMORY_H
 

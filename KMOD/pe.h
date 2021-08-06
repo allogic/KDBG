@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file pe.h
+* @brief ELF utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _PE_H
 #define _PE_H
 

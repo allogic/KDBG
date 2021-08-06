@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file global.h
+* @brief Global includes/utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _GLOBAL_H
 #define _GLOBAL_H
 

@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file thread.h
+* @brief Thread utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _THREAD_H
 #define _THREAD_H
 

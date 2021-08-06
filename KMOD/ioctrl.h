@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file ioctrl.h
+* @brief I/O communication protocol.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _IOCTRL_H
 #define _IOCTRL_H
 

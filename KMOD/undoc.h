@@ -1,5 +1,12 @@
-#ifndef _KRNL_H
-#define _KRNL_H
+/*
+* @author allogic
+* @file undoc.h
+* @brief All undocumented windows structures/exports.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
+#ifndef _UNDOC_H
+#define _UNDOC_H
 
 #include "global.h"
 

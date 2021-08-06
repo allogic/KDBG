@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file trace.h
+* @brief OpCode tracing utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _TRACE_H
 #define _TRACE_H
 

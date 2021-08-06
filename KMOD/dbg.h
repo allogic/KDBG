@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file dbg.h
+* @brief Thread register controller.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _DBG_H
 #define _DBG_H
 

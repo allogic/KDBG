@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file common.h
+* @brief Shared datatypes.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _COMMON_H
 #define _COMMON_H
 

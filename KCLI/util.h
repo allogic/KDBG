@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file util.h
+* @brief Minor utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _UTIL_H
 #define _UTIL_H
 
