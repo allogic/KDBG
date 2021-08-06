@@ -182,7 +182,7 @@ typedef struct _SCAN_INT
   {
     Little,
     Big,
-  } Endiness;
+  } Endiness = Little;
 } SCAN_INT, * PSCAN_INT;
 typedef struct _SCAN_REAL
 {
@@ -196,6 +196,11 @@ typedef struct _SCAN_REAL
     Float,
     Double
   } Width = Float;
+  enum ENDINESS
+  {
+    Little,
+    Big,
+  } Endiness = Little;
 } SCAN_REAL, * PSCAN_REAL;
 typedef struct _SCAN_BYTES
 {
