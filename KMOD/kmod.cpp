@@ -322,6 +322,31 @@ KmHandleScanInt(
   PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PVOID base = NULL;
+  SIZE_T size = 0;
+  switch (request->Signedness)
+  {
+    case SCAN_INT::SIGNEDNESS::Signed:
+    {
+      switch (request->Width)
+      {
+        case SCAN_INT::WIDTH::Char: status = KmScanIntSigned8(base, size, request->Value.S8); break;
+        case SCAN_INT::WIDTH::Short: status = KmScanIntSigned16(base, size, request->Value.S16); break;
+        case SCAN_INT::WIDTH::Int: status = KmScanIntSigned32(base, size, request->Value.S32); break;
+      }
+      break;
+    }
+    case SCAN_INT::SIGNEDNESS::Unsigned:
+    {
+      switch (request->Width)
+      {
+        case SCAN_INT::WIDTH::Char: status = KmScanIntUnsigned8(base, size, request->Value.U8); break;
+        case SCAN_INT::WIDTH::Short: status = KmScanIntUnsigned16(base, size, request->Value.U16); break;
+        case SCAN_INT::WIDTH::Int: status = KmScanIntUnsigned32(base, size, request->Value.U32); break;
+      }
+      break;
+    }
+  }
   return status;
 }
 
@@ -331,6 +356,13 @@ KmHandleScanReal(
   PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PVOID base = NULL;
+  SIZE_T size = 0;
+  switch (request->Width)
+  {
+    case SCAN_REAL::WIDTH::Float: status = KmScanReal32(base, size, request->Value.R32); break;
+    case SCAN_REAL::WIDTH::Double: status = KmScanReal64(base, size, request->Value.R64); break;
+  }
   return status;
 }
 
@@ -340,6 +372,9 @@ KmHandleScanBytes(
   PVOID response)
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
+  PVOID base = NULL;
+  SIZE_T size = 0;
+  status = KmScanBytes(base, size, request->Bytes, request->Size);
   return status;
 }
 

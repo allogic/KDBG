@@ -160,12 +160,12 @@ typedef struct _SCAN_INT
 {
   union
   {
-    CHAR S8;
-    UCHAR U8;
-    SHORT S16;
-    USHORT U16;
-    INT S32;
-    UINT U32;
+    BYTE S8;
+    BYTE U8;
+    BYTE S16[2];
+    BYTE U16[2];
+    BYTE S32[4];
+    BYTE U32[4];
   } Value = {};
   enum WIDTH
   {
@@ -178,13 +178,18 @@ typedef struct _SCAN_INT
     Signed,
     Unsigned,
   } Signedness = Signed;
+  enum ENDINESS
+  {
+    Little,
+    Big,
+  } Endiness;
 } SCAN_INT, * PSCAN_INT;
 typedef struct _SCAN_REAL
 {
   union
   {
-    FLOAT R32;
-    DOUBLE R64;
+    BYTE R32[4];
+    BYTE R64[8];
   } Value = {};
   enum WIDTH
   {
