@@ -1,4 +1,4 @@
-# KDBG
+# KDBG (Kernel Debugger/CheatEngine)
 The windows kernel debugger consists of two parts, KMOD which is the kernel driver handling ring3 request and KCLI; the command line interface for the driver.
 It originated due to insufficient useability with CheatEngine's DBVM driver while debugging games running under certain AntiCheat software.
 The main goal now is to transform KDBG into a fully functional debugger. Note that BSOD's are not uncommon, one should get familiar with them unless you know what you are doing.
