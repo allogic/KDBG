@@ -1,7 +1,11 @@
 # KDBG
 The windows kernel debugger consists of two parts, KMOD which is the kernel driver handling ring3 request and KCLI; the command line interface for the driver.
 It originated due to insufficient useability with CheatEngine's DBVM driver while debugging games running under certain AntiCheat software.
-The main goal now is to transform KDBG into a fully functional debugger.
+The main goal now is to transform KDBG into a fully functional debugger. Note that BSOD's are not uncommon, one should get familiar with them unless you know what you are doing.
+
+>*I Don't Know The Future.*  
+>*I Didn't Come Here To Tell You How This Is Going To End.*  
+>*I Came Here To Tell You How It's Going To Begin.*  
 
 ## Build
 Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
@@ -9,34 +13,35 @@ Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
 ## Install
 You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.
 ```
-.\kdu.exe -dse 0
-sc.exe start/stop KMOD
-.\KCLI.exe <PID>
-.\kdu.exe -dse 6
+sc.exe create kmod type=kernel binPath="C:\KMOD.sys" // create the system service (has to be done only once)
+.\kdu.exe -dse 0                                     // disable DSE
+sc.exe start/stop kmod                               // start or stop the service
+.\kdu.exe -dse 6                                     // enable DSE (some anti-cheats require DSE to be enabled)
+.\KCLI.exe                                           // issue a variety of commands
 ```
 
 ## Features
- * WriteMemoryProcess
- * WriteMemoryKernel
- * ReadMemoryProcess
- * ReadMemoryKernel
- * ReadModulesProcess
- * ReadModulesKernel
- * ReadThreadsProcess
- * ReadScanResults (not implemented yet)
- * TraceContextStart (not implemented yet)
- * TraceContextStop (not implemented yet)
- * DebugBreakpointSet (not implemented yet)
- * DebugBreakpointRem (not implemented yet)
- * ScanNew (not implemented yet)
- * ScanUndo (not implemented yet)
- * ScanInt (not implemented yet)
- * ScanReal (not implemented yet)
- * ScanBytes (not implemented yet)
- * ScanFilterChanged (not implemented yet)
- * ScanFilterUnchanged (not implemented yet)
- * ScanFilterIncreased (not implemented yet)
- * ScanFilterDecreased (not implemented yet)
+ * `WriteMemoryProcess` (Write arbitrary bytes into processes and bypass ASLR)
+ * `WriteMemoryKernel` (Write arbitrary bytes into system images and bypass ASLR)
+ * `ReadMemoryProcess` (Read arbitrary bytes from processes and bypass ASLR)
+ * `ReadMemoryKernel` (Read arbitrary bytes from system images and bypass ASLR)
+ * `ReadModulesProcess` (Read all modules of a specific process)
+ * `ReadModulesKernel` (Read all kernel modules)
+ * `ReadThreadsProcess` (Read all threads of a specific process)
+ * `ReadScanResults` (not implemented)
+ * `TraceContextStart` (Start a system trace thread which will look for registers which contain certain addresses)
+ * `TraceContextStop` (Stop the previously started trace thread)
+ * `DebugBreakpointSet` (not implemented)
+ * `DebugBreakpointRem` (not implemented)
+ * `ScanNew` (not implemented)
+ * `ScanUndo` (not implemented)
+ * `ScanInt` (not implemented)
+ * `ScanReal` (not implemented)
+ * `ScanBytes` (not implemented)
+ * `ScanFilterChanged` (not implemented)
+ * `ScanFilterUnchanged` (not implemented)
+ * `ScanFilterIncreased` (not implemented)
+ * `ScanFilterDecreased` (not implemented)
 
 ### WriteMemoryProcess
 Syntax: `.\KCLI.exe /WriteMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`  
