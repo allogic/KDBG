@@ -16,7 +16,8 @@ If you find bugs or got improvements or suggestions, create an issue or pull req
 0x616c will merge them as soon as he finished dissecting windows.
 
 ## Install
-You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.
+You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.  
+KDU is available here: https://github.com/hfiref0x/KDU
 ```
 sc.exe create kmod type=kernel binPath="C:\KMOD.sys" // create system service (has to be done only once)
 .\kdu.exe -dse 0                                     // disable DSE
