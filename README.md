@@ -21,9 +21,9 @@ sc.exe start/stop kmod                               // start or stop service
 ```
 
 ## Features
- * `WriteMemoryProcess` (Write arbitrary bytes into processes and bypass ASLR)
+ * `WriteMemoryProcess` (Write arbitrary bytes into process images and bypass ASLR)
  * `WriteMemoryKernel` (Write arbitrary bytes into system images and bypass ASLR)
- * `ReadMemoryProcess` (Read arbitrary bytes from processes and bypass ASLR)
+ * `ReadMemoryProcess` (Read arbitrary bytes from process images and bypass ASLR)
  * `ReadMemoryKernel` (Read arbitrary bytes from system images and bypass ASLR)
  * `ReadModulesProcess` (Read all modules of a specific process)
  * `ReadModulesKernel` (Read all kernel modules)
