@@ -12,7 +12,7 @@ The main goal now is to transform KDBG into a fully functional debugger. Note th
 Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
 
 ## Issues/Pull requests
-If you find bugs or got improvements or suggestions, create an issue or pull request with a detailed description why/what and how!  
+If you find bugs or got improvements or suggestions, create an issue or pull request with a detailed description why/what and how!
 0x616c will merge them as soon as he finished dissecting windows.
 
 ## Install
