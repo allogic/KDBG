@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KMOD", "KMOD\KMOD.vcxproj",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KTST", "KTST\KTST.vcxproj", "{8AE1ABCB-5A53-4690-910C-6E528634996C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KSQL", "KSQL\KSQL.vcxproj", "{F8A558AA-8824-4149-8BFF-71F8C97163DB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -69,6 +71,18 @@ Global
 		{8AE1ABCB-5A53-4690-910C-6E528634996C}.Release|x64.Build.0 = Release|x64
 		{8AE1ABCB-5A53-4690-910C-6E528634996C}.Release|x86.ActiveCfg = Release|Win32
 		{8AE1ABCB-5A53-4690-910C-6E528634996C}.Release|x86.Build.0 = Release|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Debug|ARM.ActiveCfg = Debug|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Debug|ARM64.ActiveCfg = Debug|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Debug|x64.ActiveCfg = Debug|x64
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Debug|x64.Build.0 = Debug|x64
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Debug|x86.ActiveCfg = Debug|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Debug|x86.Build.0 = Debug|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Release|ARM.ActiveCfg = Release|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Release|ARM64.ActiveCfg = Release|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Release|x64.ActiveCfg = Release|x64
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Release|x64.Build.0 = Release|x64
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Release|x86.ActiveCfg = Release|Win32
+		{F8A558AA-8824-4149-8BFF-71F8C97163DB}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
