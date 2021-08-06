@@ -21,18 +21,23 @@ sc.exe start/stop kmod                               // start or stop service
 ```
 
 ## Features
+#### Write API
  * `WriteMemoryProcess` (Write arbitrary bytes into process images and bypass ASLR)
  * `WriteMemoryKernel` (Write arbitrary bytes into system images and bypass ASLR)
+#### Read API
  * `ReadMemoryProcess` (Read arbitrary bytes from process images and bypass ASLR)
  * `ReadMemoryKernel` (Read arbitrary bytes from system images and bypass ASLR)
  * `ReadModulesProcess` (Read all modules of a specific process)
  * `ReadModulesKernel` (Read all kernel modules)
  * `ReadThreadsProcess` (Read all threads of a specific process)
  * `ReadScanResults` (not implemented)
+#### Trace API
  * `TraceContextStart` (Start a system trace thread which will look for registers which contain certain addresses)
  * `TraceContextStop` (Stop the previously started trace thread)
+#### Debug API
  * `DebugBreakpointSet` (not implemented)
  * `DebugBreakpointRem` (not implemented)
+#### Scan API
  * `ScanNew` (not implemented)
  * `ScanUndo` (not implemented)
  * `ScanInt` (not implemented)
@@ -43,15 +48,15 @@ sc.exe start/stop kmod                               // start or stop service
  * `ScanFilterIncreased` (not implemented)
  * `ScanFilterDecreased` (not implemented)
 
-### WriteMemoryProcess
+## WriteMemoryProcess
 Syntax: `.\KCLI.exe /WriteMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`  
 Example: `.\KCLI.exe /WriteMemoryProcess taskmgr.exe taskmgr.exe 40000 3 909090`
 
-### WriteMemoryKernel
+## WriteMemoryKernel
 Syntax: `.\KCLI.exe /WriteMemoryKernel [ImageName] [Offset(hex)] [Size(dec)] [Bytes(hex)]`  
 Example: `.\KCLI.exe /WriteMemoryKernel ntoskrnl.exe 40000 3 909090`
 
-### ReadMemoryProcess
+## ReadMemoryProcess
 Syntax: `.\KCLI.exe /ReadMemoryProcess [ProcessName] [ImageName] [Offset(hex)] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadMemoryProcess taskmgr.exe taskmgr.exe 40000 32`
 ```
@@ -67,7 +72,7 @@ Example: `.\KCLI.exe /ReadMemoryProcess taskmgr.exe taskmgr.exe 40000 32`
 0x00040016 4C 89 7D 48 .. .. .. .. .. .. .. mov qword ptr [rbp + 0x48], r15
 0x0004001A BE 02 00 07 80 .. .. .. .. .. .. mov esi, 0x80070002
 ```
-### ReadMemoryKernel
+## ReadMemoryKernel
 Syntax: `.\KCLI.exe /ReadMemoryKernel [ImageName] [Offset(hex)] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadMemoryKernel ntoskrnl.exe 40000 32`
 ```
@@ -88,7 +93,7 @@ Example: `.\KCLI.exe /ReadMemoryKernel ntoskrnl.exe 40000 32`
 0x00040019 00 5C 00 55 .. .. .. .. .. .. .. add byte ptr [rax + rax + 0x55], bl
 0x0004001D 00 53 00 .. .. .. .. .. .. .. .. add byte ptr [rbx], dl
 ```
-### ReadModulesProcess
+## ReadModulesProcess
 Syntax: `.\KCLI.exe /ReadModulesProcess [ProcessName] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadModulesProcess taskmgr.exe 10`
 ```
@@ -105,7 +110,7 @@ Example: `.\KCLI.exe /ReadModulesProcess taskmgr.exe 10`
   00007FFAD0E60000 00007FFAD0EB5000     348160 SHLWAPI.dll
   00007FFAD1740000 00007FFAD17DE000     647168 msvcrt.dll
 ```
-### ReadModulesKernel
+## ReadModulesKernel
 Syntax: `.\KCLI.exe /ReadModulesKernel [Size(dec)]`  
 Example: `.\KCLI.exe /ReadModulesKernel 10`
 ```
@@ -122,7 +127,7 @@ Example: `.\KCLI.exe /ReadModulesKernel 10`
   FFFFF80454F60000 FFFFF80454FCF000     454656 FLTMGR.SYS
   FFFFF8045A550000 FFFFF8045A5B2000     401408 msrpc.sys
 ```
-### ReadThreadsProcess
+## ReadThreadsProcess
 Syntax: `.\KCLI.exe /ReadThreadsProcess [ProcessName] [Size(dec)]`  
 Example: `.\KCLI.exe /ReadThreadsProcess taskmgr.exe 6`
 ```
@@ -135,44 +140,44 @@ Example: `.\KCLI.exe /ReadThreadsProcess taskmgr.exe 6`
         9116      10096
         9116       4984
 ```
-### ReadScanResults
+## ReadScanResults
 Syntax: `.\KCLI.exe /ReadScanResults`
 
-### TraceContextStart
+## TraceContextStart
 Syntax: `.\KCLI.exe /TraceContextStart [Address(hex)]`
 
-### TraceContextStop
+## TraceContextStop
 Syntax: `.\KCLI.exe /TraceContextStop [Id(dec)]`
 
-### DebugBreakpointSet
+## DebugBreakpointSet
 Syntax: `.\KCLI.exe /DebugBreakpointSet [Base(hex)] [Type(0=Software|1=Hardware)]`
 
-### DebugBreakpointRem
+## DebugBreakpointRem
 Syntax: `.\KCLI.exe /DebugBreakpointRem [Base(hex)]`
 
-### ScanNew
+## ScanNew
 Syntax: `.\KCLI.exe /ScanNew`
 
-### ScanUndo
+## ScanUndo
 Syntax: `.\KCLI.exe /ScanUndo`
 
-### ScanInt
+## ScanInt
 Syntax: `.\KCLI.exe /ScanInt`
 
-### ScanReal
+## ScanReal
 Syntax: `.\KCLI.exe /ScanReal`
 
-### ScanBytes
+## ScanBytes
 Syntax: `.\KCLI.exe /ScanBytes`
 
-### ScanFilterChanged
+## ScanFilterChanged
 Syntax: `.\KCLI.exe /ScanFilterChanged`
 
-### ScanFilterUnchanged
+## ScanFilterUnchanged
 Syntax: `.\KCLI.exe /ScanFilterUnchanged`
 
-### ScanFilterIncreased
+## ScanFilterIncreased
 Syntax: `.\KCLI.exe /ScanFilterIncreased`
 
-### ScanFilterDecreased
+## ScanFilterDecreased
 Syntax: `.\KCLI.exe /ScanFilterDecreased`
