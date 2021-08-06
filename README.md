@@ -11,8 +11,13 @@ The main goal now is to transform KDBG into a fully functional debugger. Note th
 ## Build
 Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
 
+## Issues/Pull requests
+If you find bugs or got improvements or suggestions, create an issue or pull request with a detailed description why/what and how!
+0x616c will merge them as soon as he finished dissecting windows.
+
 ## Install
-You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.
+You can start or stop the driver via tools like `kdu.exe` which will turn off `Driver Signature Enforcement` temporarily.  
+KDU is available here: https://github.com/hfiref0x/KDU
 ```
 sc.exe create kmod type=kernel binPath="C:\KMOD.sys" // create system service (has to be done only once)
 .\kdu.exe -dse 0                                     // disable DSE
@@ -23,11 +28,11 @@ sc.exe start/stop kmod                               // start or stop service
 
 ## Features
 #### Write API
- * `WriteMemoryProcess` (Write arbitrary bytes into process images and bypass ASLR)
- * `WriteMemoryKernel` (Write arbitrary bytes into system images and bypass ASLR)
+ * `WriteMemoryProcess` (Write arbitrary bytes into process images)
+ * `WriteMemoryKernel` (Write arbitrary bytes into system images)
 #### Read API
- * `ReadMemoryProcess` (Read arbitrary bytes from process images and bypass ASLR)
- * `ReadMemoryKernel` (Read arbitrary bytes from system images and bypass ASLR)
+ * `ReadMemoryProcess` (Read arbitrary bytes from process images)
+ * `ReadMemoryKernel` (Read arbitrary bytes from system images)
  * `ReadModulesProcess` (Read all modules of a specific process)
  * `ReadModulesKernel` (Read all kernel modules)
  * `ReadThreadsProcess` (Read all threads of a specific process)
