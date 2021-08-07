@@ -11,28 +11,6 @@
 #include "global.h"
 
 /*
-* Kernel utilities.
-*/
-
-template<typename FUNCTION>
-static FUNCTION KmGetSystemRoutine(PCWCHAR procName)
-{
-  static FUNCTION functionPointer = NULL;
-  if (!functionPointer)
-  {
-    UNICODE_STRING functionName;
-    RtlInitUnicodeString(&functionName, procName);
-    functionPointer = (FUNCTION)MmGetSystemRoutineAddress(&functionName);
-    if (!functionPointer)
-    {
-      KM_LOG_ERROR("MmGetSystemRoutineAddress\n");
-      return NULL;
-    }
-  }
-  return functionPointer;
-}
-
-/*
 * Kernel structs and enums.
 */
 

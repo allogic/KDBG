@@ -62,18 +62,18 @@
 
 typedef struct _WRITE_MEMORY_PROCESS
 {
-  ULONG Pid = 0;
-  WCHAR ImageName[256] = {};
-  ULONG Offset = 0;
-  ULONG Size = 0;
-  BYTE Bytes[1024] = {};
+  ULONG Pid;
+  WCHAR ImageName[256];
+  ULONG Offset;
+  ULONG Size;
+  BYTE Bytes[1024];
 } WRITE_MEMORY_PROCESS, * PWRITE_MEMORY_PROCESS;
 typedef struct _WRITE_MEMORY_KERNEL
 {
-  CHAR ImageName[256] = {};
-  ULONG Offset = 0;
-  ULONG Size = 0;
-  BYTE Bytes[1024] = {};
+  CHAR ImageName[256];
+  ULONG Offset;
+  ULONG Size;
+  BYTE Bytes[1024];
 } WRITE_MEMORY_KERNEL, * PWRITE_MEMORY_KERNEL;
 
 /*
@@ -82,34 +82,34 @@ typedef struct _WRITE_MEMORY_KERNEL
 
 typedef struct _READ_MEMORY_PROCESS
 {
-  ULONG Pid = 0;
-  WCHAR ImageName[256] = {};
-  ULONG Offset = 0;
-  ULONG Size = 0;
+  ULONG Pid;
+  WCHAR ImageName[256];
+  ULONG Offset;
+  ULONG Size;
 } READ_MEMORY_PROCESS, * PREAD_MEMORY_PROCESS;
 typedef struct _READ_MEMORY_KERNEL
 {
-  CHAR ImageName[256] = {};
-  ULONG Offset = 0;
-  ULONG Size = 0;
+  CHAR ImageName[256];
+  ULONG Offset;
+  ULONG Size;
 } READ_MEMORY_KERNEL, * PREAD_MEMORY_KERNEL;
 typedef struct _READ_MODULES_PROCESS
 {
-  ULONG Pid = 0;
-  ULONG Size = 0;
+  ULONG Pid;
+  ULONG Size;
 } READ_MODULES_PROCESS, * PREAD_MODULES_PROCESS;
 typedef struct _READ_MODULES_KERNEL
 {
-  ULONG Size = 0;
+  ULONG Size;
 } READ_MODULES_KERNEL, * PREAD_MODULES_KERNEL;
 typedef struct _READ_THREADS_PROCESS
 {
-  ULONG Pid = 0;
-  ULONG Size = 0;
+  ULONG Pid;
+  ULONG Size;
 } READ_THREADS_PROCESS, * PREAD_THREADS_PROCESS;
 typedef struct _READ_SCAN_RESULTS
 {
-
+  PVOID Tmp;
 } READ_SCAN_RESULTS, * PREAD_SCAN_RESULTS;
 
 /*
@@ -118,12 +118,12 @@ typedef struct _READ_SCAN_RESULTS
 
 typedef struct _TRACE_CONTEXT_START
 {
-  ULONG Pid = 0;
-  ULONG64 Address = 0;
+  ULONG Pid;
+  ULONG64 Address;
 } TRACE_CONTEXT_START, * PTRACE_CONTEXT_START;
 typedef struct _TRACE_CONTEXT_STOP
 {
-  ULONG Id = 0;
+  ULONG Id;
 } TRACE_CONTEXT_STOP, * PTRACE_CONTEXT_STOP;
 
 /*
@@ -132,21 +132,43 @@ typedef struct _TRACE_CONTEXT_STOP
 
 typedef struct _DEBUG_BREAKPOINT_SET
 {
-  ULONG64 Base = 0;
+  ULONG64 Base;
   enum TYPE
   {
     Software,
     Hardware,
-  } Type = Software;
+  } Type;
 } DEBUG_BREAKPOINT_SET, * PDEBUG_BREAKPOINT_SET;
 typedef struct _DEBUG_BREAKPOINT_REM
 {
-  ULONG64 Base = 0;
+  ULONG64 Base;
 } DEBUG_BREAKPOINT_REM, * PDEBUG_BREAKPOINT_REM;
 
 /*
 * Scan request types.
 */
+
+typedef enum _SIGNEDNESS
+{
+  Signed,
+  Unsigned,
+} SIGNEDNESS;
+typedef enum _INT_WIDTH
+{
+  Char,
+  Short,
+  Int,
+} INT_WIDTH;
+typedef enum _REAL_WIDTH
+{
+  Float,
+  Double
+} REAL_WIDTH;
+typedef enum _ENDINESS
+{
+  Little,
+  Big,
+} ENDINESS;
 
 typedef struct _SCAN_NEW
 {
@@ -163,23 +185,10 @@ typedef struct _SCAN_INT
     BYTE V8;
     BYTE V16[2];
     BYTE V32[4];
-  } Value = {};
-  enum WIDTH
-  {
-    Char,
-    Short,
-    Int,
-  } Width = Int;
-  enum SIGNEDNESS
-  {
-    Signed,
-    Unsigned,
-  } Signedness = Signed;
-  enum ENDINESS
-  {
-    Little,
-    Big,
-  } Endiness = Little;
+  } Value;
+  INT_WIDTH Width; 
+  SIGNEDNESS Signedness;
+  ENDINESS Endiness;
 } SCAN_INT, * PSCAN_INT;
 typedef struct _SCAN_REAL
 {
@@ -187,22 +196,14 @@ typedef struct _SCAN_REAL
   {
     BYTE V32[4];
     BYTE V64[8];
-  } Value = {};
-  enum WIDTH
-  {
-    Float,
-    Double
-  } Width = Float;
-  enum ENDINESS
-  {
-    Little,
-    Big,
-  } Endiness = Little;
+  } Value;
+  REAL_WIDTH Width;
+  ENDINESS Endiness;
 } SCAN_REAL, * PSCAN_REAL;
 typedef struct _SCAN_BYTES
 {
-  BYTE Bytes[256] = {};
-  ULONG Size = 0;
+  BYTE Bytes[256];
+  ULONG Size;
 } SCAN_BYTES, * PSCAN_BYTES;
 typedef struct _SCAN_FILTER_CHANGED
 {

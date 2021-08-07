@@ -34,7 +34,7 @@
 */
 
 ULONG TraceId = 0;
-TRACE_CONTEXT TraceContexts[64] = {};
+TRACE_CONTEXT TraceContexts[64];
 
 /*
 * Write request/response handlers.
@@ -208,7 +208,7 @@ KmHandleReadThreadsProcess(
 {
   NTSTATUS status = STATUS_UNSUCCESSFUL;
   ULONG threadCount = 0;
-  KM_THREAD_PROCESS threads[1024] = {};
+  KM_THREAD_PROCESS threads[1024];
   status = KmGetProcessThreads(request->Pid, &threadCount, threads);
   if (NT_SUCCESS(status))
   {
@@ -330,23 +330,23 @@ KmHandleScanInt(
   SIZE_T size = 0;
   switch (request->Signedness)
   {
-    case SCAN_INT::SIGNEDNESS::Signed:
+    case Signed:
     {
       switch (request->Width)
       {
-        case SCAN_INT::WIDTH::Char: status = KmScanIntSigned8(base, size, request->Value.V8); break;
-        case SCAN_INT::WIDTH::Short: status = KmScanIntSigned16(base, size, request->Value.V16); break;
-        case SCAN_INT::WIDTH::Int: status = KmScanIntSigned32(base, size, request->Value.V32); break;
+        case Char: status = KmScanIntSigned8(base, size, request->Value.V8); break;
+        case Short: status = KmScanIntSigned16(base, size, request->Value.V16); break;
+        case Int: status = KmScanIntSigned32(base, size, request->Value.V32); break;
       }
       break;
     }
-    case SCAN_INT::SIGNEDNESS::Unsigned:
+    case Unsigned:
     {
       switch (request->Width)
       {
-        case SCAN_INT::WIDTH::Char: status = KmScanIntUnsigned8(base, size, request->Value.V8); break;
-        case SCAN_INT::WIDTH::Short: status = KmScanIntUnsigned16(base, size, request->Value.V16); break;
-        case SCAN_INT::WIDTH::Int: status = KmScanIntUnsigned32(base, size, request->Value.V32); break;
+        case Char: status = KmScanIntUnsigned8(base, size, request->Value.V8); break;
+        case Short: status = KmScanIntUnsigned16(base, size, request->Value.V16); break;
+        case Int: status = KmScanIntUnsigned32(base, size, request->Value.V32); break;
       }
       break;
     }
@@ -364,8 +364,8 @@ KmHandleScanReal(
   SIZE_T size = 0;
   switch (request->Width)
   {
-    case SCAN_REAL::WIDTH::Float: status = KmScanReal32(base, size, request->Value.V32); break;
-    case SCAN_REAL::WIDTH::Double: status = KmScanReal64(base, size, request->Value.V64); break;
+    case Float: status = KmScanReal32(base, size, request->Value.V32); break;
+    case Double: status = KmScanReal64(base, size, request->Value.V64); break;
   }
   return status;
 }

@@ -17,15 +17,15 @@
 
 typedef struct _TRACE_CONTEXT
 {
-  HANDLE Thread = NULL;
-  ULONG Id = 0;
-  ULONG Pid = 0;
-  ULONG ThreadCount = 0;
-  KM_THREAD_PROCESS Threads[1024] = {};
-  ULONG64 Address = 0;
-  BOOL Running = TRUE;
-  KEVENT Event = {};
-  ULONG64 OpCodes[64] = {};
+  HANDLE Thread;
+  ULONG Id;
+  ULONG Pid;
+  ULONG ThreadCount;
+  KM_THREAD_PROCESS Threads[1024];
+  ULONG64 Address;
+  BOOL Running;
+  KEVENT Event;
+  ULONG64 OpCodes[64];
 } TRACE_CONTEXT, * PTRACE_CONTEXT;
 
 LONG
