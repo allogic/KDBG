@@ -25,8 +25,14 @@ typedef struct _TRACE_CONTEXT
   ULONG64 Address = 0;
   BOOL Running = TRUE;
   KEVENT Event = {};
-  ULONG64 Opcodes[64] = {};
+  ULONG64 OpCodes[64] = {};
 } TRACE_CONTEXT, * PTRACE_CONTEXT;
+
+LONG
+KmContainsValue(
+  PULONG64 opCodes,
+  ULONG opCodesCount,
+  ULONG64 value);
 
 VOID
 KmTraceThread(

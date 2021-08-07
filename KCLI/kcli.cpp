@@ -191,8 +191,8 @@ wmain(
     {
       TRACE_CONTEXT_START request = {};
       request.Pid = GetProcessIdFromNameW(argv[2]);
-      request.Address = wcstoul(argv[3], NULL, 16);
-
+      request.Address = wcstoull(argv[3], NULL, 16);
+      printf("Address is %p\n", (PVOID)request.Address);
       ULONG response = 0;
 
       if (DeviceIoControl(Device, KM_TRACE_CONTEXT_START, &request, sizeof(request), &response, sizeof(response), 0, 0))
@@ -216,7 +216,7 @@ wmain(
         printf("\n");
         for (ULONG i = 0; i < 64; ++i)
         {
-          printf("%llu\n", response[i]);
+          printf("%p\n", (PVOID)response[i]);
         }
         printf("\n");
       }

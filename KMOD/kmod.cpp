@@ -9,6 +9,7 @@
 #include "thread.h"
 #include "trace.h"
 #include "scanner.h"
+#include "debugger.h"
 
 /*
 * Hints:
@@ -18,11 +19,14 @@
 *  - https://docs.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent
 *  - https://cpp.hotexamples.com/de/examples/-/-/GetThreadContext/cpp-getthreadcontext-function-examples.html
 *  - https://cpp.hotexamples.com/examples/-/ThreadContext/-/cpp-threadcontext-class-examples.html
+*  - https://github.com/cheat-engine/cheat-engine/blob/master/DBKKernel/debugger.c
+*  - https://github.com/cheat-engine/cheat-engine/blob/master/DBKKernel/interruptHook.c
 */
 
 /*
-* Todos:
-*  - Create test user program with multiple threads and start scanning registers for known value addresses
+* Functions:
+*  - KeQueryRuntimeThread
+*  - PsGetCurrentThreadStackBase
 */
 
 /*
@@ -265,7 +269,7 @@ KmHandleTraceContextStop(
     status = ZwClose(TraceContexts[request->Id].Thread);
     if (NT_SUCCESS(status))
     {
-      memcpy(response, TraceContexts[request->Id].Opcodes, sizeof(TraceContexts[request->Id].Opcodes));
+      memcpy(response, TraceContexts[request->Id].OpCodes, sizeof(TraceContexts[request->Id].OpCodes));
       KM_LOG_INFO("Trace thread stopped\n");
     }
   }
@@ -330,9 +334,9 @@ KmHandleScanInt(
     {
       switch (request->Width)
       {
-        case SCAN_INT::WIDTH::Char: status = KmScanIntSigned8(base, size, request->Value.S8); break;
-        case SCAN_INT::WIDTH::Short: status = KmScanIntSigned16(base, size, request->Value.S16); break;
-        case SCAN_INT::WIDTH::Int: status = KmScanIntSigned32(base, size, request->Value.S32); break;
+        case SCAN_INT::WIDTH::Char: status = KmScanIntSigned8(base, size, request->Value.V8); break;
+        case SCAN_INT::WIDTH::Short: status = KmScanIntSigned16(base, size, request->Value.V16); break;
+        case SCAN_INT::WIDTH::Int: status = KmScanIntSigned32(base, size, request->Value.V32); break;
       }
       break;
     }
@@ -340,9 +344,9 @@ KmHandleScanInt(
     {
       switch (request->Width)
       {
-        case SCAN_INT::WIDTH::Char: status = KmScanIntUnsigned8(base, size, request->Value.U8); break;
-        case SCAN_INT::WIDTH::Short: status = KmScanIntUnsigned16(base, size, request->Value.U16); break;
-        case SCAN_INT::WIDTH::Int: status = KmScanIntUnsigned32(base, size, request->Value.U32); break;
+        case SCAN_INT::WIDTH::Char: status = KmScanIntUnsigned8(base, size, request->Value.V8); break;
+        case SCAN_INT::WIDTH::Short: status = KmScanIntUnsigned16(base, size, request->Value.V16); break;
+        case SCAN_INT::WIDTH::Int: status = KmScanIntUnsigned32(base, size, request->Value.V32); break;
       }
       break;
     }
@@ -360,8 +364,8 @@ KmHandleScanReal(
   SIZE_T size = 0;
   switch (request->Width)
   {
-    case SCAN_REAL::WIDTH::Float: status = KmScanReal32(base, size, request->Value.R32); break;
-    case SCAN_REAL::WIDTH::Double: status = KmScanReal64(base, size, request->Value.R64); break;
+    case SCAN_REAL::WIDTH::Float: status = KmScanReal32(base, size, request->Value.V32); break;
+    case SCAN_REAL::WIDTH::Double: status = KmScanReal64(base, size, request->Value.V64); break;
   }
   return status;
 }

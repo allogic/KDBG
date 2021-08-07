@@ -130,13 +130,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(IncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(IncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -259,6 +259,7 @@
     <ClCompile Include="memory.cpp" />
     <ClCompile Include="process.cpp" />
     <ClCompile Include="scanner.cpp" />
+    <ClCompile Include="stackwalk.cpp" />
     <ClCompile Include="undoc.cpp" />
     <ClCompile Include="pe.cpp" />
     <ClCompile Include="thread.cpp" />
@@ -273,6 +274,7 @@
     <ClInclude Include="memory.h" />
     <ClInclude Include="process.h" />
     <ClInclude Include="scanner.h" />
+    <ClInclude Include="stackwalk.h" />
     <ClInclude Include="undoc.h" />
     <ClInclude Include="pe.h" />
     <ClInclude Include="thread.h" />

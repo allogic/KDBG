@@ -150,22 +150,19 @@ typedef struct _DEBUG_BREAKPOINT_REM
 
 typedef struct _SCAN_NEW
 {
-
+  PVOID Tmp;
 } SCAN_NEW, * PSCAN_NEW;
 typedef struct _SCAN_UNDO
 {
-
+  PVOID Tmp;
 } SCAN_UNDO, * PSCAN_UNDO;
 typedef struct _SCAN_INT
 {
   union
   {
-    BYTE S8;
-    BYTE U8;
-    BYTE S16[2];
-    BYTE U16[2];
-    BYTE S32[4];
-    BYTE U32[4];
+    BYTE V8;
+    BYTE V16[2];
+    BYTE V32[4];
   } Value = {};
   enum WIDTH
   {
@@ -188,8 +185,8 @@ typedef struct _SCAN_REAL
 {
   union
   {
-    BYTE R32[4];
-    BYTE R64[8];
+    BYTE V32[4];
+    BYTE V64[8];
   } Value = {};
   enum WIDTH
   {
@@ -209,19 +206,19 @@ typedef struct _SCAN_BYTES
 } SCAN_BYTES, * PSCAN_BYTES;
 typedef struct _SCAN_FILTER_CHANGED
 {
-
+  PVOID Tmp;
 } SCAN_FILTER_CHANGED, * PSCAN_FILTER_CHANGED;
 typedef struct _SCAN_FILTER_UNCHANGED
 {
-
+  PVOID Tmp;
 } SCAN_FILTER_UNCHANGED, * PSCAN_FILTER_UNCHANGED;
 typedef struct _SCAN_FILTER_INCREASED
 {
-  
+  PVOID Tmp;
 } SCAN_FILTER_INCREASED, * PSCAN_FILTER_INCREASED;
 typedef struct _SCAN_FILTER_DECREASED
 {
-
+  PVOID Tmp;
 } SCAN_FILTER_DECREASED, * PSCAN_FILTER_DECREASED;
 
 #endif

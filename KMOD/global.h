@@ -16,8 +16,6 @@
 #include <stddef.h>
 #include <windef.h>
 
-#include <wsk.h>
-
 #define _KM_STR(VAL) #VAL
 #define KM_STR(VAL) _KM_STR(VAL)
 

@@ -1,7 +1,7 @@
 /*
 * @author allogic
-* @file dbg.h
-* @brief Thread register controller.
+* @file debugger.h
+* @brief Windows kernel debugger.
 * @copyright allogic 2021. All Rights Reserved.
 */
 
