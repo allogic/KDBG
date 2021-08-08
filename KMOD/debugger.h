@@ -5,10 +5,11 @@
 * @copyright allogic 2021. All Rights Reserved.
 */
 
-#ifndef _DBG_H
-#define _DBG_H
+#ifndef _DEBUGGER_H
+#define _DEBUGGER_H
 
 #include "global.h"
+#include "interrupt.h"
 
 #define X86_EFLAGS_TF           0x00000100 /* Trap flag */
 #define X86_EFLAGS_IF           0x00000200 /* Interrupt Enable flag */
@@ -88,7 +89,7 @@
 #define EFER_FFXSR  0x4000
 
 /*
-* Macros for getting and setting special purpose registers in portable code.
+* Macros for getting and setting special purpose registers.
 */
 
 #define KeGetContextPc(Context)                          ((Context)->Rip)
@@ -102,6 +103,13 @@
 /*
 * Debugging utilities.
 */
+
+VOID
+KmInitializeDebugger();
+
+INT
+interrupt1_centry(
+  PULONG64 stackpointer);
 
 VOID
 KmSetSoftwareBreakpoint(

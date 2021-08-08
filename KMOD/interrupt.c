@@ -35,8 +35,16 @@ HookInterrupt(
 {
   IDT idt;
   GetIDT(&idt);
-  KM_LOG_INFO();
-  DbgPrint("int%d newCS=%X newEIP=%p jumpbacklocation=%p\n", intNr, newCS, (PVOID)newEIP, jumpback);
+  KM_LOG_INFO("int%d newCS=%X newEIP=%p jumpbacklocation=%p\n", intNr, newCS, (PVOID)newEIP, jumpback);
+  if (!InterruptHooks[intNr].Hooked)
+  {
+    KM_LOG_INFO("InterruptHooks[%d].hooked=%d\n", intNr, InterruptHooks[intNr].Hooked);
+    InterruptHooks[intNr].OrigCS = idt.Vector[intNr].Selector;
+    InterruptHooks[intNr].OrigEIP = idt.Vector[intNr].LowOffset + (idt.Vector[intNr].HighOffset << 16);
+    InterruptHooks[intNr].OrigEIP |= (ULONG64)((ULONG64)idt.Vector[intNr].TopOffset << 32);
+  }
+  jumpback->CS = InterruptHooks[intNr].OrigCS;
+  jumpback->EIP = InterruptHooks[intNr].OrigEIP;
   INT_VECTOR newVector;
   newVector.HighOffset = (WORD)((DWORD)(newEIP >> 16));
   newVector.LowOffset = (WORD)newEIP;
@@ -45,5 +53,6 @@ HookInterrupt(
   newVector.AccessFlags = idt.Vector[intNr].AccessFlags;
   newVector.TopOffset = (newEIP >> 32);
   newVector.Reserved = 0;
+  InterruptHooks[intNr].Hooked = TRUE;
   KM_LOG_INFO("int%d will now go to %X:%p\n", intNr, newCS, (PVOID)newEIP);
 }
