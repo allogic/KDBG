@@ -108,7 +108,7 @@ VOID
 KmInitializeDebugger();
 
 INT
-interrupt1_centry(
+Int1CEntry(
   PULONG64 stackpointer);
 
 VOID

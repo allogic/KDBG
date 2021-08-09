@@ -2,40 +2,41 @@
 
 JUMPBACK Int1JumpBackLocation;
 
-extern WORD getCS();
-extern WORD getSS();
-extern WORD getDS();
-extern WORD getES();
-extern WORD getFS();
-extern WORD getGS();
-extern ULONG64 getRSP();
-extern ULONG64 getRBP();
-extern ULONG64 getRAX();
-extern ULONG64 getRBX();
-extern ULONG64 getRCX();
-extern ULONG64 getRDX();
-extern ULONG64 getRSI();
-extern ULONG64 getRDI();
-extern ULONG64 getR8();
-extern ULONG64 getR9();
-extern ULONG64 getR10();
-extern ULONG64 getR11();
-extern ULONG64 getR12();
-extern ULONG64 getR13();
-extern ULONG64 getR14();
-extern ULONG64 getR15();
-extern ULONG64 getAccessRights(ULONG64 segment);
-extern ULONG64 getSegmentLimit(ULONG64 segment);
-extern VOID interrupt1_asmentry();
+EXTERN_C WORD getCS();
+EXTERN_C WORD getSS();
+EXTERN_C WORD getDS();
+EXTERN_C WORD getES();
+EXTERN_C WORD getFS();
+EXTERN_C WORD getGS();
+EXTERN_C ULONG64 getRSP();
+EXTERN_C ULONG64 getRBP();
+EXTERN_C ULONG64 getRAX();
+EXTERN_C ULONG64 getRBX();
+EXTERN_C ULONG64 getRCX();
+EXTERN_C ULONG64 getRDX();
+EXTERN_C ULONG64 getRSI();
+EXTERN_C ULONG64 getRDI();
+EXTERN_C ULONG64 getR8();
+EXTERN_C ULONG64 getR9();
+EXTERN_C ULONG64 getR10();
+EXTERN_C ULONG64 getR11();
+EXTERN_C ULONG64 getR12();
+EXTERN_C ULONG64 getR13();
+EXTERN_C ULONG64 getR14();
+EXTERN_C ULONG64 getR15();
+EXTERN_C ULONG64 getAccessRights(ULONG64 segment);
+EXTERN_C ULONG64 getSegmentLimit(ULONG64 segment);
+
+EXTERN_C VOID Int1AEntry();
 
 VOID
 KmInitializeDebugger()
 {
-  HookInterrupt(1, getCS() & 0xfff8, interrupt1_asmentry, &Int1JumpBackLocation);
+  HookInterrupt(1, getCS() & 0xfff8, Int1AEntry, &Int1JumpBackLocation);
 }
 
 INT
-interrupt1_centry(
+Int1CEntry(
   PULONG64 stackpointer)
 {
   return 0;
