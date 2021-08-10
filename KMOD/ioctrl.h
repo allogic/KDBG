@@ -153,17 +153,13 @@ typedef enum _SIGNEDNESS
   Signed,
   Unsigned,
 } SIGNEDNESS;
-typedef enum _INT_WIDTH
+typedef enum _WIDTH
 {
-  Char,
-  Short,
-  Int,
-} INT_WIDTH;
-typedef enum _REAL_WIDTH
-{
-  Float,
-  Double
-} REAL_WIDTH;
+  x8,
+  x16,
+  x32,
+  x64,
+} WIDTH;
 typedef enum _ENDINESS
 {
   Little,
@@ -186,7 +182,7 @@ typedef struct _SCAN_INT
     BYTE V16[2];
     BYTE V32[4];
   } Value;
-  INT_WIDTH Width; 
+  WIDTH Width; 
   SIGNEDNESS Signedness;
   ENDINESS Endiness;
 } SCAN_INT, * PSCAN_INT;
@@ -197,7 +193,7 @@ typedef struct _SCAN_REAL
     BYTE V32[4];
     BYTE V64[8];
   } Value;
-  REAL_WIDTH Width;
+  WIDTH Width;
   ENDINESS Endiness;
 } SCAN_REAL, * PSCAN_REAL;
 typedef struct _SCAN_BYTES

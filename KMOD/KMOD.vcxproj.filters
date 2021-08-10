@@ -100,7 +100,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="ASM\foo.asm">
+    <MASM Include="ASM\dbg.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>

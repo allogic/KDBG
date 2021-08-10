@@ -334,9 +334,9 @@ KmHandleScanInt(
     {
       switch (request->Width)
       {
-        case Char: status = KmScanIntSigned8(base, size, request->Value.V8); break;
-        case Short: status = KmScanIntSigned16(base, size, request->Value.V16); break;
-        case Int: status = KmScanIntSigned32(base, size, request->Value.V32); break;
+        case x8: status = KmScanIntSigned8(base, size, request->Value.V8); break;
+        case x16: status = KmScanIntSigned16(base, size, request->Value.V16); break;
+        case x32: status = KmScanIntSigned32(base, size, request->Value.V32); break;
       }
       break;
     }
@@ -344,9 +344,9 @@ KmHandleScanInt(
     {
       switch (request->Width)
       {
-        case Char: status = KmScanIntUnsigned8(base, size, request->Value.V8); break;
-        case Short: status = KmScanIntUnsigned16(base, size, request->Value.V16); break;
-        case Int: status = KmScanIntUnsigned32(base, size, request->Value.V32); break;
+        case x8: status = KmScanIntUnsigned8(base, size, request->Value.V8); break;
+        case x16: status = KmScanIntUnsigned16(base, size, request->Value.V16); break;
+        case x32: status = KmScanIntUnsigned32(base, size, request->Value.V32); break;
       }
       break;
     }
@@ -364,8 +364,8 @@ KmHandleScanReal(
   SIZE_T size = 0;
   switch (request->Width)
   {
-    case Float: status = KmScanReal32(base, size, request->Value.V32); break;
-    case Double: status = KmScanReal64(base, size, request->Value.V64); break;
+    case x32: status = KmScanReal32(base, size, request->Value.V32); break;
+    case x64: status = KmScanReal64(base, size, request->Value.V64); break;
   }
   return status;
 }
@@ -714,7 +714,16 @@ DriverEntry(
   status = CreateDevice(driver, &Device, KM_DEVICE_NAME, KM_DEVICE_SYMBOL_NAME);
   if (NT_SUCCESS(status))
   {
-    KM_LOG_INFO("KMOD initialized\n");
+    __try
+    {
+      KmInitializeDebugger();
+      KM_LOG_INFO("KMOD initialized\n");
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+      KM_LOG_ERROR("Something went wrong\n");
+      status = STATUS_UNHANDLED_EXCEPTION;
+    }
   }
   return status;
 }

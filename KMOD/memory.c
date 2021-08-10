@@ -25,7 +25,7 @@ KmInterlockedMemcpy(
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
-          KM_LOG_INFO("Something went wrong\n");
+          KM_LOG_ERROR("Something went wrong\n");
         }
       }
       MmUnmapLockedPages(mappedSrc, mdl);

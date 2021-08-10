@@ -282,7 +282,7 @@
     <ClInclude Include="trace.h" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="ASM\foo.asm" />
+    <MASM Include="ASM\dbg.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

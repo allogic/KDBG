@@ -39,7 +39,7 @@ KmGetProcessImageBase(
         }
         *base = module->DllBase;
         status = STATUS_SUCCESS;
-        KM_LOG_INFO("Selected module %ls\n", module->BaseDllName.Buffer);
+        KM_LOG_ERROR("Selected module %ls\n", module->BaseDllName.Buffer);
       }
     }
     __except (EXCEPTION_EXECUTE_HANDLER)

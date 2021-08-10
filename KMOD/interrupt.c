@@ -55,4 +55,5 @@ HookInterrupt(
   newVector.Reserved = 0;
   InterruptHooks[intNr].Hooked = TRUE;
   KM_LOG_INFO("int%d will now go to %X:%p\n", intNr, newCS, (PVOID)newEIP);
+  // Set back IDT?
 }

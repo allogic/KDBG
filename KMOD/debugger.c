@@ -1,60 +1,103 @@
 #include "debugger.h"
 
-JUMPBACK Int1JumpBackLocation;
+DEBUG_STATE DebugState;
 
-EXTERN_C WORD getCS();
-EXTERN_C WORD getSS();
-EXTERN_C WORD getDS();
-EXTERN_C WORD getES();
-EXTERN_C WORD getFS();
-EXTERN_C WORD getGS();
-EXTERN_C ULONG64 getRSP();
-EXTERN_C ULONG64 getRBP();
-EXTERN_C ULONG64 getRAX();
-EXTERN_C ULONG64 getRBX();
-EXTERN_C ULONG64 getRCX();
-EXTERN_C ULONG64 getRDX();
-EXTERN_C ULONG64 getRSI();
-EXTERN_C ULONG64 getRDI();
-EXTERN_C ULONG64 getR8();
-EXTERN_C ULONG64 getR9();
-EXTERN_C ULONG64 getR10();
-EXTERN_C ULONG64 getR11();
-EXTERN_C ULONG64 getR12();
-EXTERN_C ULONG64 getR13();
-EXTERN_C ULONG64 getR14();
-EXTERN_C ULONG64 getR15();
-EXTERN_C ULONG64 getAccessRights(ULONG64 segment);
-EXTERN_C ULONG64 getSegmentLimit(ULONG64 segment);
+KEVENT EventWaitForContinue; //event for kernelmode. Waits till it's set by usermode (usermode function: DBK_Continue_Debug_Event sets it)
+KEVENT EventCanBreak; //event for kernelmode. Waits till a break has been handled so a new one can enter
+KEVENT EventWaitForDebugEvent; //event for usermode. Waits till it's set by a debugged event
 
-EXTERN_C VOID Int1AEntry();
+JUMPBACK Int1Jumpback;
+
+EXTERN_C WORD GetCS();
+EXTERN_C VOID Int1AsmEntry();
 
 VOID
 KmInitializeDebugger()
 {
-  HookInterrupt(1, getCS() & 0xfff8, Int1AEntry, &Int1JumpBackLocation);
+  //KeInitializeEvent(&EventWaitForContinue, SynchronizationEvent, FALSE);
+  //KeInitializeEvent(&EventCanBreak, SynchronizationEvent, TRUE); //true so the first can enter
+  //KeInitializeEvent(&EventWaitForDebugEvent, SynchronizationEvent, FALSE);
+
+  // create stack snapshots for physical cpu
+
+  HookInterrupt(1, GetCS() & 0xfff8, Int1AsmEntry, &Int1Jumpback);
+}
+
+INT
+BreakpointHandler(
+  PULONG64 stackpointer,
+  PULONG64 debugRegisters,
+  PULONG64 lbrStack)
+{
+  return 0; // impl!
+}
+
+INT
+Int1Handler(
+  PULONG64 stackpointer,
+  PULONG64 debugRegisters)
+{
+  return 0; // impl!
 }
 
 INT
 Int1CEntry(
   PULONG64 stackpointer)
 {
-  return 0;
+  return 0; // impl!
 }
 
 VOID
-KmSetSoftwareBreakpoint(
-  PCONTEXT context)
+AttachDebugger(
+  ULONG pid)
 {
-  // continue from gdb_input.h
-  //KeSetContextPc(context, 0xCC); // int3
-  //KdpSetSingleStep(context);
-  //PKTRAP_FRAME trapFrame = KeGetTrapFramePc(context);
-  //KMOD_LOG_INFO("Trap flag %llu\n", );
+  //Int1Jumpback.EIP = inthook_getOriginalEIP(1);
+  //Int1Jumpback.CS = inthook_getOriginalCS(1);
+}
+
+NTSTATUS
+GetDebuggerState(
+  PDEBUG_STACK_STATE debugStackState)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
+NTSTATUS
+SetDebuggerState(
+  PDEBUG_STACK_STATE debugStackState)
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  return status;
+}
+
+NTSTATUS
+DebugContinue()
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  //KeSetEvent(&EventWaitForContinue, 0, FALSE);
+  return status;
+}
+
+NTSTATUS
+WaitForDebugEvent()
+{
+  NTSTATUS status = STATUS_SUCCESS;
+  //KeWaitForSingleObject(&EventWaitForDebugEvent, UserRequest, KernelMode, TRUE, NULL);
+  return status;
 }
 
 VOID
-KmSetHardwareBreakpoint()
+SetBreakpoint(
+  ULONG breakpointNr,
+  ULONG64 address)
+{
+
+}
+
+VOID
+RemBreakpoint(
+  ULONG breakpointNr)
 {
 
 }
