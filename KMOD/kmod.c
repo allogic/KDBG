@@ -716,7 +716,7 @@ DriverEntry(
   {
     __try
     {
-      KmInitializeDebugger();
+      //KmInitializeDebugger();
       KM_LOG_INFO("KMOD initialized\n");
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
