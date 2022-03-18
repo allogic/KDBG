@@ -196,13 +196,15 @@
     <ClCompile Include="global.c" />
     <ClCompile Include="interrupt.c" />
     <ClCompile Include="kmod.c" />
-    <ClCompile Include="test.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="device.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="interrupt.h" />
     <ClInclude Include="ioctrl.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="asm\hooks.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

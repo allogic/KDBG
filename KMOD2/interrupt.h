@@ -43,24 +43,36 @@ typedef struct _KIDT64
 } KIDT64, * PKIDT64;
 
 /*
-* Interrupt enable/disable
+* Interrupt utils
 */
 
-VOID
-KmEnableInterrupts();
-
-VOID
-KmDisableInterrupts();
-
-/*
-* Interrupt hook
-*/
+typedef struct _ISRHOOK
+{
+  BYTE Active;
+  LWORD Original;
+  LWORD Current;
+} ISRHOOK, * PISRHOOK;
 
 PKIDTENTRY64
 KmGetIDT();
 
+LWORD
+KmGetISR(
+  PKIDTENTRY64 idt,
+  BYTE interruptNumber);
+
+VOID
+KmSetISR(
+  PKIDTENTRY64 idt,
+  BYTE interruptNumber,
+  LWORD newIsr);
+
 VOID
 KmHookInterrupt(
-  BYTE interrupt);
+  BYTE interruptNumber,
+  LWORD newIsr);
+
+VOID
+KmRestoreInterrupts();
 
 #endif

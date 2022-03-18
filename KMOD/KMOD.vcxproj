@@ -262,6 +262,7 @@
     <ClCompile Include="memory.c" />
     <ClCompile Include="process.c" />
     <ClCompile Include="scanner.c" />
+    <ClCompile Include="test.c" />
     <ClCompile Include="undoc.c" />
     <ClCompile Include="pe.c" />
     <ClCompile Include="thread.c" />

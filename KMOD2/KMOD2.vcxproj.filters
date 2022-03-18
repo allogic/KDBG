@@ -33,9 +33,6 @@
     <ClCompile Include="device.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="test.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="interrupt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -53,5 +50,10 @@
     <ClInclude Include="interrupt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="asm\hooks.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

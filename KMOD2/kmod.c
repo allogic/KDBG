@@ -9,6 +9,15 @@
 */
 
 /*
+* Interrupt hooks
+*/
+
+VOID MyInterruptPayload()
+{
+  KM_LOG_INFO("MyInterruptPayload called\n");
+}
+
+/*
 * I/O callbacks
 */
 
@@ -51,7 +60,7 @@ OnIrpCtrl(
       case KM_CTRL_DEBUG:
       {
         KM_LOG_INFO("Begin debug\n");
-        KmHookInterrupt();
+        KmHookInterrupt(0x0, MyInterruptPayload);
         irp->IoStatus.Status = STATUS_SUCCESS;
         irp->IoStatus.Information = 0;
         KM_LOG_INFO("End debug\n");
@@ -88,7 +97,7 @@ OnIrpClose(
 }
 
 /*
-* I/O communication device.
+* I/O communication device
 */
 
 PDEVICE_OBJECT Device = NULL;
@@ -107,6 +116,7 @@ DriverUnload(
   UNREFERENCED_PARAMETER(driver);
   NTSTATUS status = STATUS_SUCCESS;
   status = DeleteDevice(Device, KM_DEVICE_SYMBOL_NAME);
+  KmRestoreInterrupts();
   if (NT_SUCCESS(status))
   {
     KM_LOG_INFO("KMOD2 deinitialized\n");
@@ -129,7 +139,7 @@ DriverEntry(
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
   status = CreateDevice(driver, &Device, KM_DEVICE_NAME, KM_DEVICE_SYMBOL_NAME);
-  KmHookInterrupt();
+  KmHookInterrupt(0x0, MyInterruptPayload);
   if (NT_SUCCESS(status))
   {
     KM_LOG_INFO("KMOD2 initialized\n");

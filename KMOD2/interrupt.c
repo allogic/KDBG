@@ -1,53 +1,116 @@
 #include "interrupt.h"
 
-VOID
-KmEnableInterrupts()
-{
-  _enable();
-}
+/*
+* Active hooks
+*/
 
-VOID
-KmDisableInterrupts()
-{
-  _disable();
-}
+ISRHOOK IsrHooks[256];
+
+/*
+* Interrupt utils
+*/
 
 PKIDTENTRY64
 KmGetIDT()
 {
+  KIDT64 idt;
+  __sidt(&idt.Limit);
+  return idt.Table;
+}
 
+LWORD
+KmGetISR(
+  PKIDTENTRY64 idt,
+  BYTE interruptNumber)
+{
+  return (LWORD)(idt[interruptNumber].OffsetHigh << 32)
+    | ((LWORD)(idt[interruptNumber].OffsetMiddle << 16)
+    | idt[interruptNumber].OffsetLow);
+}
+
+VOID
+KmSetISR(
+  PKIDTENTRY64 idt,
+  BYTE interruptNumber,
+  LWORD newIsr)
+{
+  idt[interruptNumber].OffsetHigh = newIsr >> 32;
+  idt[interruptNumber].OffsetMiddle = (newIsr << 32) >> 48;
+  idt[interruptNumber].OffsetLow = newIsr & 0xffff;
 }
 
 VOID
 KmHookInterrupt(
-  BOOL interrupt)
+  BYTE interruptNumber,
+  LWORD newIsr)
 {
-  KAFFINITY activeProcessors = KeQueryActiveProcessors();
-  for (KAFFINITY affinity = 1; activeProcessors; affinity <<= 1, activeProcessors >>= 1)
+  _disable();
+  if (!IsrHooks[interruptNumber].Active)
   {
-    if (activeProcessors & 1)
+    PKIDTENTRY64 idt = KmGetIDT();
+    LWORD isr = KmGetISR(idt, interruptNumber);
+    KM_LOG_INFO("ISR initial %p\n", (PVOID)isr);
+    KAFFINITY activeProcessors = KeQueryActiveProcessors();
+    for (KAFFINITY affinity = 1; activeProcessors; affinity <<= 1, activeProcessors >>= 1)
     {
-      KeSetSystemAffinityThread(affinity);
-      KM_LOG_INFO("Bound thread to CPU %u\n", (DWORD)affinity);
-      KIDT64 idt;
-      __sidt(&idt.Limit);
-      DWORD n = (idt.Limit + 1) / sizeof(KIDTENTRY64);
-      PKIDTENTRY64 entry = idt.Table;
-      if (n)
+      if (activeProcessors & 1)
       {
-        do
-        {
-          // Hook IDT here..
-          KM_LOG_INFO("IDT entry %u\n", n);
-          KM_LOG_INFO("\tIstIndex %u\n", entry->IstIndex);
-          KM_LOG_INFO("\tType %u\n", entry->Type);
-          KM_LOG_INFO("\tDp1 %u\n", entry->Dp1);
-          KM_LOG_INFO("\tPresent %u\n", entry->Present);
-          KM_LOG_INFO("\tISR %p\n", (PVOID)((LWORD)(entry->OffsetHigh << 32) | ((LWORD)(entry->OffsetMiddle << 16) | entry->OffsetLow)));
-          KM_LOG_INFO("\n");
-        } while (entry++, --n);
+        KeSetSystemAffinityThread(affinity);
+        idt = KmGetIDT();
+        isr = KmGetISR(idt, interruptNumber);
+        KM_LOG_INFO("ISR %p\n", (PVOID)isr);
+        KIRQL irql = KeRaiseIrqlToDpcLevel();
+        LWORD cr0 = __readcr0();
+        cr0 &= 0xfffffffffffeffff;
+        __writecr0(cr0);
+        //_disable();
+        KmSetISR(idt, interruptNumber, newIsr);
+        cr0 = __readcr0();
+        cr0 |= 0x10000;
+        //_enable();
+        __writecr0(cr0);
+        KeLowerIrql(irql);
+        KeRevertToUserAffinityThread();
       }
     }
+    //IsrHooks[interruptNumber].Active = 1;
+    //IsrHooks[interruptNumber].Original = isr; // no loop pls
+    IsrHooks[interruptNumber].Current = newIsr;
   }
-  KeRevertToUserAffinityThread();
+  _enable();
+}
+
+VOID
+KmRestoreInterrupts()
+{
+  PKIDTENTRY64 idt = KmGetIDT();
+  for (BYTE i = 0; i < 256; i++)
+  {
+    if (IsrHooks[i].Active)
+    {
+      KAFFINITY activeProcessors = KeQueryActiveProcessors();
+      for (KAFFINITY affinity = 1; activeProcessors; affinity <<= 1, activeProcessors >>= 1)
+      {
+        if (activeProcessors & 1)
+        {
+          KeSetSystemAffinityThread(affinity);
+          KIRQL irql = KeRaiseIrqlToDpcLevel();
+          LWORD cr0 = __readcr0();
+          cr0 &= 0xfffffffffffeffff;
+          __writecr0(cr0);
+          _disable();
+          KmSetISR(idt, i, IsrHooks[i].Original);
+          cr0 = __readcr0();
+          cr0 |= 0x10000;
+          _enable();
+          __writecr0(cr0);
+          KeLowerIrql(irql);
+          KeRevertToUserAffinityThread();
+        }
+      }
+      IsrHooks[i].Active = 0;
+      IsrHooks[i].Original = 0x0;
+      IsrHooks[i].Current = 0x0;
+    }
+  }
 }
