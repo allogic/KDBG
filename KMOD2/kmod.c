@@ -4,20 +4,6 @@
 #include "interrupt.h"
 
 /*
-* WinDbg:
-*  kdnet.exe 10.0.0.8 50000
-*/
-
-/*
-* Interrupt hooks
-*/
-
-VOID MyInterruptPayload()
-{
-  KM_LOG_INFO("MyInterruptPayload called\n");
-}
-
-/*
 * I/O callbacks
 */
 
@@ -60,7 +46,6 @@ OnIrpCtrl(
       case KM_CTRL_DEBUG:
       {
         KM_LOG_INFO("Begin debug\n");
-        KmHookInterrupt(0x0, MyInterruptPayload);
         irp->IoStatus.Status = STATUS_SUCCESS;
         irp->IoStatus.Information = 0;
         KM_LOG_INFO("End debug\n");
@@ -139,7 +124,7 @@ DriverEntry(
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = OnIrpCtrl;
   driver->MajorFunction[IRP_MJ_CLOSE] = OnIrpClose;
   status = CreateDevice(driver, &Device, KM_DEVICE_NAME, KM_DEVICE_SYMBOL_NAME);
-  KmHookInterrupt(0x0, MyInterruptPayload);
+  KmInitInterrupts();
   if (NT_SUCCESS(status))
   {
     KM_LOG_INFO("KMOD2 initialized\n");

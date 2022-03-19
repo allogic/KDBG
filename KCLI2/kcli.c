@@ -18,23 +18,23 @@ wmain(
   INT argc,
   PWCHAR argv[])
 {
-  //__try
-  //{
-  //  //
-  //  // Triggers Divide-By-Zero exception
-  //  //
-  //
-  //  volatile int A = 1;
-  //  volatile int B = 0;
-  //  volatile int C = A / B;
-  //
-  //  (void)C;
-  //}
-  //__except (GetExceptionCode() == EXCEPTION_INT_DIVIDE_BY_ZERO ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
-  //{
-  //}
-  //
-  //return 0;
+  __try
+  {
+    //
+    // Triggers Divide-By-Zero exception
+    //
+  
+    volatile int A = 1;
+    volatile int B = 0;
+    volatile int C = A / B;
+  
+    (void)C;
+  }
+  __except (GetExceptionCode() == EXCEPTION_INT_DIVIDE_BY_ZERO ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+  {
+  }
+  
+  return 0;
   Device = CreateFileA(KC_DEVICE_NAME, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
   if (Device != NULL)
   {

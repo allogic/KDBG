@@ -204,7 +204,7 @@
     <ClInclude Include="ioctrl.h" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="asm\hooks.asm" />
+    <MASM Include="asm\inthooks.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

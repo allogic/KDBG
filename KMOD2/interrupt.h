@@ -53,6 +53,15 @@ typedef struct _ISRHOOK
   LWORD Current;
 } ISRHOOK, * PISRHOOK;
 
+VOID
+KmInt1Payload();
+
+VOID
+KmInt3Payload();
+
+VOID
+KmInt14Payload();
+
 PKIDTENTRY64
 KmGetIDT();
 
@@ -71,6 +80,9 @@ VOID
 KmHookInterrupt(
   BYTE interruptNumber,
   LWORD newIsr);
+
+VOID
+KmInitInterrupts();
 
 VOID
 KmRestoreInterrupts();

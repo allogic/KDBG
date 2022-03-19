@@ -52,7 +52,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="asm\hooks.asm">
+    <MASM Include="asm\inthooks.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>
