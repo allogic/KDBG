@@ -202,6 +202,7 @@
     <ClInclude Include="global.h" />
     <ClInclude Include="interrupt.h" />
     <ClInclude Include="ioctrl.h" />
+    <ClInclude Include="stack.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="asm\inthooks.asm" />

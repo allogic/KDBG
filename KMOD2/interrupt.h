@@ -46,13 +46,6 @@ typedef struct _KIDT64
 * Interrupt utils
 */
 
-typedef struct _ISRHOOK
-{
-  BYTE Active;
-  LWORD Original;
-  LWORD Current;
-} ISRHOOK, * PISRHOOK;
-
 VOID
 KmInt1Payload();
 
@@ -60,7 +53,8 @@ VOID
 KmInt3Payload();
 
 VOID
-KmInt14Payload();
+KmInt14Payload(
+  PSTACK stack);
 
 PKIDTENTRY64
 KmGetIDT();
@@ -79,7 +73,8 @@ KmSetISR(
 VOID
 KmHookInterrupt(
   BYTE interruptNumber,
-  LWORD newIsr);
+  LWORD newIsr,
+  LWORD* origIsr);
 
 VOID
 KmInitInterrupts();

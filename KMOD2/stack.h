@@ -1,0 +1,41 @@
+#ifndef STACK_H
+#define STACK_H
+
+#include "global.h"
+
+typedef struct _STACK
+{
+  LWORD Mxcsr;
+  LWORD RAX;
+  LWORD RBX;
+  LWORD RCX;
+  LWORD RDX;
+  LWORD RSI;
+  LWORD RDI;
+  LWORD RBP;
+  LWORD RSP;
+  LWORD RIP;
+  LWORD R8;
+  LWORD R9;
+  LWORD R10;
+  LWORD R11;
+  LWORD R12;
+  LWORD R13;
+  LWORD R14;
+  LWORD R15;
+  LWORD CS;
+  LWORD DS;
+  LWORD ES;
+  LWORD FS;
+  LWORD GS;
+  LWORD SS;
+  LWORD DR0;
+  LWORD DR1;
+  LWORD DR2;
+  LWORD DR3;
+  LWORD DR6;
+  LWORD DR7;
+  BYTE FxState[512];
+} STACK, * PSTACK;
+
+#endif

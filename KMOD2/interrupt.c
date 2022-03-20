@@ -1,10 +1,13 @@
 #include "interrupt.h"
+#include "stack.h"
 
 /*
 * Active traps & payloads
 */
 
-ISRHOOK IsrHooks[256];
+LWORD IsrInt1Original;
+LWORD IsrInt3Original;
+LWORD IsrInt14Original;
 
 extern VOID KmInt1Trap(); // KiDebugTrapOrFault
 extern VOID KmInt3Trap(); // KiBreakpointTrap
@@ -13,19 +16,20 @@ extern VOID KmInt14Trap(); // KiPageFault
 VOID
 KmInt1Payload() // KiDebugTrapOrFault
 {
-  KM_LOG_INFO("KmInt1Payload\n");
+  //KM_LOG_INFO("KmInt1Payload\n");
 }
 
 VOID
 KmInt3Payload() // KiBreakpointTrap
 {
-  KM_LOG_INFO("KmInt3Payload\n");
+  //KM_LOG_INFO("KmInt3Payload\n");
 }
 
 VOID
-KmInt14Payload() // KiPageFault
+KmInt14Payload(
+  PSTACK stack) // KiPageFault
 {
-  KM_LOG_INFO("KmInt14Payload\n");
+  //KM_LOG_INFO("KmInt14Payload\n");
 }
 
 /*
@@ -64,24 +68,39 @@ KmSetISR(
 VOID
 KmHookInterrupt(
   BYTE interruptNumber,
-  LWORD newIsr)
+  LWORD newIsr,
+  LWORD* origIsr)
 {
-  PKIDTENTRY64 idt = KmGetIDT();
-  KM_LOG_INFO("IDT base %p\n", (PVOID)idt);
-  LWORD isr = KmGetISR(idt, interruptNumber);
-  KIRQL irql;
-  LWORD cr0;
+  PKIDTENTRY64 idt = NULL;
+  LWORD isr = 0;
+  LWORD isrPrev = 0;
+  KIRQL irql = 0;
+  LWORD cr0 = 0;
   KAFFINITY activeProcessors = KeQueryActiveProcessors();
-  for (KAFFINITY affinity = 1; activeProcessors; affinity <<= 1, activeProcessors >>= 1)
+  KAFFINITY affinity = 1;
+  ULONG i = 0;
+  for (; activeProcessors; affinity <<= 1, activeProcessors >>= 1, i++)
   {
     if (activeProcessors & 1)
     {
       KeSetSystemAffinityThread(affinity);
+      idt = KmGetIDT();
+      isrPrev = isr;
+      isr = KmGetISR(idt, interruptNumber);
+      KM_LOG_INFO("IDT:%p ISR:%p\n", (PVOID)idt, (PVOID)isr);
+      if (i > 0 && isr != isrPrev)
+      {
+        KM_LOG_ERROR("ISR difference detected, Prev:%p Curr:%p\n", (PVOID)isrPrev, (PVOID)isr);
+      }
       irql = KeRaiseIrqlToDpcLevel();
       cr0 = __readcr0();
       cr0 &= 0xfffffffffffeffff;
       __writecr0(cr0);
       _disable();
+      if (origIsr)
+      {
+        *origIsr = isr;
+      }
       KmSetISR(idt, interruptNumber, newIsr);
       cr0 = __readcr0();
       cr0 |= 0x10000;
@@ -91,25 +110,21 @@ KmHookInterrupt(
       KeRevertToUserAffinityThread();
     }
   }
-  IsrHooks[interruptNumber].Active = !IsrHooks[interruptNumber].Active;
-  IsrHooks[interruptNumber].Original = isr;
-  IsrHooks[interruptNumber].Current = newIsr;
-  KM_LOG_INFO("Original %p\n", (PVOID)IsrHooks[interruptNumber].Original);
-  KM_LOG_INFO("Current %p\n", (PVOID)IsrHooks[interruptNumber].Current);
+  KM_LOG_INFO("ISR successfully hooked, Orig:%p Curr:%p\n\n", (PVOID)isr, (PVOID)newIsr);
 }
 
 VOID
 KmInitInterrupts()
 {
-  //KmHookInterrupt(1, KmInt1Trap);
-  //KmHookInterrupt(3, KmInt3Trap);
-  KmHookInterrupt(14, KmInt14Trap);
+  KmHookInterrupt(1, KmInt1Trap, &IsrInt1Original);
+  KmHookInterrupt(3, KmInt3Trap, &IsrInt3Original);
+  KmHookInterrupt(14, KmInt14Trap, &IsrInt14Original);
 }
 
 VOID
 KmRestoreInterrupts()
 {
-  //KmHookInterrupt(1, IsrHooks[1].Original);
-  //KmHookInterrupt(3, IsrHooks[3].Original);
-  KmHookInterrupt(14, IsrHooks[14].Original);
+  KmHookInterrupt(1, IsrInt1Original, NULL);
+  KmHookInterrupt(3, IsrInt3Original, NULL);
+  KmHookInterrupt(14, IsrInt14Original, NULL);
 }

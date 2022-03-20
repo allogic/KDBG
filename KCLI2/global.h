@@ -9,6 +9,12 @@
 #include <winioctl.h>
 
 /*
+* Missing types
+*/
+
+typedef long long unsigned LWORD;
+
+/*
 * Logging utils
 */
 
