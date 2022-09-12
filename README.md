@@ -8,6 +8,8 @@ The main goal now is to transform KDBG into a fully functional debugger. Note th
 >*I Came Here To Tell You How It's Going To Begin.*  
 
 \- The Matrix
+
+![](image/showcase.png)
 ## Build
 Open the VisualStudio solution and build for `Debug` or `Release` bitness `x64`.
 
