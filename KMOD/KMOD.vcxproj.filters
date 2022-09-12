@@ -24,87 +24,58 @@
     </Inf>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="kmod.c">
+    <ClCompile Include="km_undoc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="undoc.c">
+    <ClCompile Include="km_memory.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="thread.c">
+    <ClCompile Include="km_main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pe.c">
+    <ClCompile Include="km_dispatch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="trace.c">
+    <ClCompile Include="km_scanner.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="device.c">
+    <ClCompile Include="km_process_image.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="memory.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="process.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="scanner.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debugger.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="interrupt.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="test.c">
+    <ClCompile Include="km_kernel_image.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="global.h">
+    <ClInclude Include="km_debug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ioctrl.h">
+    <ClInclude Include="km_ioctrl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="undoc.h">
+    <ClInclude Include="km_undoc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="thread.h">
+    <ClInclude Include="km_core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="pe.h">
+    <ClInclude Include="km_memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="common.h">
+    <ClInclude Include="km_dispatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="trace.h">
+    <ClInclude Include="km_config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="device.h">
+    <ClInclude Include="km_scanner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="memory.h">
+    <ClInclude Include="km_process_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="process.h">
+    <ClInclude Include="km_kernel_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="scanner.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="debugger.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="interrupt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="ASM\dbg.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
   </ItemGroup>
 </Project>

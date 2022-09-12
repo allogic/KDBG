@@ -1,5 +1,5 @@
 ;
-; Test.inf
+; KMOD.inf
 ;
 
 [Version]
@@ -7,19 +7,19 @@ Signature="$WINDOWS NT$"
 Class=System ; TODO: specify appropriate Class
 ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
 Provider=%ManufacturerName%
-CatalogFile=Test.cat
+CatalogFile=KMOD.cat
 DriverVer= ; TODO: set DriverVer in stampinf property pages
 PnpLockdown=1
 
 [DestinationDirs]
 DefaultDestDir = 12
-Test_Device_CoInstaller_CopyFiles = 11
+KMOD_Device_CoInstaller_CopyFiles = 11
 
 [SourceDisksNames]
 1 = %DiskName%,,,""
 
 [SourceDisksFiles]
-Test.sys  = 1,,
+KMOD.sys  = 1,,
 WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
 
 ;*****************************************
@@ -30,48 +30,48 @@ WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with
 %ManufacturerName%=Standard,NT$ARCH$
 
 [Standard.NT$ARCH$]
-%Test.DeviceDesc%=Test_Device, Root\Test ; TODO: edit hw-id
+%KMOD.DeviceDesc%=KMOD_Device, Root\KMOD ; TODO: edit hw-id
 
-[Test_Device.NT]
+[KMOD_Device.NT]
 CopyFiles=Drivers_Dir
 
 [Drivers_Dir]
-Test.sys
+KMOD.sys
 
 ;-------------- Service installation
-[Test_Device.NT.Services]
-AddService = Test,%SPSVCINST_ASSOCSERVICE%, Test_Service_Inst
+[KMOD_Device.NT.Services]
+AddService = KMOD,%SPSVCINST_ASSOCSERVICE%, KMOD_Service_Inst
 
-; -------------- Test driver install sections
-[Test_Service_Inst]
-DisplayName    = %Test.SVCDESC%
+; -------------- KMOD driver install sections
+[KMOD_Service_Inst]
+DisplayName    = %KMOD.SVCDESC%
 ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
 StartType      = 3               ; SERVICE_DEMAND_START
 ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %12%\Test.sys
+ServiceBinary  = %12%\KMOD.sys
 
 ;
-;--- Test_Device Coinstaller installation ------
+;--- KMOD_Device Coinstaller installation ------
 ;
 
-[Test_Device.NT.CoInstallers]
-AddReg=Test_Device_CoInstaller_AddReg
-CopyFiles=Test_Device_CoInstaller_CopyFiles
+[KMOD_Device.NT.CoInstallers]
+AddReg=KMOD_Device_CoInstaller_AddReg
+CopyFiles=KMOD_Device_CoInstaller_CopyFiles
 
-[Test_Device_CoInstaller_AddReg]
+[KMOD_Device_CoInstaller_AddReg]
 HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
 
-[Test_Device_CoInstaller_CopyFiles]
+[KMOD_Device_CoInstaller_CopyFiles]
 WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
 
-[Test_Device.NT.Wdf]
-KmdfService =  Test, Test_wdfsect
-[Test_wdfsect]
+[KMOD_Device.NT.Wdf]
+KmdfService =  KMOD, KMOD_wdfsect
+[KMOD_wdfsect]
 KmdfLibraryVersion = $KMDFVERSION$
 
 [Strings]
 SPSVCINST_ASSOCSERVICE= 0x00000002
 ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
-DiskName = "Test Installation Disk"
-Test.DeviceDesc = "Test Device"
-Test.SVCDESC = "Test Service"
+DiskName = "KMOD Installation Disk"
+KMOD.DeviceDesc = "KMOD Device"
+KMOD.SVCDESC = "KMOD Service"
